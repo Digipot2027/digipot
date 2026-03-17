@@ -89,3 +89,25 @@ body {
   background: var(--rood); color: var(--wit); text-align: center;
   padding: 8px; font-size: 13px; position: sticky; top: 0; z-index: 100;
 }
+
+/* Safe area voor iPhone notch en home indicator */
+.pagina {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* Betere touch targets */
+.knop {
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.input {
+  font-size: 16px; /* Voorkomt zoom op iOS */
+}
+
+/* Modal safe area */
+.modal-sheet {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
