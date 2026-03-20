@@ -20,6 +20,7 @@ function PaginaPotje() {
   const [online, setOnline] = useState(true)
   const [modaal, setModaal] = useState(null) // 'storting' | 'betaling' | 'sluiten'
   const [toast, setToast] = useState(null)
+  const [afmeldenLaden, setAfmeldenLaden] = useState(false)
 
   const deviceId = getDeviceId()
 
@@ -65,6 +66,12 @@ function PaginaPotje() {
         payload => setPotje(payload.new))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deelnemers', filter: `potje_id=eq.${id}` },
         payload => setDeelnemers(prev => [...prev.filter(d => d.id !== payload.new.id), payload.new].sort((a,b) => new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op))))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'deelnemers', filter: `potje_id=eq.${id}` },
+        payload => {
+          setDeelnemers(prev => prev.map(d => d.id === payload.new.id ? payload.new : d))
+          // Huidige deelnemer bijwerken als die afgemeld werd
+          setDeelnemer(prev => prev && prev.id === payload.new.id ? payload.new : prev)
+        })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transacties', filter: `potje_id=eq.${id}` },
         payload => setTransacties(prev => [...prev, payload.new]))
       .subscribe(status => setOnline(status === 'SUBSCRIBED'))
@@ -108,8 +115,52 @@ function PaginaPotje() {
     setModaal(null)
   }
 
+  async function handleAfmelden() {
+    if (!deelnemer || afmeldenLaden) return
+    setAfmeldenLaden(true)
+    try {
+      const { data, error } = await supabase
+        .from('deelnemers')
+        .update({ actief: false, afgemeld_op: new Date().toISOString() })
+        .eq('id', deelnemer.id)
+        .select()
+        .single()
+      if (error) throw error
+      setDeelnemer(data)
+      setDeelnemers(prev => prev.map(d => d.id === data.id ? data : d))
+      toonToast('Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen.', 'info')
+    } catch (e) {
+      toonToast(vertaalFout(e) || 'Afmelden mislukt.', 'fout')
+    } finally {
+      setAfmeldenLaden(false)
+    }
+  }
+
+  async function handleAanmelden() {
+    if (!deelnemer || afmeldenLaden) return
+    setAfmeldenLaden(true)
+    try {
+      const { data, error } = await supabase
+        .from('deelnemers')
+        .update({ actief: true, afgemeld_op: null })
+        .eq('id', deelnemer.id)
+        .select()
+        .single()
+      if (error) throw error
+      setDeelnemer(data)
+      setDeelnemers(prev => prev.map(d => d.id === data.id ? data : d))
+      toonToast('Je doet weer mee!', 'ok')
+    } catch (e) {
+      toonToast(vertaalFout(e) || 'Aanmelden mislukt.', 'fout')
+    } finally {
+      setAfmeldenLaden(false)
+    }
+  }
+
   const saldi = berekenSaldi(deelnemers, transacties)
+  const actieveDeelnemers = deelnemers.filter(d => d.actief !== false)
   const heeftTransacties = transacties.length > 0
+  const ikBenActief = deelnemer?.actief !== false
 
   if (laden) return (
     <div className="pagina">
@@ -134,6 +185,13 @@ function PaginaPotje() {
     <div className="pagina">
       {!online && <div className="verbinding-banner">⚠️ Verbinding verbroken. Wijzigingen worden niet opgeslagen.</div>}
 
+      {/* Actieve deelnemers banner */}
+      {actieveDeelnemers.length < deelnemers.length && (
+        <div className="actief-banner">
+          👥 Actief: {actieveDeelnemers.map(d => d.naam).join(', ') || '—'}
+        </div>
+      )}
+
       {/* Header */}
       <div className="kaart">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -149,10 +207,25 @@ function PaginaPotje() {
           </div>
         </div>
 
+        {/* Jouw status */}
+        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          {!ikBenActief && (
+            <span className="badge badge-afgemeld">Afgemeld</span>
+          )}
+          <button
+            className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
+            style={{ width: 'auto', fontSize: 13, padding: '7px 14px' }}
+            onClick={ikBenActief ? handleAfmelden : handleAanmelden}
+            disabled={afmeldenLaden}
+          >
+            {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Afmelden' : '✅ Weer meedoen'}
+          </button>
+        </div>
+
         {/* Kopieerknop */}
         <button
           className="knop knop-secundair"
-          style={{ marginTop: 16, fontSize: 14, padding: '8px 14px', width: 'auto' }}
+          style={{ marginTop: 10, fontSize: 14, padding: '8px 14px', width: 'auto' }}
           onClick={() => { navigator.clipboard.writeText(window.location.href); toonToast('Link gekopieerd!', 'ok') }}
         >
           🔗 Link kopiëren
@@ -161,17 +234,42 @@ function PaginaPotje() {
 
       {/* Deelnemers */}
       <div className="kaart">
-        <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Deelnemers ({deelnemers.length})</h2>
-        {deelnemers.map(d => (
-          <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--grijs-100)' }}>
-            <span style={{ fontWeight: d.id === deelnemer.id ? 600 : 400 }}>
-              {d.naam} {d.id === deelnemer.id ? '(jij)' : ''}
-            </span>
-            <span style={{ fontSize: 14, color: 'var(--grijs-600)' }}>
-              {formatBedrag(saldi.deelnemersSaldi.find(s => s.id === d.id)?.gestort || 0)}
-            </span>
-          </div>
-        ))}
+        <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
+          Deelnemers ({actieveDeelnemers.length}/{deelnemers.length})
+        </h2>
+
+        {/* Kolomhoofden */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, padding: '4px 0 8px', borderBottom: '1px solid var(--grijs-200)', marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--grijs-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Naam</span>
+          <span style={{ fontSize: 11, color: 'var(--grijs-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Ingelegd</span>
+          <span style={{ fontSize: 11, color: 'var(--grijs-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Uitgegeven</span>
+        </div>
+
+        {deelnemers.map(d => {
+          const saldiD = saldi.deelnemersSaldi.find(s => s.id === d.id)
+          const isAfgemeld = d.actief === false
+          return (
+            <div key={d.id} style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto auto',
+              gap: 8,
+              padding: '8px 0',
+              borderBottom: '1px solid var(--grijs-100)',
+              opacity: isAfgemeld ? 0.5 : 1
+            }}>
+              <span style={{ fontWeight: d.id === deelnemer.id ? 600 : 400, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {d.naam} {d.id === deelnemer.id ? '(jij)' : ''}
+                {isAfgemeld && <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Weg</span>}
+              </span>
+              <span style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right' }}>
+                {formatBedrag(saldiD?.gestort || 0)}
+              </span>
+              <span style={{ fontSize: 14, color: (saldiD?.uitgegeven || 0) > 0 ? 'var(--rood)' : 'var(--grijs-400)', textAlign: 'right' }}>
+                {formatBedrag(saldiD?.uitgegeven || 0)}
+              </span>
+            </div>
+          )
+        })}
       </div>
 
       {/* Transacties */}
@@ -208,10 +306,18 @@ function PaginaPotje() {
         )}
       </div>
 
-      {/* Actieknoppen */}
+      {/* Actieknoppen — alleen zichtbaar als je actief bent */}
       <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button className="knop knop-primair" onClick={() => setModaal('storting')}>💰 Storten</button>
-        <button className="knop knop-secundair" onClick={() => setModaal('betaling')}>🍺 Rondje betaald</button>
+        {ikBenActief ? (
+          <>
+            <button className="knop knop-primair" onClick={() => setModaal('storting')}>💰 Storten</button>
+            <button className="knop knop-secundair" onClick={() => setModaal('betaling')}>🍺 Rondje betaald</button>
+          </>
+        ) : (
+          <p style={{ fontSize: 14, color: 'var(--grijs-400)', textAlign: 'center', padding: '8px 0' }}>
+            Je bent afgemeld. Meld je weer aan om stortingen of betalingen te registreren.
+          </p>
+        )}
         {heeftTransacties && (
           <button className="knop knop-gevaar" style={{ opacity: 0.7 }} onClick={() => setModaal('sluiten')}>
             🔒 Potje sluiten

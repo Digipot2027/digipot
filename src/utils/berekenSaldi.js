@@ -1,6 +1,7 @@
 /**
  * Berekent saldi per deelnemer op basis van tijdgebaseerde verdeling.
  * Een deelnemer betaalt alleen mee aan uitgaven NA zijn instapmoment.
+ * Afgemelde deelnemers (actief === false) tellen niet mee bij toekomstige betalingen.
  */
 export function berekenSaldi(deelnemers, transacties) {
   if (!deelnemers || deelnemers.length === 0) {
@@ -18,9 +19,22 @@ export function berekenSaldi(deelnemers, transacties) {
 
   const potSaldo = potTotaal - potUitgaven
 
-  // Initialiseer aandeel per deelnemer op 0
+  // Initialiseer aandeel en uitgegeven per deelnemer op 0
   const aandelen = {}
-  deelnemers.forEach(d => { aandelen[d.id] = 0 })
+  const uitgegeven = {}
+  deelnemers.forEach(d => {
+    aandelen[d.id] = 0
+    uitgegeven[d.id] = 0
+  })
+
+  // Bereken uitgegeven per deelnemer (betalingen die zij zelf deden)
+  transacties
+    .filter(t => t.type === 'betaling')
+    .forEach(t => {
+      if (uitgegeven[t.deelnemer_id] !== undefined) {
+        uitgegeven[t.deelnemer_id] += Number(t.bedrag)
+      }
+    })
 
   // Per betaling: verdeel over actieve deelnemers op dat moment
   const betalingen = transacties.filter(t => t.type === 'betaling')
@@ -29,9 +43,19 @@ export function berekenSaldi(deelnemers, transacties) {
     const betalingTijd = new Date(betaling.aangemaakt_op).getTime()
 
     // Actieve deelnemers = ingestapt vóór of op het moment van de betaling
-    const actief = deelnemers.filter(d =>
-      new Date(d.aangemaakt_op).getTime() <= betalingTijd
-    )
+    // én nog actief op het moment van de betaling
+    // Als afgemeld_op beschikbaar is: gebruik dat tijdstip, anders val terug op actief-boolean
+    const actief = deelnemers.filter(d => {
+      const ingestapt = new Date(d.aangemaakt_op).getTime() <= betalingTijd
+      if (!ingestapt) return false
+
+      if (d.afgemeld_op) {
+        const afgemeldTijd = new Date(d.afgemeld_op).getTime()
+        return afgemeldTijd > betalingTijd
+      }
+
+      return d.actief !== false
+    })
 
     if (actief.length === 0) return
 
@@ -41,7 +65,6 @@ export function berekenSaldi(deelnemers, transacties) {
 
     actief.forEach((d, index) => {
       if (index === actief.length - 1) {
-        // Laatste deelnemer krijgt het cent-restant
         aandelen[d.id] += Math.round((bedrag - totaalVerdeeld) * 100) / 100
       } else {
         aandelen[d.id] += aandeel
@@ -65,6 +88,7 @@ export function berekenSaldi(deelnemers, transacties) {
   const deelnemersSaldi = deelnemers.map(d => ({
     ...d,
     gestort: Math.round(gestort[d.id] * 100) / 100,
+    uitgegeven: Math.round(uitgegeven[d.id] * 100) / 100,
     aandeel: Math.round(aandelen[d.id] * 100) / 100,
     verrekening: Math.round((gestort[d.id] - aandelen[d.id]) * 100) / 100
   }))

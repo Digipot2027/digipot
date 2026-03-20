@@ -6,6 +6,8 @@
   --rood: #dc2626;
   --rood-licht: #fee2e2;
   --blauw: #2563eb;
+  --oranje: #ea580c;
+  --oranje-licht: #fff7ed;
   --grijs-50: #f9fafb;
   --grijs-100: #f3f4f6;
   --grijs-200: #e5e7eb;
@@ -65,12 +67,48 @@ body {
   background: var(--grijs-100); color: var(--grijs-900);
   border: 1.5px solid var(--grijs-200);
 }
+.knop-afmelden {
+  background: var(--oranje-licht); color: var(--oranje);
+  border: 1.5px solid #fed7aa;
+}
+.knop-aanmelden {
+  background: var(--groen-licht); color: var(--groen);
+  border: 1.5px solid #bbf7d0;
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.badge-afgemeld {
+  background: var(--oranje-licht);
+  color: var(--oranje);
+  border: 1px solid #fed7aa;
+}
+
+/* Actieve deelnemers banner */
+.actief-banner {
+  background: var(--groen-licht);
+  color: var(--groen);
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
 
 .toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: var(--grijs-900); color: var(--wit); padding: 12px 20px;
   border-radius: 8px; font-size: 14px; z-index: 1000;
   animation: fadeIn 0.2s ease;
+  white-space: nowrap;
 }
 .toast.fout { background: var(--rood); }
 .toast.ok { background: var(--groen); }
