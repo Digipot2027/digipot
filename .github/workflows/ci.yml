@@ -34,7 +34,7 @@ jobs:
         run: npm run test:run
 
   deploy:
-    name: Deploy naar Netlify
+    name: Deploy naar Cloudflare Pages
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -59,12 +59,9 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
-      - name: Deploy naar Netlify
-        uses: nwtgck/actions-netlify@v3
+      - name: Deploy naar Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          publish-dir: dist
-          production-branch: main
-          production-deploy: true
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=digipot --branch=main
