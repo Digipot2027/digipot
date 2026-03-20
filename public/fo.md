@@ -5,6 +5,7 @@
 | Datum      | Wijziging                         | Reden                          | Impact                        |
 |------------|-----------------------------------|--------------------------------|-------------------------------|
 | 2026-03-20 | Initieel FO opgesteld             | Documentatie aanmaken          | Geen                          |
+| 2026-03-20 | Stap 14: afmelden + uitgaven per deelnemer | Uitbreiding functionaliteit | Deelnemers kunnen zichzelf afmelden; deelnemerstabel toont ingelegd én uitgegeven |
 
 ---
 
@@ -59,10 +60,12 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 
 - Een deelnemer kan een bedrag storten in het potje.
 - Stortingen worden direct zichtbaar voor alle deelnemers via realtime synchronisatie.
+- Alleen actieve deelnemers kunnen storten.
 
 **Validaties:**
 - Bedrag is verplicht en moet tussen €0,01 en €999,99 liggen.
 - Alleen eigen deelnemers (herkend via apparaat-ID) kunnen storten.
+- Deelnemer moet actief zijn (niet afgemeld).
 
 ---
 
@@ -70,14 +73,32 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 
 - Een deelnemer kan een betaling (bijv. een rondje) registreren ten laste van het potje.
 - Het bedrag wordt afgetrokken van het groepssaldo.
+- Alleen actieve deelnemers kunnen betalingen registreren.
 
 **Validaties:**
 - Bedrag mag niet hoger zijn dan het actuele potsaldo.
 - Bedrag moet tussen €0,01 en €999,99 liggen.
+- Deelnemer moet actief zijn (niet afgemeld).
 
 ---
 
-### 3.5 Potje sluiten
+### 3.5 Afmelden
+
+- Een deelnemer kan zichzelf afmelden via de knop "👋 Afmelden" op de potje-pagina.
+- Een afgemelde deelnemer telt niet meer mee bij toekomstige betalingen.
+- Historische betalingen (vóór het afmeldmoment) blijven ongewijzigd verdeeld.
+- Een afgemelde deelnemer kan zichzelf opnieuw aanmelden via "✅ Weer meedoen".
+- Bovenaan de pagina wordt een groene banner getoond met de namen van actieve deelnemers (zichtbaar zodra er iemand afgemeld is).
+- Afgemelde deelnemers worden in de deelnemerslijst getoond met verminderde opaciteit en een oranje "Weg"-badge.
+- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers.
+
+**Datamodel:**
+- `actief boolean DEFAULT true` — geeft aan of de deelnemer actief meedoet.
+- `afgemeld_op timestamptz` — tijdstip van afmelden, gebruikt voor tijdgebaseerde verdelingsberekening.
+
+---
+
+### 3.6 Potje sluiten
 
 - Elke deelnemer kan het potje sluiten, mits er minimaal één transactie is geregistreerd.
 - Na sluiten is het potje alleen-lezen en wordt de eindafrekening getoond.
@@ -89,13 +110,13 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 
 ---
 
-### 3.6 Eindafrekening
+### 3.7 Eindafrekening
 
 - Na sluiten wordt een afrekenpagina getoond met per deelnemer:
   - Gestort bedrag
-  - Aandeel in de uitgaven (op basis van tijdstip van deelname)
+  - Aandeel in de uitgaven (op basis van tijdstip van deelname en actief-status)
   - Verrekening (positief = tegoed, negatief = schuld)
-- De afrekening gebruikt tijdsgewogen verdeling: deelnemers betalen alleen mee aan uitgaven die zijn gedaan nadat zij zijn ingestapt.
+- De afrekening gebruikt tijdsgewogen verdeling: deelnemers betalen alleen mee aan uitgaven die zijn gedaan nadat zij zijn ingestapt én terwijl zij actief waren.
 
 ---
 
@@ -106,7 +127,8 @@ De applicatie luistert via Supabase Realtime naar drie typen databasewijzigingen
 | Kanaal         | Trigger                          | Effect in de UI                    |
 |----------------|----------------------------------|------------------------------------|
 | potjes         | Statuswijziging (bijv. sluiten)  | Potje-state wordt bijgewerkt       |
-| deelnemers     | Nieuwe deelnemer (INSERT)        | Deelnemerslijst wordt aangevuld    |
+| deelnemers     | INSERT (nieuwe deelnemer)        | Deelnemerslijst wordt aangevuld    |
+| deelnemers     | UPDATE (bijv. afmelden)          | Deelnemersstatus wordt bijgewerkt  |
 | transacties    | Nieuwe transactie (INSERT)       | Transactielijst wordt aangevuld    |
 
 Bij verbindingsverlies toont de app een waarschuwingsbanner. Wijzigingen worden dan niet opgeslagen totdat de verbinding is hersteld.
@@ -137,6 +159,7 @@ Bij verbindingsverlies toont de app een waarschuwingsbanner. Wijzigingen worden 
 - **Toast-meldingen:** korte bevestigingen na acties (3 seconden zichtbaar).
 - **Foutmeldingen:** inline bij formuliervelden of boven de modal.
 - **Verbindingsbanner:** zichtbaar bovenaan de pagina bij offline-status.
+- **Actief-banner:** groene banner met namen van actieve deelnemers, zichtbaar wanneer minimaal één deelnemer afgemeld is.
 
 ---
 
@@ -176,6 +199,8 @@ Bij verbindingsverlies toont de app een waarschuwingsbanner. Wijzigingen worden 
 | naam         | text        | Naam van de deelnemer                |
 | device_id    | text        | Uniek apparaat-ID (localStorage)     |
 | aangemaakt_op| timestamptz | Tijdstip van deelname                |
+| actief       | boolean     | `true` = actief, `false` = afgemeld  |
+| afgemeld_op  | timestamptz | Tijdstip van afmelden (null = actief)|
 
 **Constraints:** uniek op `(potje_id, naam)` en `(potje_id, device_id)`.
 
