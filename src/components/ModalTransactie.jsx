@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { vertaalFout } from '../utils/vertaalFout'
 
-function ModalTransactie({ type, potSaldo, onBevestig, onAnnuleer }) {
+function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
@@ -36,6 +36,8 @@ function ModalTransactie({ type, potSaldo, onBevestig, onAnnuleer }) {
       if (error.message?.includes('SALDO_TE_LAAG')) {
         const saldo = error.message.split(':')[1]
         setFout(`Het potje heeft niet genoeg saldo. Maximaal beschikbaar: ${formatBedrag(saldo)}.`)
+      } else if (error.message?.includes('NIET_ACTIEF')) {
+        setFout('Je hebt je afgemeld en kunt geen transacties meer invoeren.')
       } else {
         setFout(vertaalFout(error))
       }
@@ -49,7 +51,13 @@ function ModalTransactie({ type, potSaldo, onBevestig, onAnnuleer }) {
       <div style={{ background: 'var(--wit)', width: '100%', borderRadius: '16px 16px 0 0', padding: 24 }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{titel}</h2>
 
-        {!isStorting && (
+        {!ikBenActief && (
+          <div style={{ background: 'var(--grijs-100, #f3f4f6)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 14, color: 'var(--grijs-600)' }}>
+            Je hebt je afgemeld en kunt geen transacties meer invoeren.
+          </div>
+        )}
+
+        {!isStorting && ikBenActief && (
           <p style={{ fontSize: 14, color: 'var(--grijs-600)', marginBottom: 16 }}>
             Beschikbaar saldo: <strong>{formatBedrag(potSaldo)}</strong>
           </p>
@@ -67,6 +75,7 @@ function ModalTransactie({ type, potSaldo, onBevestig, onAnnuleer }) {
               value={bedrag}
               onChange={e => { setBedrag(e.target.value); setFout('') }}
               autoFocus
+              disabled={!ikBenActief}
             />
             {fout && <div className="fout-tekst">{fout}</div>}
           </div>
@@ -79,7 +88,7 @@ function ModalTransactie({ type, potSaldo, onBevestig, onAnnuleer }) {
               type="submit"
               className={`knop ${isStorting ? 'knop-primair' : 'knop-gevaar'}`}
               style={{ flex: 1 }}
-              disabled={laden || !bedrag}
+              disabled={laden || !bedrag || !ikBenActief}
             >
               {laden ? 'Bezig...' : 'Bevestigen'}
             </button>

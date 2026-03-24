@@ -96,6 +96,9 @@ function PaginaPotje() {
   }
 
   async function handleTransactie(type, bedrag) {
+    if (!ikBenActief) {
+      throw new Error('NIET_ACTIEF')
+    }
     const saldi = berekenSaldi(deelnemers, transacties)
     if (type === 'betaling' && bedrag > saldi.potSaldo) {
       throw new Error(`SALDO_TE_LAAG:${saldi.potSaldo}`)
@@ -319,7 +322,7 @@ function PaginaPotje() {
           </>
         ) : (
           <p style={{ fontSize: 14, color: 'var(--grijs-400)', textAlign: 'center', padding: '8px 0' }}>
-            Je bent afgemeld. Meld je weer aan om stortingen of betalingen te registreren.
+            Je hebt je afgemeld en kunt geen transacties meer invoeren.
           </p>
         )}
         {heeftTransacties && (
@@ -331,10 +334,10 @@ function PaginaPotje() {
 
       {/* Modals */}
       {modaal === 'storting' && (
-        <ModalTransactie type="storting" potSaldo={saldi.potSaldo} onBevestig={handleTransactie} onAnnuleer={() => setModaal(null)} />
+        <ModalTransactie type="storting" potSaldo={saldi.potSaldo} ikBenActief={ikBenActief} onBevestig={handleTransactie} onAnnuleer={() => setModaal(null)} />
       )}
       {modaal === 'betaling' && (
-        <ModalTransactie type="betaling" potSaldo={saldi.potSaldo} onBevestig={handleTransactie} onAnnuleer={() => setModaal(null)} />
+        <ModalTransactie type="betaling" potSaldo={saldi.potSaldo} ikBenActief={ikBenActief} onBevestig={handleTransactie} onAnnuleer={() => setModaal(null)} />
       )}
       {modaal === 'sluiten' && (
         <ModalSluiten potjeNaam={potje?.naam} onBevestig={handleSluiten} onAnnuleer={() => setModaal(null)} />
