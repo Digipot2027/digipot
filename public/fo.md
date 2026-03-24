@@ -8,6 +8,7 @@
 | 2026-03-20 | Stap 14: afmelden + uitgaven per deelnemer | Uitbreiding functionaliteit | Deelnemers kunnen zichzelf afmelden; deelnemerstabel toont ingelegd én uitgegeven |
 | 2026-03-24 | Stap 15a: RLS-policy transacties  | Database-niveau beveiliging    | Afgemelde deelnemers kunnen geen transacties meer invoeren via de database |
 | 2026-03-24 | Stap 15b: Verbeterde visuele indicatie | UX-verbetering           | Afgemelde deelnemers zichtbaar via doorstreeping, grijze achtergrond en badge "Afgemeld" |
+| 2026-03-24 | Stap 15e: Formulierblokkering voor afgemelde deelnemers | Defense-in-depth | ModalTransactie disabled + melding; handleTransactie gooit NIET_ACTIEF-fout |
 | 2026-03-24 | Stap 15c: Eindafrekening voor afgemelde deelnemers | Fairness-regel   | Nieuwe sluitingslogica: niet-actieve deelnemers betalen nooit meer dan gestort; tekort verdeeld over actieve deelnemers |
 
 ---
@@ -95,7 +96,11 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 - Een afgemelde deelnemer kan zichzelf opnieuw aanmelden via "✅ Weer meedoen".
 - Bovenaan de pagina wordt een groene banner getoond met de namen van actieve deelnemers (zichtbaar zodra er iemand afgemeld is).
 - Afgemelde deelnemers worden in de deelnemerslijst getoond met verminderde opaciteit, doorstreepte naam, lichtgrijze achtergrond en een badge "Afgemeld".
-- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers (UI én database-niveau via RLS).
+- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers op drie niveaus:
+  1. **Knoppen verborgen** — "Storten" en "Rondje betaald" zijn niet zichtbaar; er verschijnt de melding *"Je hebt je afgemeld en kunt geen transacties meer invoeren."*
+  2. **Formulier disabled** — als `ModalTransactie` toch wordt geopend, zijn het invoerveld en de bevestigingsknop uitgeschakeld en wordt dezelfde melding getoond.
+  3. **Handler-guard** — `handleTransactie()` gooit een `NIET_ACTIEF`-fout vóór elke databaseaanroep; `ModalTransactie` vertaalt deze naar de juiste foutmelding.
+  4. **Database-niveau** — RLS-policy op `transacties` blokkeert INSERT als `actief = false`.
 
 **Datamodel:**
 - `actief boolean DEFAULT true` — geeft aan of de deelnemer actief meedoet.
