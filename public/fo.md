@@ -10,6 +10,7 @@
 | 2026-03-24 | Stap 15b: Verbeterde visuele indicatie | UX-verbetering           | Afgemelde deelnemers zichtbaar via doorstreeping, grijze achtergrond en badge "Afgemeld" |
 | 2026-03-24 | Stap 15e: Formulierblokkering voor afgemelde deelnemers | Defense-in-depth | ModalTransactie disabled + melding; handleTransactie gooit NIET_ACTIEF-fout |
 | 2026-03-24 | Stap 15c: Eindafrekening voor afgemelde deelnemers | Fairness-regel   | Nieuwe sluitingslogica: niet-actieve deelnemers betalen nooit meer dan gestort; tekort verdeeld over actieve deelnemers |
+| 2026-03-24 | Stap 16: UX-audit verbeteringen (alle behalve K2+G7) | Usability & accessibility | K1 MAX_NAAM fix, K3 contrast, K4 ARIA+focus-trap+Escape, K5 undo-transactie, G1 onboarding, G2 deel-link kaart, G3 "Gestort", G4 bottom-sheet, G5 touch target, G6 betaalknop, V1–V9 diversen |
 
 ---
 
@@ -36,14 +37,14 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 
 ### 3.1 Potje aanmaken
 
-- De aanmaker vult een naam in voor het potje (max. 50 tekens in de UI, max. 30 tekens in de database).
+- De aanmaker vult een naam in voor het potje (max. 30 tekens, overeenkomstig de database-constraint).
 - Na aanmaken wordt de gebruiker doorgestuurd naar de potje-pagina.
 - Er wordt een unieke link gegenereerd op basis van het potje-ID.
 
 **Validaties:**
 - Naam is verplicht.
 - Naam mag niet leeg zijn (na trimmen).
-- Naam mag maximaal 50 tekens bevatten.
+- Naam mag maximaal 30 tekens bevatten (K1: UI en database consistent).
 
 ---
 

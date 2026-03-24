@@ -9,7 +9,7 @@ function PaginaNieuwPotje() {
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
 
-  const MAX_NAAM = 50
+  const MAX_NAAM = 30 // K1: overeenkomstig DB-constraint potjes.naam
 
   async function handleAanmaken(e) {
     e.preventDefault()
@@ -60,6 +60,7 @@ function PaginaNieuwPotje() {
               onChange={e => { setNaam(e.target.value); setFout('') }}
               maxLength={MAX_NAAM}
               autoFocus
+              autoComplete="off"
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
             {fout && <div className="fout-tekst">{fout}</div>}
