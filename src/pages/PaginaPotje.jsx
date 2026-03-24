@@ -255,11 +255,15 @@ function PaginaPotje() {
               gap: 8,
               padding: '8px 0',
               borderBottom: '1px solid var(--grijs-100)',
-              opacity: isAfgemeld ? 0.5 : 1
+              opacity: isAfgemeld ? 0.55 : 1,
+              background: isAfgemeld ? 'var(--grijs-50, #f9f9f9)' : 'transparent',
+              borderRadius: isAfgemeld ? 6 : 0,
+              paddingLeft: isAfgemeld ? 6 : 0,
+              paddingRight: isAfgemeld ? 6 : 0,
             }}>
-              <span style={{ fontWeight: d.id === deelnemer.id ? 600 : 400, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: d.id === deelnemer.id ? 600 : 400, display: 'flex', alignItems: 'center', gap: 6, textDecoration: isAfgemeld ? 'line-through' : 'none' }}>
                 {d.naam} {d.id === deelnemer.id ? '(jij)' : ''}
-                {isAfgemeld && <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Weg</span>}
+                {isAfgemeld && <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Afgemeld</span>}
               </span>
               <span style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right' }}>
                 {formatBedrag(saldiD?.gestort || 0)}
