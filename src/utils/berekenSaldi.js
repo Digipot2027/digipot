@@ -100,3 +100,68 @@ export function berekenSaldi(deelnemers, transacties) {
     deelnemersSaldi
   }
 }
+
+/**
+ * Berekent de eindafrekening bij het sluiten van een potje.
+ *
+ * Regels voor niet-actieve deelnemers:
+ * - Betalen nooit meer dan hun gestorte bedrag (verrekening ≥ −gestort).
+ * - Als aandeel < gestort: ontvangen het verschil terug (positieve verrekening).
+ * - Als aandeel > gestort maar ≤ 2×gestort: betalen het verschil (negatieve verrekening,
+ *   maar nooit meer dan gestort).
+ * - Als aandeel > 2×gestort: verrekening wordt gecapt op −gestort; het resterende tekort
+ *   wordt gelijkelijk verdeeld over de actieve deelnemers.
+ *
+ * Regels voor actieve deelnemers:
+ * - Zelfde normale berekening, plus evenredig aandeel in het tekort van gecapte inactieve leden.
+ */
+export function berekenEindafrekening(deelnemers, transacties) {
+  const basis = berekenSaldi(deelnemers, transacties)
+
+  const actieveDeelnemers = deelnemers.filter(d => d.actief !== false)
+
+  // Bereken gecapte verrekeningen voor inactieve deelnemers en verzamel tekort
+  let totaalTekort = 0
+
+  const gecapteSaldi = basis.deelnemersSaldi.map(ds => {
+    if (ds.actief !== false) return ds
+
+    const ondergrens = -ds.gestort
+    const gecaptRuw = Math.max(ds.verrekening, ondergrens)
+    const gecapt = gecaptRuw === 0 ? 0 : gecaptRuw // voorkom -0
+    const tekort = Math.round((gecapt - ds.verrekening) * 100) / 100 // positief als cap is toegepast
+    totaalTekort += tekort
+
+    return { ...ds, verrekening: Math.round(gecapt * 100) / 100 }
+  })
+
+  // Verdeel tekort gelijkelijk over actieve deelnemers
+  if (totaalTekort === 0 || actieveDeelnemers.length === 0) {
+    return { ...basis, deelnemersSaldi: gecapteSaldi }
+  }
+
+  const aanpassingPerActief = Math.round((totaalTekort / actieveDeelnemers.length) * 100) / 100
+
+  // Centcorrectie: laatste actieve deelnemer vangt rest op
+  const actieveIds = new Set(actieveDeelnemers.map(d => d.id))
+  const actieveIndices = gecapteSaldi
+    .map((ds, i) => actieveIds.has(ds.id) ? i : -1)
+    .filter(i => i !== -1)
+
+  let reedVerdeeld = 0
+  const aangepasteSaldi = gecapteSaldi.map((ds, i) => {
+    if (!actieveIds.has(ds.id)) return ds
+
+    const isLaatste = i === actieveIndices[actieveIndices.length - 1]
+    let aanpassing
+    if (isLaatste) {
+      aanpassing = Math.round((totaalTekort - reedVerdeeld) * 100) / 100
+    } else {
+      aanpassing = aanpassingPerActief
+      reedVerdeeld = Math.round((reedVerdeeld + aanpassingPerActief) * 100) / 100
+    }
+    return { ...ds, verrekening: Math.round((ds.verrekening - aanpassing) * 100) / 100 }
+  })
+
+  return { ...basis, deelnemersSaldi: aangepasteSaldi }
+}
