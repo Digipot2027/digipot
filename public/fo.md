@@ -6,6 +6,9 @@
 |------------|-----------------------------------|--------------------------------|-------------------------------|
 | 2026-03-20 | Initieel FO opgesteld             | Documentatie aanmaken          | Geen                          |
 | 2026-03-20 | Stap 14: afmelden + uitgaven per deelnemer | Uitbreiding functionaliteit | Deelnemers kunnen zichzelf afmelden; deelnemerstabel toont ingelegd én uitgegeven |
+| 2026-03-24 | Stap 15a: RLS-policy transacties  | Database-niveau beveiliging    | Afgemelde deelnemers kunnen geen transacties meer invoeren via de database |
+| 2026-03-24 | Stap 15b: Verbeterde visuele indicatie | UX-verbetering           | Afgemelde deelnemers zichtbaar via doorstreeping, grijze achtergrond en badge "Afgemeld" |
+| 2026-03-24 | Stap 15c: Eindafrekening voor afgemelde deelnemers | Fairness-regel   | Nieuwe sluitingslogica: niet-actieve deelnemers betalen nooit meer dan gestort; tekort verdeeld over actieve deelnemers |
 
 ---
 
@@ -66,6 +69,7 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 - Bedrag is verplicht en moet tussen €0,01 en €999,99 liggen.
 - Alleen eigen deelnemers (herkend via apparaat-ID) kunnen storten.
 - Deelnemer moet actief zijn (niet afgemeld).
+- **Database-niveau:** RLS-policy op `transacties` blokkeert INSERT als de deelnemer niet actief is (`actief = true` vereist).
 
 ---
 
@@ -79,6 +83,7 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 - Bedrag mag niet hoger zijn dan het actuele potsaldo.
 - Bedrag moet tussen €0,01 en €999,99 liggen.
 - Deelnemer moet actief zijn (niet afgemeld).
+- **Database-niveau:** dezelfde RLS-policy op `transacties` blokkeert INSERT voor afgemelde deelnemers.
 
 ---
 
@@ -89,8 +94,8 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 - Historische betalingen (vóór het afmeldmoment) blijven ongewijzigd verdeeld.
 - Een afgemelde deelnemer kan zichzelf opnieuw aanmelden via "✅ Weer meedoen".
 - Bovenaan de pagina wordt een groene banner getoond met de namen van actieve deelnemers (zichtbaar zodra er iemand afgemeld is).
-- Afgemelde deelnemers worden in de deelnemerslijst getoond met verminderde opaciteit en een oranje "Weg"-badge.
-- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers.
+- Afgemelde deelnemers worden in de deelnemerslijst getoond met verminderde opaciteit, doorstreepte naam, lichtgrijze achtergrond en een badge "Afgemeld".
+- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers (UI én database-niveau via RLS).
 
 **Datamodel:**
 - `actief boolean DEFAULT true` — geeft aan of de deelnemer actief meedoet.
@@ -117,6 +122,19 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
   - Aandeel in de uitgaven (op basis van tijdstip van deelname en actief-status)
   - Verrekening (positief = tegoed, negatief = schuld)
 - De afrekening gebruikt tijdsgewogen verdeling: deelnemers betalen alleen mee aan uitgaven die zijn gedaan nadat zij zijn ingestapt én terwijl zij actief waren.
+- Afgemelde deelnemers worden getoond met doorstreepte naam en "Afgemeld"-badge.
+
+**Sluitingslogica voor niet-actieve deelnemers:**
+
+| Situatie | Uitkomst |
+|---|---|
+| Aandeel < gestort | Ontvangt het verschil terug (positieve verrekening) |
+| Aandeel > gestort, maar ≤ 2× gestort | Ontvangt een tikkie voor het verschil (negatieve verrekening, maar nooit meer dan gestort) |
+| Aandeel > 2× gestort (extreme cap) | Verrekening = −gestort; het resterende tekort wordt gelijkelijk verdeeld over actieve deelnemers |
+
+**Sluitingslogica voor actieve deelnemers:**
+- Zelfde normale berekening (gestort − aandeel).
+- Plus hun evenredig aandeel in het tekort van gecapte inactieve deelnemers (gelijk deel per actieve deelnemer).
 
 ---
 
