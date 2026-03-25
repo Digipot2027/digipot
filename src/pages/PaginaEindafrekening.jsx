@@ -1,7 +1,9 @@
+import { useNavigate } from 'react-router-dom'
 import { berekenEindafrekening } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 
 function PaginaEindafrekening({ potje, deelnemers, transacties }) {
+  const navigate = useNavigate()
   const saldi = berekenEindafrekening(deelnemers, transacties)
   const gesloten = new Date(potje.gesloten_op)
   const sluitDatum = gesloten.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -9,7 +11,16 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
   return (
     <div className="pagina">
       <div className="kaart">
-        <h1 className="titel">🔒 {potje.naam}</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <h1 className="titel" style={{ marginBottom: 0 }}>🔒 {potje.naam}</h1>
+          <button
+            onClick={() => navigate('/instellingen')}
+            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--grijs-500)', padding: '2px 0 0 0', lineHeight: 1 }}
+            aria-label="Instellingen openen"
+          >
+            ⚙️
+          </button>
+        </div>
         <p className="subtitel">Gesloten op {sluitDatum}</p>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--grijs-200)' }}>
@@ -54,6 +65,21 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
           )
         })}
       </div>
+      <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button
+          className="knop knop-primair"
+          onClick={() => navigate('/')}
+        >
+          🍺 Nieuw potje starten
+        </button>
+        <button
+          className="knop knop-secundair"
+          onClick={() => navigate('/instellingen')}
+        >
+          ⚙️ Naar instellingen
+        </button>
+      </div>
+
     </div>
   )
 }

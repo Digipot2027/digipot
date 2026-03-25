@@ -84,7 +84,7 @@ Gebruik altijd deze namen in FO, TO, code-commentaar en gesprekken. Nooit de bes
 | 2 | **Deelnemer** | `ModalDeelnemen` (inline in PaginaPotje) | `/potje/:id` | ❌ |
 | 3 | **Storten/Inleggen** | `ModalTransactie` (inline in PaginaPotje) | `/potje/:id` | ❌ |
 | 4 | **Overzicht** | `PaginaPotje` (kern) | `/potje/:id` | ✅ |
-| 5 | **Eindafrekening** | `PaginaEindafrekening` | `/potje/:id` (inline bij gesloten pot) | ❌ |
+| 5 | **Eindafrekening** | `PaginaEindafrekening` | `/potje/:id` (inline bij gesloten pot) | ✅ |
 
 ### Instellingenschermen (via tandwiel ⚙️)
 
