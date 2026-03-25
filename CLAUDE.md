@@ -52,6 +52,7 @@ No authentication. Each device gets a `crypto.randomUUID()` stored in localStora
 |---|---|---|
 | `digipot_device_id` | UUID, uniek per device | `PaginaPotje` bij eerste bezoek |
 | `digipot_profiel_naam` | Naam uit Profielscherm (optioneel) | `PaginaProfiel` (S4) |
+| `digipot_tekstgrootte` | `normaal` / `groot` / `extra-groot` | `PaginaProfiel` (S4) |
 
 ### Deelneemflow bij nieuw potje bezoek
 

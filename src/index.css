@@ -1,5 +1,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Tekstgrootte schaling (WCAG 1.4.4)
+   font-size op :root = rem-basis voor de hele app.
+   JS past data-tekstgrootte aan op <html>.
+   Alle tekst gebruikt rem zodat alles meeschaalt. */
+:root { font-size: 16px; }
+:root[data-tekstgrootte='normaal']     { font-size: 16px; }
+:root[data-tekstgrootte='groot']       { font-size: 19px; }
+:root[data-tekstgrootte='extra-groot'] { font-size: 22px; }
+
 :root {
   --groen: #16a34a;
   --groen-licht: #dcfce7;
@@ -43,24 +52,24 @@ body {
   margin-bottom: 16px;
 }
 
-.titel { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-.subtitel { font-size: 14px; color: var(--grijs-600); margin-bottom: 24px; }
+.titel { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.subtitel { font-size: 0.875rem; color: var(--grijs-600); margin-bottom: 1.5rem; }
 
-.veld { margin-bottom: 16px; }
-.label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.veld { margin-bottom: 1rem; }
+.label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.375rem; }
 .input {
-  width: 100%; padding: 12px 14px; border: 1.5px solid var(--grijs-200);
-  border-radius: 8px; font-size: 16px; outline: none; transition: border-color 0.2s;
+  width: 100%; padding: 0.75rem 0.875rem; border: 1.5px solid var(--grijs-200);
+  border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s;
 }
 .input:focus { border-color: var(--blauw); }
 .input.fout { border-color: var(--rood); }
-.fout-tekst { font-size: 12px; color: var(--rood); margin-top: 4px; }
+.fout-tekst { font-size: 0.75rem; color: var(--rood); margin-top: 0.25rem; }
 /* K3: teller gebruikt grijs-500 ipv grijs-400 (was 2.3:1, nu 4.6:1 contrast) */
-.teller { font-size: 12px; color: var(--grijs-500); text-align: right; margin-top: 4px; }
+.teller { font-size: 0.75rem; color: var(--grijs-500); text-align: right; margin-top: 0.25rem; }
 
 .knop {
-  width: 100%; padding: 14px; border: none; border-radius: 8px;
-  font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+  width: 100%; padding: 0.875rem; border: none; border-radius: 8px;
+  font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
 }
 .knop:disabled { opacity: 0.5; cursor: not-allowed; }
 .knop-primair { background: var(--groen); color: var(--wit); }
@@ -121,12 +130,12 @@ body {
 
 /* K5: toast ondersteunt optioneel een actie-knop */
 .toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: var(--grijs-900); color: var(--wit); padding: 12px 16px;
-  border-radius: 8px; font-size: 14px; z-index: 1000;
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: var(--grijs-900); color: var(--wit); padding: 0.75rem 1rem;
+  border-radius: 8px; font-size: 0.875rem; z-index: 1000;
   animation: fadeIn 0.2s ease;
-  display: flex; align-items: center; gap: 12px;
-  max-width: calc(100vw - 32px);
+  display: flex; align-items: center; gap: 0.75rem;
+  max-width: calc(100vw - 2rem);
 }
 .toast.fout { background: var(--rood); }
 .toast.ok { background: var(--groen); }
@@ -134,9 +143,9 @@ body {
   background: rgba(255,255,255,0.2);
   border: 1px solid rgba(255,255,255,0.35);
   color: inherit;
-  padding: 4px 10px;
+  padding: 0.25rem 0.625rem;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -167,7 +176,7 @@ body {
 }
 
 .input {
-  font-size: 16px; /* Voorkomt zoom op iOS */
+  font-size: max(1rem, 16px); /* Voorkomt zoom op iOS (min 16px), schaalt mee bij grote tekst */
 }
 
 /* Modal safe area */

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import DeelnemerDetailSheet from '../components/DeelnemerDetailSheet.jsx'
+import DeelKnop from '../components/DeelKnop.jsx'
 
 function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, onStorten, onBetalen, onSluiten, onAfmelden, afmeldenLaden }) {
   const navigate = useNavigate()
@@ -60,14 +61,12 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             )}
           </div>
 
-          {/* Link kopiëren */}
-          <button
-            className="knop knop-secundair"
+          {/* Deel potje */}
+          <DeelKnop
+            potjeNaam={potje?.naam}
+            variant="secundair"
             style={{ marginTop: 10, fontSize: 14, padding: '8px 14px', width: 'auto' }}
-            onClick={() => navigator.clipboard.writeText(window.location.href)}
-          >
-            🔗 Link kopiëren
-          </button>
+          />
         </div>
 
         {/* Deelnemers — klikbaar */}

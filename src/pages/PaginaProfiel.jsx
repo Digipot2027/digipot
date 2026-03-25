@@ -2,15 +2,30 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
+const TEKSTGROOTTE_KEY = 'digipot_tekstgrootte'
 const MAX_NAAM = 30
+
+const TEKSTGROOTTES = [
+  { waarde: 'normaal', label: 'Normaal', voorbeeld: '16px' },
+  { waarde: 'groot', label: 'Groot', voorbeeld: '19px' },
+  { waarde: 'extra-groot', label: 'Extra groot', voorbeeld: '22px' },
+]
 
 function PaginaProfiel() {
   const navigate = useNavigate()
   const opgeslagenNaam = localStorage.getItem(PROFIEL_NAAM_KEY) || ''
+  const opgeslagenTekstgrootte = localStorage.getItem(TEKSTGROOTTE_KEY) || 'normaal'
 
   const [naam, setNaam] = useState(opgeslagenNaam)
+  const [tekstgrootte, setTekstgrootte] = useState(opgeslagenTekstgrootte)
   const [opgeslagen, setOpgeslagen] = useState(false)
   const [fout, setFout] = useState('')
+
+  function handleTekstgrootte(waarde) {
+    setTekstgrootte(waarde)
+    localStorage.setItem(TEKSTGROOTTE_KEY, waarde)
+    document.documentElement.setAttribute('data-tekstgrootte', waarde)
+  }
 
   function handleOpslaan(e) {
     e.preventDefault()
@@ -50,7 +65,7 @@ function PaginaProfiel() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
           <button
             onClick={() => navigate('/instellingen')}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
             aria-label="Terug naar instellingen"
           >
             ←
@@ -92,16 +107,63 @@ function PaginaProfiel() {
         </form>
       </div>
 
-      {/* Naam verwijderen — alleen tonen als er een naam is opgeslagen */}
+      {/* Tekstgrootte */}
+      <div className="kaart">
+        <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>Tekstgrootte</h2>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-400)', marginBottom: 16 }}>
+          De instelling wordt direct toegepast en onthouden.
+        </p>
+        <div
+          role="radiogroup"
+          aria-label="Tekstgrootte kiezen"
+          style={{ display: 'flex', gap: 10 }}
+        >
+          {TEKSTGROOTTES.map(({ waarde, label }) => {
+            const actief = tekstgrootte === waarde
+            return (
+              <button
+                key={waarde}
+                role="radio"
+                aria-checked={actief}
+                onClick={() => handleTekstgrootte(waarde)}
+                style={{
+                  flex: 1,
+                  padding: '12px 8px',
+                  borderRadius: 8,
+                  border: actief ? '2px solid var(--blauw)' : '1.5px solid var(--grijs-200)',
+                  background: actief ? '#eff6ff' : 'var(--grijs-50)',
+                  color: actief ? 'var(--blauw)' : 'var(--grijs-900)',
+                  fontWeight: actief ? 700 : 400,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  textAlign: 'center',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ fontSize: waarde === 'normaal' ? '1rem' : waarde === 'groot' ? '1.25rem' : '1.5rem', marginBottom: 4 }}>A</div>
+                <div>{label}</div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Live voorbeeld */}
+        <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--grijs-50)', borderRadius: 8, border: '1px solid var(--grijs-200)' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 4 }}>Voorbeeld:</p>
+          <p style={{ fontSize: '1rem' }}>Vakantie Spanje 2026</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-400)' }}>Potje · 3 deelnemers · €45,00</p>
+        </div>
+      </div>
+
+      {/* Naam verwijderen */}
       {opgeslagenNaam && (
         <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
-          <p style={{ fontSize: 13, color: 'var(--grijs-600)', marginBottom: 12 }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)', marginBottom: 12 }}>
             Je naam wordt lokaal opgeslagen op dit apparaat. Er worden geen persoonlijke gegevens verstuurd.
           </p>
           <button
             type="button"
             className="knop knop-secundair"
-            style={{ fontSize: 14 }}
             onClick={handleVerwijderen}
           >
             🗑 Naam verwijderen
@@ -109,10 +171,9 @@ function PaginaProfiel() {
         </div>
       )}
 
-      {/* Uitleg als er nog geen naam is */}
       {!opgeslagenNaam && (
         <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
-          <p style={{ fontSize: 13, color: 'var(--grijs-600)' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
             Je naam wordt lokaal opgeslagen op dit apparaat. Er worden geen persoonlijke gegevens verstuurd.
           </p>
         </div>

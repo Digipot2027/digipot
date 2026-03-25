@@ -5,6 +5,10 @@ import * as Sentry from '@sentry/react'
 import App from './App.jsx'
 import './index.css'
 
+// Tekstgrootte herstellen uit localStorage bij opstarten (WCAG 1.4.4)
+const tekstgrootte = localStorage.getItem('digipot_tekstgrootte') || 'normaal'
+document.documentElement.setAttribute('data-tekstgrootte', tekstgrootte)
+
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   environment: import.meta.env.MODE, // 'development' of 'production'
