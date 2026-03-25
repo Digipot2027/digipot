@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
+
+// Standaardbedragen — primaire keuzemethode
+const SNELBEDRAGEN = [5, 10, 20, 50]
 
 function PaginaStorten() {
   const { id } = useParams()
@@ -15,9 +18,14 @@ function PaginaStorten() {
   const [deelnemer, setDeelnemer] = useState(null)
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState('')
-  const [bedrag, setBedrag] = useState('')
+
+  // Bedragselectie: 'snelkeuze' of een getal, null = niets gekozen
+  const [gekozenBedrag, setGekozenBedrag] = useState(null) // een van SNELBEDRAGEN of null
+  const [vrijeInvoer, setVrijeInvoer] = useState('')       // vrij tekstveld
+  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false) // vrij invoer open?
   const [invoerFout, setInvoerFout] = useState('')
   const [bezig, setBezig] = useState(false)
+  const vrijeInvoerRef = useRef(null)
 
   const MAX = 999.99
 
@@ -52,17 +60,52 @@ function PaginaStorten() {
 
   useEffect(() => { laadData() }, [laadData])
 
-  const bedragNum = parseBedrag(bedrag)
-  const bedragGeldig = bedrag.length > 0 && !isNaN(bedragNum) && bedragNum > 0 && bedragNum <= MAX
+  // Focus vrij invoerveld zodra het zichtbaar wordt
+  useEffect(() => {
+    if (vrijeInvoerActief) {
+      setTimeout(() => vrijeInvoerRef.current?.focus(), 50)
+    }
+  }, [vrijeInvoerActief])
 
-  async function handleStorten(e) {
-    e.preventDefault()
+  // Bepaal het te storten bedrag: snelkeuze heeft prioriteit, anders vrije invoer
+  const vrijeInvoerNum = parseBedrag(vrijeInvoer)
+  const effectiefBedrag = gekozenBedrag !== null
+    ? gekozenBedrag
+    : (vrijeInvoerActief && vrijeInvoer.trim() ? vrijeInvoerNum : null)
+
+  const bedragGeldig = effectiefBedrag !== null
+    && !isNaN(effectiefBedrag)
+    && effectiefBedrag > 0
+    && effectiefBedrag <= MAX
+
+  function handleSnelkeuze(bedrag) {
+    setGekozenBedrag(bedrag)
+    setVrijeInvoer('')
+    setVrijeInvoerActief(false)
+    setInvoerFout('')
+  }
+
+  function handleVrijeInvoerToggle() {
+    setVrijeInvoerActief(true)
+    setGekozenBedrag(null)
+    setInvoerFout('')
+  }
+
+  function handleVrijeInvoerWijziging(e) {
+    setVrijeInvoer(e.target.value)
+    setGekozenBedrag(null)
+    setInvoerFout('')
+  }
+
+  async function handleStorten() {
     setInvoerFout('')
 
     if (!bedragGeldig) {
-      setInvoerFout(bedragNum > MAX
-        ? 'Het maximale bedrag per storting is €999,99.'
-        : 'Voer een bedrag in van minimaal €0,01.')
+      if (effectiefBedrag !== null && effectiefBedrag > MAX) {
+        setInvoerFout('Het maximale bedrag per storting is €999,99.')
+      } else {
+        setInvoerFout('Kies een bedrag of voer een bedrag in.')
+      }
       return
     }
 
@@ -79,9 +122,11 @@ function PaginaStorten() {
     setBezig(true)
     try {
       await supabase.from('transacties')
-        .insert({ potje_id: id, deelnemer_id: deelnemer.id, type: 'storting', bedrag: bedragNum })
+        .insert({ potje_id: id, deelnemer_id: deelnemer.id, type: 'storting', bedrag: effectiefBedrag })
         .select().single()
-      navigate(`/potje/${id}`, { state: { toast: { bericht: `Storting van ${formatBedrag(bedragNum)} geregistreerd.`, type: 'ok' } } })
+      navigate(`/potje/${id}`, {
+        state: { toast: { bericht: `Storting van ${formatBedrag(effectiefBedrag)} geregistreerd.`, type: 'ok' } }
+      })
     } catch (e) {
       setInvoerFout(logFout(e, { component: 'PaginaStorten', actie: 'storten' }))
     } finally {
@@ -89,6 +134,7 @@ function PaginaStorten() {
     }
   }
 
+  // ── Skeleton loader ──────────────────────────────────────────────────────────
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
@@ -96,7 +142,11 @@ function PaginaStorten() {
         <div className="skeleton" style={{ height: 16, width: '40%' }} />
       </div>
       <div className="kaart">
-        <div className="skeleton" style={{ height: 48, marginBottom: 12 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          {SNELBEDRAGEN.map(b => (
+            <div key={b} className="skeleton" style={{ height: 64 }} />
+          ))}
+        </div>
         <div className="skeleton" style={{ height: 48 }} />
       </div>
     </div>
@@ -125,7 +175,7 @@ function PaginaStorten() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
           <button
             onClick={() => navigate(`/potje/${id}`)}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: '4px 0', color: 'var(--grijs-600)', lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', padding: '4px 0', color: 'var(--grijs-600)', lineHeight: 1 }}
             aria-label="Terug naar overzicht"
           >
             ←
@@ -137,67 +187,143 @@ function PaginaStorten() {
         </p>
       </div>
 
-      {/* Jouw storting tot nu toe */}
+      {/* Al gestort */}
       {reedGestort > 0 && (
         <div className="kaart" style={{ background: 'var(--groen-licht)', border: '1px solid #bbf7d0' }}>
-          <p style={{ fontSize: 13, color: 'var(--groen)', fontWeight: 500 }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--groen)', fontWeight: 500 }}>
             Je hebt tot nu toe <strong>{formatBedrag(reedGestort)}</strong> ingelegd.
           </p>
         </div>
       )}
 
-      {/* Formulier */}
+      {/* Bedragkeuze */}
       <div className="kaart">
-        <form onSubmit={handleStorten}>
-          <div className="veld">
-            <label className="label" htmlFor="bedrag-invoer">Bedrag (€)</label>
+        <p className="label" style={{ marginBottom: 12 }}>Kies een bedrag</p>
+
+        {/* Snelknoppen — primaire methode */}
+        <div
+          role="group"
+          aria-label="Standaardbedragen"
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}
+        >
+          {SNELBEDRAGEN.map(bedrag => {
+            const actief = gekozenBedrag === bedrag
+            return (
+              <button
+                key={bedrag}
+                type="button"
+                onClick={() => handleSnelkeuze(bedrag)}
+                aria-pressed={actief}
+                style={{
+                  padding: '16px 12px',
+                  borderRadius: 10,
+                  border: actief ? '2px solid var(--groen)' : '1.5px solid var(--grijs-200)',
+                  background: actief ? 'var(--groen-licht)' : 'var(--grijs-50)',
+                  color: actief ? 'var(--groen)' : 'var(--grijs-900)',
+                  fontWeight: actief ? 700 : 500,
+                  fontSize: '1.125rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  textAlign: 'center',
+                  minHeight: 64,
+                }}
+              >
+                {formatBedrag(bedrag)}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Vrij bedrag — aanvulling */}
+        {!vrijeInvoerActief ? (
+          <button
+            type="button"
+            className="knop knop-secundair"
+            style={{ fontSize: '0.875rem' }}
+            onClick={handleVrijeInvoerToggle}
+          >
+            ✏️ Ander bedrag invoeren
+          </button>
+        ) : (
+          <div className="veld" style={{ marginBottom: 0 }}>
+            <label className="label" htmlFor="vrij-bedrag">Ander bedrag (€)</label>
             <input
-              id="bedrag-invoer"
-              className={`input ${invoerFout ? 'fout' : ''}`}
+              id="vrij-bedrag"
+              ref={vrijeInvoerRef}
+              className={`input ${invoerFout && vrijeInvoerActief ? 'fout' : ''}`}
               type="text"
               inputMode="decimal"
-              placeholder="bijv. 20,00"
-              value={bedrag}
-              onChange={e => { setBedrag(e.target.value); setInvoerFout('') }}
-              autoFocus
+              placeholder="bijv. 35,00"
+              value={vrijeInvoer}
+              onChange={handleVrijeInvoerWijziging}
               autoComplete="off"
             />
-            {bedragGeldig && !invoerFout && (
-              <div className="teller" style={{ color: 'var(--groen)' }}>= {formatBedrag(bedragNum)}</div>
+            {vrijeInvoerActief && vrijeInvoerNum > 0 && !invoerFout && (
+              <div className="teller" style={{ color: 'var(--groen)' }}>
+                = {formatBedrag(vrijeInvoerNum)}
+              </div>
             )}
-            {invoerFout && <div className="fout-tekst">{invoerFout}</div>}
           </div>
+        )}
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              type="button"
-              className="knop knop-secundair"
-              style={{ flex: 1 }}
-              onClick={() => navigate(`/potje/${id}`)}
-            >
-              Annuleren
-            </button>
-            <button
-              type="submit"
-              className="knop knop-primair"
-              style={{ flex: 1 }}
-              disabled={bezig || !bedragGeldig}
-            >
-              {bezig ? 'Bezig...' : 'Storten →'}
-            </button>
-          </div>
-        </form>
+        {invoerFout && (
+          <div className="fout-tekst" style={{ marginTop: 8 }}>{invoerFout}</div>
+        )}
       </div>
 
-      {/* Pot saldo info */}
+      {/* Samenvatting + bevestigen */}
+      <div className="kaart">
+        {/* Geselecteerd bedrag tonen */}
+        {bedragGeldig && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 14px',
+            background: 'var(--groen-licht)',
+            borderRadius: 8,
+            marginBottom: 14,
+            border: '1px solid #bbf7d0',
+          }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--groen)', fontWeight: 500 }}>
+              Jouw storting
+            </span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--groen)' }}>
+              {formatBedrag(effectiefBedrag)}
+            </span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            className="knop knop-secundair"
+            style={{ flex: 1 }}
+            onClick={() => navigate(`/potje/${id}`)}
+          >
+            Annuleren
+          </button>
+          <button
+            type="button"
+            className="knop knop-primair"
+            style={{ flex: 1 }}
+            onClick={handleStorten}
+            disabled={bezig || !bedragGeldig}
+          >
+            {bezig ? 'Bezig...' : 'Storten →'}
+          </button>
+        </div>
+      </div>
+
+      {/* Pot info */}
       <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
           <span style={{ color: 'var(--grijs-600)' }}>Huidig potsaldo</span>
           <strong style={{ color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
             {formatBedrag(saldi.potSaldo)}
           </strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginTop: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginTop: 8 }}>
           <span style={{ color: 'var(--grijs-600)' }}>Totaal ingelegd</span>
           <strong>{formatBedrag(saldi.potTotaal)}</strong>
         </div>
