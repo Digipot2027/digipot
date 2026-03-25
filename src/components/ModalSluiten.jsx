@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { vertaalFout } from '../utils/vertaalFout'
+import { logFout } from '../utils/logFout'
 
 function ModalSluiten({ potjeNaam, onBevestig, onAnnuleer }) {
   const [laden, setLaden] = useState(false)
@@ -36,7 +36,7 @@ function ModalSluiten({ potjeNaam, onBevestig, onAnnuleer }) {
     try {
       await onBevestig()
     } catch (error) {
-      setFout(vertaalFout(error))
+      setFout(logFout(error, { component: 'ModalSluiten', actie: 'sluiten' }))
       setLaden(false)
     }
   }

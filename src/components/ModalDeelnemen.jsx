@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { vertaalFout } from '../utils/vertaalFout'
+import { logFout } from '../utils/logFout'
 
 function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
   const [naam, setNaam] = useState('')
@@ -64,7 +64,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
     try {
       await onDeelnemen(naamTrimmed)
     } catch (error) {
-      setFout(vertaalFout(error))
+      setFout(logFout(error, { component: 'ModalDeelnemen', actie: 'deelnemen' }))
     } finally {
       setLaden(false)
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
-import { vertaalFout } from '../utils/vertaalFout'
+import { logFout } from '../utils/logFout'
 
 function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
@@ -65,7 +65,7 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
       } else if (error.message?.includes('NIET_ACTIEF')) {
         setFout('Je hebt je afgemeld en kunt geen transacties meer invoeren.')
       } else {
-        setFout(vertaalFout(error))
+        setFout(logFout(error, { component: 'ModalTransactie', actie: type }))
       }
     } finally {
       setLaden(false)

@@ -171,6 +171,29 @@ B: betaald €0, aandeel €4 → −€4
 Geen actieve deelnemers → tekorten verdwijnen
 ```
 
+## Foutafhandeling en logging (verplicht)
+
+### Richtlijn
+Alle foutmeldingen die zichtbaar zijn voor eindgebruikers moeten worden gelogd via Sentry.
+Logs worden periodiek geanalyseerd op terugkerende problemen en trends.
+
+Een fout is pas afgehandeld wanneer:
+1. De oorzaak is vastgesteld
+2. De code is hersteld
+3. Een unit test is toegevoegd die aantoont dat de fout niet opnieuw kan optreden
+
+### Implementatie
+Alle zichtbare fouten lopen via `src/utils/logFout.js`:
+- `logFout(error, context)` — logt naar Sentry met context, geeft vertaalde gebruikerstekst terug
+- Sentry is geconfigureerd in `main.jsx` (alleen actief in productie)
+- Fouten zonder Sentry-DSN worden alleen naar `console.error` geschreven
+
+### Regels
+- Nooit een fout tonen aan de gebruiker zonder deze te loggen
+- `vertaalFout()` alleen gebruiken via `logFout()` — niet rechtstreeks aanroepen
+- Context meegeven bij logging: minimaal de componentnaam en actie
+- Geen persoonlijke data (namen, bedragen) in de Sentry-context
+
 ## Regel: Synchronisatie Code ↔ Functioneel Ontwerp (FO)
 
 Bij elke wijziging in de code moet het functioneel ontwerp direct worden bijgewerkt:

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { vertaalFout } from '../utils/vertaalFout'
+import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 
@@ -44,7 +44,7 @@ function PaginaStorten() {
       const bekend = d.find(x => x.device_id === deviceId)
       if (bekend) setDeelnemer(bekend)
     } catch (e) {
-      setFout(vertaalFout(e) || 'Kon gegevens niet laden.')
+      setFout(logFout(e, { component: 'PaginaStorten', actie: 'laadData' }))
     } finally {
       setLaden(false)
     }
@@ -83,7 +83,7 @@ function PaginaStorten() {
         .select().single()
       navigate(`/potje/${id}`, { state: { toast: { bericht: `Storting van ${formatBedrag(bedragNum)} geregistreerd.`, type: 'ok' } } })
     } catch (e) {
-      setInvoerFout(vertaalFout(e) || 'Storting mislukt.')
+      setInvoerFout(logFout(e, { component: 'PaginaStorten', actie: 'storten' }))
     } finally {
       setBezig(false)
     }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { vertaalFout } from '../utils/vertaalFout'
+import { logFout } from '../utils/logFout'
 
 function PaginaNieuwPotje() {
   const navigate = useNavigate()
@@ -36,7 +36,7 @@ function PaginaNieuwPotje() {
       if (error) throw error
       navigate(`/potje/${data.id}`)
     } catch (error) {
-      setFout(vertaalFout(error))
+      setFout(logFout(error, { component: 'PaginaNieuwPotje', actie: 'aanmaken' }))
     } finally {
       setLaden(false)
     }

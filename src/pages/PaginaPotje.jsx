@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { vertaalFout } from '../utils/vertaalFout'
+import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import ModalDeelnemen from '../components/ModalDeelnemen.jsx'
@@ -55,7 +55,7 @@ function PaginaPotje() {
       const bekende = d.find(x => x.device_id === deviceId)
       if (bekende) setDeelnemer(bekende)
     } catch (e) {
-      setFout(vertaalFout(e) || 'Dit potje bestaat niet. Controleer de link.')
+      setFout(logFout(e, { component: 'PaginaPotje', actie: 'laadData' }) || 'Dit potje bestaat niet. Controleer de link.')
     } finally {
       setLaden(false)
     }
@@ -121,7 +121,7 @@ function PaginaPotje() {
     setToast(null)
     const { error } = await supabase.from('transacties').delete().eq('id', transactieId)
     if (error) {
-      toonToast('Ongedaan maken mislukt.', 'fout')
+      toonToast(logFout(error, { component: 'PaginaPotje', actie: 'undo' }), 'fout')
     } else {
       setTransacties(prev => prev.filter(t => t.id !== transactieId))
       toonToast('Transactie ongedaan gemaakt.', 'ok')
@@ -156,7 +156,7 @@ function PaginaPotje() {
       setDeelnemers(prev => prev.map(d => d.id === data.id ? data : d))
       toonToast('Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen.', 'info')
     } catch (e) {
-      toonToast(vertaalFout(e) || 'Afmelden mislukt.', 'fout')
+      toonToast(logFout(e, { component: 'PaginaPotje', actie: 'afmelden' }), 'fout')
     } finally {
       setAfmeldenLaden(false)
     }
