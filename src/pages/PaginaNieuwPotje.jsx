@@ -45,7 +45,16 @@ function PaginaNieuwPotje() {
   return (
     <div className="pagina">
       <div className="kaart">
-        <h1 className="titel">🍺 Digipot</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <h1 className="titel" style={{ marginBottom: 0 }}>🍺 Digipot</h1>
+          <button
+            onClick={() => navigate('/instellingen')}
+            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--grijs-500)', padding: '2px 0 0 0', lineHeight: 1 }}
+            aria-label="Instellingen openen"
+          >
+            ⚙️
+          </button>
+        </div>
         <p className="subtitel">Start een nieuw groepspotje en deel de link met je vrienden.</p>
 
         <form onSubmit={handleAanmaken}>
