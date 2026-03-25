@@ -281,8 +281,14 @@ describe('berekenSaldi — centcorrectie', () => {
 
 describe('berekenEindafrekening — basisregels', () => {
   it('geeft zelfde resultaat als berekenSaldi als iedereen actief is', () => {
+    // Beide deelnemers storten én betalen zodat gestort > 0 voor beiden
     const deelnemers = [maakDeelnemer('a'), maakDeelnemer('b')]
-    const txs = [storting('t1', 'a', 60), betaling('t2', 'a', 40)]
+    const txs = [
+      storting('t1', 'a', 30), storting('t2', 'b', 30),
+      betaling('t3', 'a', 40), // A betaalt €40, 2 actief → €20 p.p.
+      // A: betaald=40, aandeel=20 → +20
+      // B: betaald=0,  aandeel=20 → -20
+    ]
     const basis = berekenSaldi(deelnemers, txs)
     const eind = berekenEindafrekening(deelnemers, txs)
     basis.deelnemersSaldi.forEach((bs, i) => {
@@ -291,7 +297,9 @@ describe('berekenEindafrekening — basisregels', () => {
   })
 
   // Scenario 3 eindafrekening: B afgemeld vóór betaling → aandeel B = 0 → verrekening B = +gestort
-  it('afgemelde deelnemer zonder aandeel ontvangt volledige inleg terug', () => {
+  it('afgemelde deelnemer zonder aandeel heeft verrekening 0 (betaald=0, aandeel=0)', () => {
+    // B meldt af vóór betaling → aandeel=0, betaald=0 → verrekening = 0-0 = 0
+    // De inleg (gestort) staat los van de verrekening — verrekening = betaald - aandeel
     const deelnemers = [
       maakDeelnemer('a', 0),
       maakAfgemeld('b', 0, 15),
@@ -303,7 +311,11 @@ describe('berekenEindafrekening — basisregels', () => {
     ]
     const eind = berekenEindafrekening(deelnemers, txs)
     const sb = eind.deelnemersSaldi.find(s => s.id === 'b')
-    expect(sb.verrekening).toBe(20) // betaald=0, aandeel=0 → verrekening = 0-0 = 0, maar gestort=20 → +20
+    // verrekening = betaald(0) - aandeel(0) = 0
+    expect(sb.verrekening).toBe(0)
+    // gestort staat in sb.gestort maar telt niet mee in verrekening
+    expect(sb.gestort).toBe(20)
+    expect(sb.aandeel).toBe(0)
   })
 
   it('verrekening nooit lager dan −gestort (cap als vangnet)', () => {
@@ -356,7 +368,9 @@ describe('berekenEindafrekening — scenario 5: iedereen afgemeld', () => {
 })
 
 describe('berekenEindafrekening — centcorrectie eindsom', () => {
-  it('som van verrekenings is gelijk aan potSaldo (binnen 1 cent)', () => {
+  it('som van verrekenings is gelijk aan totaal betaald minus totaal aandeel (netto nul)', () => {
+    // verrekening = betaald - aandeel, som over alle deelnemers = 0
+    // want totaal betaald = totaal aandeel (elke betaling wordt volledig verdeeld)
     const deelnemers = [
       maakDeelnemer('a', 0),
       maakDeelnemer('b', 0),
@@ -364,12 +378,13 @@ describe('berekenEindafrekening — centcorrectie eindsom', () => {
     ]
     const txs = [
       storting('t1', 'a', 30), storting('t2', 'b', 30), storting('t3', 'c', 10),
-      betaling('t4', 'a', 20, 15), // na afmelding c
+      betaling('t4', 'a', 20, 15), // na afmelding c → alleen A en B actief → €10 p.p.
     ]
     const eind = berekenEindafrekening(deelnemers, txs)
     const som = Math.round(
       eind.deelnemersSaldi.reduce((s, d) => s + d.verrekening, 0) * 100
     ) / 100
-    expect(som).toBeCloseTo(eind.potSaldo, 1)
+    // Som van verrekenings = som(betaald) - som(aandeel) = 20 - 20 = 0
+    expect(som).toBeCloseTo(0, 1)
   })
 })
