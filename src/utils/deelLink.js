@@ -1,6 +1,10 @@
 /**
  * Deelt de huidige URL via native share (mobiel) of kopieert naar klembord (desktop).
  *
+ * Native share wordt alleen gebruikt op echte mobiele apparaten (iOS/Android).
+ * Op desktop (macOS, Windows, Linux) wordt altijd direct gekopieerd — de macOS
+ * share sheet toont alleen apps met een Share Extension (niet Signal/WhatsApp).
+ *
  * @param {string} potjeNaam - Naam van het potje, voor native share tekst
  * @param {function} onSucces - Callback na succesvol delen/kopiëren
  * @param {function} onFout - Callback bij fout
@@ -8,8 +12,11 @@
 export async function deelLink(potjeNaam, onSucces, onFout) {
   const url = window.location.href
 
-  // Native share — beschikbaar op mobiel (iOS Safari, Android Chrome)
-  if (navigator.share) {
+  // Detecteer mobiel: alleen op touch-apparaten native share aanbieden
+  // navigator.share bestaat ook op macOS Safari maar toont een beperkte sheet
+  const isMobiel = navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+
+  if (isMobiel) {
     try {
       await navigator.share({
         title: `Digipot — ${potjeNaam}`,
@@ -18,7 +25,7 @@ export async function deelLink(potjeNaam, onSucces, onFout) {
       })
       onSucces?.('native') // native share heeft eigen feedback, geen toast nodig
     } catch (e) {
-      // Gebruiker annuleerde share — geen fout
+      // Gebruiker annuleerde share — geen fout tonen
       if (e.name !== 'AbortError') {
         // Native share mislukt → val terug op kopiëren
         await kopieerNaarKlembord(url, onSucces, onFout)
@@ -27,7 +34,7 @@ export async function deelLink(potjeNaam, onSucces, onFout) {
     return
   }
 
-  // Fallback: kopieer naar klembord
+  // Desktop: altijd direct kopiëren naar klembord
   await kopieerNaarKlembord(url, onSucces, onFout)
 }
 

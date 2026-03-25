@@ -4,12 +4,16 @@ import { deelLink } from '../utils/deelLink'
 /**
  * DeelKnop — één klik/tap om de huidige pagina te delen.
  *
- * - Mobiel: native share sheet (iOS/Android)
- * - Desktop: kopieert URL naar klembord + visuele feedback
- * - Werkt als primaire of secundaire knop via `variant` prop
+ * - Mobiel (iOS/Android): native share sheet met Signal, WhatsApp etc.
+ * - Desktop (macOS, Windows): kopieert URL direct naar klembord + visuele feedback
+ *
+ * De knoptekst past zich aan het platform aan zodat de verwachting klopt.
  */
 function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
   const [status, setStatus] = useState('idle') // 'idle' | 'gekopieerd' | 'fout'
+
+  // Op mobiel verschijnt native share sheet, op desktop kopiëren we direct
+  const isMobiel = navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
 
   async function handleDelen() {
     await deelLink(
@@ -19,7 +23,7 @@ function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
           setStatus('gekopieerd')
           setTimeout(() => setStatus('idle'), 2500)
         }
-        // Bij native share: geen toast, OS geeft feedback
+        // Bij native share: geen statuswijziging, OS geeft eigen feedback
       },
       () => {
         setStatus('fout')
@@ -32,7 +36,7 @@ function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
     ? '✅ Link gekopieerd!'
     : status === 'fout'
     ? '⚠️ Kopiëren mislukt'
-    : '🔗 Deel potje'
+    : isMobiel ? '🔗 Deel potje' : '🔗 Link kopiëren'
 
   return (
     <button
@@ -43,7 +47,9 @@ function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
       aria-label={
         status === 'gekopieerd'
           ? 'Link gekopieerd naar klembord'
-          : 'Deel dit potje met anderen'
+          : isMobiel
+          ? 'Deel dit potje met anderen'
+          : 'Kopieer de link naar dit potje'
       }
     >
       {label}
