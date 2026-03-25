@@ -1,21 +1,35 @@
 import { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
 
-function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
-  const [naam, setNaam] = useState('')
+/**
+ * Deelneemscherm (scherm 2)
+ *
+ * Gedrag:
+ * - Als profielNaam aanwezig is: naam alvast ingevuld, focus op knop, gebruiker
+ *   bevestigt met één tik en gaat direct naar Stortingscherm.
+ * - Als geen profielNaam: naam invoeren, dan door naar Stortingscherm.
+ * - Na succesvol deelnemen navigeert PaginaPotje automatisch naar /potje/:id/storten.
+ */
+function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, profielNaam = '' }) {
+  const [naam, setNaam] = useState(profielNaam)
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
 
   const MAX_NAAM = 30
   const MAX_DEELNEMERS = 20
+  const heeftProfielNaam = profielNaam.length > 0
 
-  // K4: focus eerste invoerveld bij openen
+  // Focus: bij profielnaam → focus op de knop, anders → focus op het invoerveld
   useEffect(() => {
-    panelRef.current?.querySelector('input')?.focus()
-  }, [])
+    if (heeftProfielNaam) {
+      panelRef.current?.querySelector('button:not([disabled])')?.focus()
+    } else {
+      panelRef.current?.querySelector('input')?.focus()
+    }
+  }, [heeftProfielNaam])
 
-  // K4: Escape sluit niet (bij deelnemen is er geen annuleer), Tab-trap binnen panel
+  // Tab-trap binnen panel
   useEffect(() => {
     function onKey(e) {
       if (e.key !== 'Tab') return
@@ -63,6 +77,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
     setLaden(true)
     try {
       await onDeelnemen(naamTrimmed)
+      // Na succesvol deelnemen navigeert PaginaPotje naar /storten
     } catch (error) {
       setFout(logFout(error, { component: 'ModalDeelnemen', actie: 'deelnemen' }))
     } finally {
@@ -70,7 +85,6 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
     }
   }
 
-  // G4: bottom-sheet overlay, consistent met ModalTransactie en ModalSluiten
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 500 }}
@@ -86,7 +100,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
           🍺 Meedoen aan {potjeNaam}
         </h2>
 
-        {/* G1: onboarding context voor nieuwe gebruikers */}
+        {/* Onboarding context */}
         <ul style={{ listStyle: 'none', marginBottom: 16, fontSize: 13, color: 'var(--grijs-600)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <li>💰 Stort geld in het potje</li>
           <li>🍺 Registreer wat de groep uitgeeft</li>
@@ -107,6 +121,11 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen }) {
               autoComplete="nickname"
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
+            {heeftProfielNaam && !fout && (
+              <div style={{ fontSize: 12, color: 'var(--grijs-400)', marginTop: 4 }}>
+                Uit je profiel. Je kunt de naam aanpassen.
+              </div>
+            )}
             {fout && <div className="fout-tekst">{fout}</div>}
           </div>
 

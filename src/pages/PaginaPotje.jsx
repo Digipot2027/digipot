@@ -95,6 +95,8 @@ function PaginaPotje() {
       .from('deelnemers').insert({ potje_id: id, naam, device_id: deviceId }).select().single()
     if (error) throw error
     setDeelnemer(data)
+    // Na deelnemen direct door naar Stortingscherm
+    navigate(`/potje/${id}/storten`)
   }
 
   async function handleTransactie(type, bedrag) {
@@ -191,17 +193,24 @@ function PaginaPotje() {
   )
 
   // Deelneemscherm: deelnemer nog niet bekend op dit device
-  if (!deelnemer) return (
-    <>
-      <div className="pagina">
-        <div className="kaart">
-          <h1 className="titel">🍺 {potje?.naam}</h1>
-          <p className="subtitel">Doe mee en splits de kosten eerlijk.</p>
+  if (!deelnemer) {
+    return (
+      <>
+        <div className="pagina">
+          <div className="kaart">
+            <h1 className="titel">🍺 {potje?.naam}</h1>
+            <p className="subtitel">Doe mee en splits de kosten eerlijk.</p>
+          </div>
         </div>
-      </div>
-      <ModalDeelnemen potjeNaam={potje?.naam} deelnemers={deelnemers} onDeelnemen={handleDeelnemen} />
-    </>
-  )
+        <ModalDeelnemen
+          potjeNaam={potje?.naam}
+          deelnemers={deelnemers}
+          onDeelnemen={handleDeelnemen}
+          profielNaam={localStorage.getItem('digipot_profiel_naam')?.trim() || ''}
+        />
+      </>
+    )
+  }
 
   // Eindafrekeningscherm
   if (potje?.status === 'gesloten') return (

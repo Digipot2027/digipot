@@ -46,6 +46,21 @@ Supabase credentials come from `.env.local` (`VITE_SUPABASE_URL` + `VITE_SUPABAS
 
 No authentication. Each device gets a `crypto.randomUUID()` stored in localStorage as `digipot_device_id`. This is matched against `deelnemers.device_id` to identify the current user.
 
+### localStorage keys
+
+| Key | Inhoud | Beheerd door |
+|---|---|---|
+| `digipot_device_id` | UUID, uniek per device | `PaginaPotje` bij eerste bezoek |
+| `digipot_profiel_naam` | Naam uit Profielscherm (optioneel) | `PaginaProfiel` (S4) |
+
+### Deelneemflow bij nieuw potje bezoek
+
+Als `deelnemer` null is (device_id niet bekend in dit potje):
+1. **`digipot_profiel_naam` aanwezig** → naam alvast ingevuld in Deelneemscherm, gebruiker bevestigt met één tik → Stortingscherm
+2. **Geen profielnaam** → naam invoeren in Deelneemscherm → Stortingscherm
+
+Na succesvol deelnemen navigeert `PaginaPotje` altijd naar `/potje/:id/storten`.
+
 ### Settlement calculation
 
 `src/utils/berekenSaldi.js` — time-based fairness: each expense is split equally among members who had joined at the time of that transaction. Returns per-member `gestort` (contributed), `aandeel` (owes), and `verrekening` (net balance).
