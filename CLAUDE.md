@@ -54,6 +54,123 @@ No authentication. Each device gets a `crypto.randomUUID()` stored in localStora
 
 All interactions use bottom-sheet modals controlled by a `modaal` state string in `PaginaPotje`. Components: `ModalDeelnemen` (join), `ModalTransactie` (deposit/expense), `ModalSluiten` (close pot).
 
+---
+
+## Schermnamen (officiële terminologie)
+
+Gebruik altijd deze namen in FO, TO, code-commentaar en gesprekken. Nooit de bestandsnaam als schermnaam.
+
+### Hoofdschermen (gebruikersflow)
+
+| # | Schermnaam | Huidig component | Route | Tandwiel ⚙️ |
+|---|---|---|---|---|
+| 1 | **Aanmaken** | `PaginaNieuwPotje` | `/` | ✅ |
+| 2 | **Deelnemer** | `ModalDeelnemen` (inline in PaginaPotje) | `/potje/:id` | ❌ |
+| 3 | **Storten/Inleggen** | `ModalTransactie` (inline in PaginaPotje) | `/potje/:id` | ❌ |
+| 4 | **Overzicht** | `PaginaPotje` (kern) | `/potje/:id` | ✅ |
+| 5 | **Eindafrekening** | `PaginaEindafrekening` | `/potje/:id` (inline bij gesloten pot) | ❌ |
+
+### Instellingenschermen (via tandwiel ⚙️)
+
+Het tandwiel staat rechtsboven op scherm 1 (Aanmaken) en scherm 4 (Overzicht). Klikken opent een aparte volledige pagina. De drie sub-schermen zijn bereikbaar vanuit dat instellingenscherm.
+
+| # | Schermnaam | Component | Route |
+|---|---|---|---|
+| S1 | **Instellingen** | `PaginaInstellingen` *(nieuw)* | `/instellingen` |
+| S2 | **Open potjes** | `PaginaOpenPotjes` *(nieuw)* | `/instellingen/open` |
+| S3 | **Gesloten potjes** | `PaginaGeslotenPotjes` *(nieuw)* | `/instellingen/gesloten` |
+| S4 | **Profiel** | `PaginaProfiel` *(nieuw)* | `/instellingen/profiel` |
+
+### Regels schermnamen
+- Gebruik **altijd** de schermnaam uit bovenstaande tabel, nooit de componentnaam in gesprekken of documentatie
+- Schermen 2 en 3 zijn momenteel modals — dit wordt in een toekomstige iteratie omgebouwd naar eigen routes
+- Het tandwiel staat **alleen** op scherm 1 en 4, op geen enkel ander scherm
+
+## Berekenlogica eindafrekening
+
+### Terminologie
+
+| Term | Betekenis |
+|---|---|
+| `gestort` | Inleg van een deelnemer in het potje |
+| `betaald` | Wat een deelnemer uit het potje heeft voorgeschoten |
+| `aandeel` | Berekend eerlijk deel van de totale uitgaven |
+| `verrekening` | `betaald − aandeel` (+ = ontvangt terug, − = moet bijbetalen) |
+
+### Rekenregels
+
+1. **Tijdsgebaseerde verdeling** — een betaling wordt verdeeld over deelnemers die op dat moment actief waren (aangemeld én niet afgemeld)
+2. **Volgorde bij gelijke tijdstippen** — eerst aan-/afmelding, daarna pas betaling
+3. **Verrekening** = `betaald − aandeel`
+4. **Afronding** op 2 decimalen, centcorrectie op de laatste deelnemer
+5. **Cap (technisch vangnet)** — verrekening mag nooit lager zijn dan `−gestort`. Dit is een defensieve laag tegen een falende V2-controle, geen primaire functionele regel
+6. **Tekortherverdeling** — als cap bijt bij een afgemelde deelnemer, wordt het tekort doorgeschoven naar actieve deelnemers. Ook daar wordt de cap toegepast. Wat daarna overblijft verdwijnt
+7. **Iedereen afgemeld** — als er geen actieve deelnemers zijn bij sluiten, verdwijnen resterende tekorten. Dit is gewenst gedrag
+
+### Systeemregels
+
+- **V2 (primaire beveiliging)** — databasetrigger blokkeert elke betaling waarbij `SUM(betalingen) > SUM(stortingen)` voor dat potje. Dit is de enige betrouwbare garantie
+- **Afmelden alleen mogelijk als `gestort > 0`** — een deelnemer die nog niets heeft gestort kan zich niet afmelden. Wordt afgedwongen in UI én database
+- **Geen heractivatie** — afmelden is definitief
+- **Minimaal 2 deelnemers** per potje
+
+### Uitgesloten scenario's
+
+- Afmelden vóór storten — niet mogelijk (systeemregel)
+- Betaald > gestort — niet mogelijk (V2 databasetrigger)
+- Cap bijt in de praktijk — alleen mogelijk bij falende V2; cap is uitsluitend vangnet
+
+### Referentiescenario's (volledige testdekking)
+
+**Scenario 1 — Basisgeval, één betaalt alles**
+```
+18:00  A, B, C aangemeld en gestort (€20, €15, €10)
+18:15  A betaalt €30 (3 actief → €10 p.p.)
+A: betaald €30, aandeel €10 → +€20
+B: betaald €0,  aandeel €10 → −€10
+C: betaald €0,  aandeel €10 → −€10 (grens exact geraakt)
+```
+
+**Scenario 2 — Gespreid aanmelden, betaling vóór instap telt niet mee**
+```
+18:00  A aangemeld, stort €25
+18:15  A betaalt €20 (1 actief → €20 voor A)
+18:30  B aangemeld, stort €15
+18:45  A betaalt €20 (2 actief → €10 p.p.)
+A: betaald €40, aandeel €30 → +€10
+B: betaald €0,  aandeel €10 → −€10
+```
+
+**Scenario 3 — Afmelding ná storting, vóór betaling**
+```
+18:00  A, B, C aangemeld en gestort (€20, €20, €20)
+18:15  B meldt af
+18:30  A betaalt €30 (A en C actief → €15 p.p.)
+A: betaald €30, aandeel €15 → +€15
+B: betaald €0,  aandeel €0  → +€20 (volledige inleg terug)
+C: betaald €0,  aandeel €15 → −€15
+```
+
+**Scenario 4 — Afmelding tussen twee betalingen**
+```
+18:00  A, B aangemeld, A stort €5, B stort €5
+18:15  A betaalt €8 (2 actief → €4 p.p.)
+18:30  B meldt af
+18:45  A betaalt €2 (1 actief → €2 voor A)
+A: betaald €10, aandeel €6 → +€4
+B: betaald €0,  aandeel €4 → −€4
+```
+
+**Scenario 5 — Iedereen afgemeld, tekorten verdwijnen**
+```
+18:00  A, B aangemeld, A stort €5, B stort €5
+18:15  A betaalt €8 (2 actief → €4 p.p.)
+18:30  A meldt af, B meldt af
+A: betaald €8, aandeel €4 → +€4
+B: betaald €0, aandeel €4 → −€4
+Geen actieve deelnemers → tekorten verdwijnen
+```
+
 ## Regel: Synchronisatie Code ↔ Functioneel Ontwerp (FO)
 
 Bij elke wijziging in de code moet het functioneel ontwerp direct worden bijgewerkt:
