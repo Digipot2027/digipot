@@ -41,8 +41,11 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--grijs-600)' }}>
-                <span>Gestort: {formatBedrag(d.gestort)}</span>
+                <span>Betaald: {formatBedrag(d.betaald)}</span>
                 <span>Aandeel: {formatBedrag(d.aandeel)}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--grijs-500)', marginTop: 2 }}>
+                Ingelegd: {formatBedrag(d.gestort)}
               </div>
               <div style={{ fontSize: 12, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', marginTop: 4 }}>
                 {d.verrekening >= 0 ? '✅ Ontvangt geld terug' : '⚠️ Moet bijbetalen'}
