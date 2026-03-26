@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { formatBedrag } from '../utils/formatBedrag'
 
 // Formatteert timestamp naar "uu:mm" of "dag maand uu:mm" als ouder dan vandaag
@@ -13,6 +14,15 @@ function volledigTijdLabel(iso) {
 }
 
 function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
+  // WCAG 2.1.1: Escape-toets sluit de sheet (consistent met andere modals)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') onSluiten()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onSluiten])
+
   const mijnTransacties = transacties
     .filter(t => t.deelnemer_id === deelnemer.id)
     .sort((a, b) => new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op))

@@ -72,6 +72,13 @@ body {
   font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
 }
 .knop:disabled { opacity: 0.5; cursor: not-allowed; }
+/* WCAG 2.4.7: zichtbare focus-ring voor toetsenbordgebruikers.
+   :focus-visible toont de ring alleen bij toetsenbordnavigatie,
+   niet bij muisklikken — betere UX zonder visuele ruis. */
+.knop:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: 2px;
+}
 .knop-primair { background: var(--groen); color: var(--wit); }
 .knop-gevaar { background: var(--rood); color: var(--wit); }
 .knop-secundair {
@@ -182,4 +189,13 @@ body {
 /* Modal safe area */
 .modal-sheet {
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+/* WCAG 2.4.7: focus-ring voor interactieve tabelrijen (role=button, tabIndex=0)
+   en overige niet-.knop interactieve elementen */
+tr[role="button"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: -2px; /* naar binnen zodat de tabelrij niet uitsteekt */
+  border-radius: 4px;
 }

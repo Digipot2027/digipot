@@ -17,9 +17,10 @@ function PaginaGeslotenPotjes() {
   useEffect(() => {
     async function laadPotjes() {
       try {
+        // ilike = case-insensitief: "jan" matcht ook "Jan" of "JAN" (fix Medium security/UX).
         const filters = []
         if (deviceId) filters.push(`device_id.eq.${deviceId}`)
-        if (profielNaam) filters.push(`naam.eq.${profielNaam}`)
+        if (profielNaam) filters.push(`naam.ilike.${profielNaam}`)
 
         if (filters.length === 0) {
           setPotjes([])
@@ -113,9 +114,9 @@ function PaginaGeslotenPotjes() {
       <div className="kaart">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
-            onClick={() => navigate('/instellingen')}
+            onClick={() => navigate(-1)}
             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
-            aria-label="Terug naar instellingen"
+            aria-label="Terug"
           >
             ←
           </button>

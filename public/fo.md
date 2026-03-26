@@ -11,6 +11,7 @@
 | 2026-03-24 | Stap 15e: Formulierblokkering voor afgemelde deelnemers | Defense-in-depth | ModalTransactie disabled + melding; handleTransactie gooit NIET_ACTIEF-fout |
 | 2026-03-24 | Stap 15c: Eindafrekening voor afgemelde deelnemers | Fairness-regel   | Nieuwe sluitingslogica: niet-actieve deelnemers betalen nooit meer dan gestort; tekort verdeeld over actieve deelnemers |
 | 2026-03-24 | Stap 16: UX-audit verbeteringen (alle behalve K2+G7) | Usability & accessibility | K1 MAX_NAAM fix, K3 contrast, K4 ARIA+focus-trap+Escape, K5 undo-transactie, G1 onboarding, G2 deel-link kaart, G3 "Gestort", G4 bottom-sheet, G5 touch target, G6 betaalknop, V1–V9 diversen |
+| 2026-03-26 | Hostingplatform gecorrigeerd van Netlify naar Cloudflare Pages | Correctie onjuiste documentatie | Sectie 6 bijgewerkt |
 
 ---
 
@@ -197,7 +198,7 @@ Bij verbindingsverlies toont de app een waarschuwingsbanner. Wijzigingen worden 
 | Backend / database  | Supabase (PostgreSQL + Realtime)|
 | Authenticatie       | Geen — apparaat-ID via localStorage |
 | Taal / locale       | Nederlands (nl-NL)             |
-| Hosting             | Netlify (SPA-redirect ingesteld)|
+| Hosting             | Cloudflare Pages               |
 | Valuta-notatie      | €0,00 (Nederlandse notatie)    |
 
 ---

@@ -4,10 +4,12 @@ import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import DeelnemerDetailSheet from '../components/DeelnemerDetailSheet.jsx'
 import DeelKnop from '../components/DeelKnop.jsx'
+import ModalAfmelden from '../components/ModalAfmelden.jsx'
 
 function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, onStorten, onBetalen, onSluiten, onAfmelden, afmeldenLaden }) {
   const navigate = useNavigate()
   const [gekozenDeelnemer, setGekozenDeelnemer] = useState(null)
+  const [afmeldenModaal, setAfmeldenModaal] = useState(false)
 
   const saldi = berekenSaldi(deelnemers, transacties)
   const actieveDeelnemers = deelnemers.filter(d => d.actief !== false)
@@ -59,58 +61,63 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           />
         </div>
 
-        {/* Deelnemers — klikbaar */}
+        {/* Deelnemers — klikbaar
+             WCAG 1.3.1: echte <table> met <th scope="col"> zodat screenreaders
+             kolomhoofden koppelen aan celwaarden.
+             WCAG 1.4.3: kolomhoofden gebruiken grijs-600 (#4b5563, contrast 7.4:1 op wit). */}
         <div className="kaart">
           <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
             Deelnemers ({actieveDeelnemers.length}/{deelnemers.length})
           </h2>
-          <p style={{ fontSize: 12, color: 'var(--grijs-400)', marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--grijs-500)', marginBottom: 12 }}>
             Tik op een naam voor details
           </p>
 
-          {/* Kolomhoofden */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, padding: '4px 0 8px', borderBottom: '1px solid var(--grijs-200)', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: 'var(--grijs-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Naam</span>
-            <span style={{ fontSize: 11, color: 'var(--grijs-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Ingelegd</span>
-            <span style={{ fontSize: 11, color: 'var(--grijs-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Betaald</span>
-          </div>
-
-          {deelnemers.map(d => {
-            const s = saldi.deelnemersSaldi.find(x => x.id === d.id)
-            const isAfgemeld = d.actief === false
-            return (
-              <button
-                key={d.id}
-                onClick={() => setGekozenDeelnemer(d)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr auto auto',
-                  gap: 8,
-                  padding: '10px 6px',
-                  width: '100%',
-                  background: isAfgemeld ? 'var(--grijs-50)' : 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid var(--grijs-100)',
-                  borderRadius: isAfgemeld ? 6 : 0,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  opacity: isAfgemeld ? 0.6 : 1,
-                }}
-              >
-                <span style={{ fontWeight: d.id === ikzelf?.id ? 600 : 400, display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, textDecoration: isAfgemeld ? 'line-through' : 'none', color: 'var(--grijs-900)' }}>
-                  {d.naam}{d.id === ikzelf?.id ? ' (jij)' : ''}
-                  {isAfgemeld && <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Afgemeld</span>}
-                  <span style={{ fontSize: 12, color: 'var(--grijs-400)', fontWeight: 400, textDecoration: 'none' }}>›</span>
-                </span>
-                <span style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right' }}>
-                  {formatBedrag(s?.gestort || 0)}
-                </span>
-                <span style={{ fontSize: 14, color: (s?.betaald || 0) > 0 ? 'var(--rood)' : 'var(--grijs-400)', textAlign: 'right' }}>
-                  {formatBedrag(s?.betaald || 0)}
-                </span>
-              </button>
-            )
-          })}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }} aria-label="Deelnemersoverzicht">
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--grijs-200)' }}>
+                <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left', padding: '4px 6px 8px' }}>Naam</th>
+                <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>Ingelegd</th>
+                <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>Betaald</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deelnemers.map(d => {
+                const s = saldi.deelnemersSaldi.find(x => x.id === d.id)
+                const isAfgemeld = d.actief === false
+                return (
+                  <tr
+                    key={d.id}
+                    onClick={() => setGekozenDeelnemer(d)}
+                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setGekozenDeelnemer(d)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Details van ${d.naam}${isAfgemeld ? ', afgemeld' : ''}`}
+                    style={{
+                      background: isAfgemeld ? 'var(--grijs-50)' : 'transparent',
+                      borderBottom: '1px solid var(--grijs-100)',
+                      cursor: 'pointer',
+                      opacity: isAfgemeld ? 0.6 : 1,
+                    }}
+                  >
+                    <td style={{ padding: '10px 6px' }}>
+                      <span style={{ fontWeight: d.id === ikzelf?.id ? 600 : 400, display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, textDecoration: isAfgemeld ? 'line-through' : 'none', color: 'var(--grijs-900)' }}>
+                        {d.naam}{d.id === ikzelf?.id ? ' (jij)' : ''}
+                        {isAfgemeld && <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Afgemeld</span>}
+                        <span style={{ fontSize: 12, color: 'var(--grijs-400)', fontWeight: 400, textDecoration: 'none' }} aria-hidden="true">›</span>
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right', padding: '10px 6px' }}>
+                      {formatBedrag(s?.gestort || 0)}
+                    </td>
+                    <td style={{ fontSize: 14, color: (s?.betaald || 0) > 0 ? 'var(--grijs-900)' : 'var(--grijs-400)', textAlign: 'right', padding: '10px 6px' }}>
+                      {formatBedrag(s?.betaald || 0)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
 
         {/* Actieknoppen — 2×2 grid */}
@@ -151,9 +158,8 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid var(--grijs-200)', paddingTop: 10 }}>
             <button
               className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
-              onClick={onAfmelden}
+              onClick={() => ikBenActief && setAfmeldenModaal(true)}
               disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
-              title={ikBenActief && !ikBenGestort ? 'Je kunt je pas afmelden als je hebt gestort' : undefined}
             >
               {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Afmelden' : '✅ Aangemeld'}
             </button>
@@ -162,11 +168,22 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               style={{ opacity: heeftTransacties ? 0.7 : 0.35 }}
               onClick={onSluiten}
               disabled={!heeftTransacties}
-              title={!heeftTransacties ? 'Er zijn nog geen transacties' : undefined}
             >
               🔒 Pot sluiten
             </button>
           </div>
+
+          {/* Helpteksten onder rij 2 — zichtbaar op mobiel (title-attribuut werkt niet op touch) */}
+          {ikBenActief && !ikBenGestort && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-400)', textAlign: 'left', marginTop: -4 }}>
+              Eerst storten om je te kunnen afmelden.
+            </p>
+          )}
+          {!heeftTransacties && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-400)', textAlign: 'right', marginTop: -4 }}>
+              Pot sluiten kan pas als er transacties zijn.
+            </p>
+          )}
 
         </div>
 
@@ -178,6 +195,18 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           deelnemer={gekozenDeelnemer}
           transacties={transacties}
           onSluiten={() => setGekozenDeelnemer(null)}
+        />
+      )}
+
+      {/* Afmeld-bevestigingsmodal — onomkeerbare actie vereist expliciete bevestiging */}
+      {afmeldenModaal && (
+        <ModalAfmelden
+          deelnemerNaam={ikzelf?.naam}
+          onBevestig={async () => {
+            await onAfmelden()
+            setAfmeldenModaal(false)
+          }}
+          onAnnuleer={() => setAfmeldenModaal(false)}
         />
       )}
     </>

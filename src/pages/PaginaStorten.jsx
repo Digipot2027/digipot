@@ -219,7 +219,7 @@ function PaginaStorten() {
                   borderRadius: 10,
                   border: actief ? '2px solid var(--groen)' : '1.5px solid var(--grijs-200)',
                   background: actief ? 'var(--groen-licht)' : 'var(--grijs-50)',
-                  color: actief ? 'var(--groen)' : 'var(--grijs-900)',
+                  color: actief ? 'var(--groen)' : 'var(--grijs-900)', // grijs-900 = #111827, contrast 16.5:1 op grijs-50 (WCAG 1.4.3 ✅)
                   fontWeight: actief ? 700 : 500,
                   fontSize: '1.125rem',
                   cursor: 'pointer',

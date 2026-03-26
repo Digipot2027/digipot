@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
@@ -20,6 +20,10 @@ function PaginaProfiel() {
   const [tekstgrootte, setTekstgrootte] = useState(opgeslagenTekstgrootte)
   const [opgeslagen, setOpgeslagen] = useState(false)
   const [fout, setFout] = useState('')
+  // useRef zodat opgeslagenNaam synchroon bijgewerkt wordt na opslaan,
+  // zonder een re-render te triggeren. Voorkomt dat heeftWijziging de
+  // knop incorrect enabled/disabled toont na opslaan.
+  const opgeslagenNaamRef = useRef(opgeslagenNaam)
 
   function handleTekstgrootte(waarde) {
     setTekstgrootte(waarde)
@@ -44,6 +48,7 @@ function PaginaProfiel() {
       localStorage.removeItem(PROFIEL_NAAM_KEY)
     }
 
+    opgeslagenNaamRef.current = naamTrimmed // synchroon bijwerken
     setNaam(naamTrimmed)
     setOpgeslagen(true)
     setTimeout(() => setOpgeslagen(false), 2500)
@@ -51,11 +56,12 @@ function PaginaProfiel() {
 
   function handleVerwijderen() {
     localStorage.removeItem(PROFIEL_NAAM_KEY)
+    opgeslagenNaamRef.current = '' // synchroon bijwerken
     setNaam('')
     setOpgeslagen(false)
   }
 
-  const heeftWijziging = naam.trim() !== opgeslagenNaam
+  const heeftWijziging = naam.trim() !== opgeslagenNaamRef.current
 
   return (
     <div className="pagina">
@@ -64,9 +70,9 @@ function PaginaProfiel() {
       <div className="kaart">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
           <button
-            onClick={() => navigate('/instellingen')}
+            onClick={() => navigate(-1)}
             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
-            aria-label="Terug naar instellingen"
+            aria-label="Terug"
           >
             ←
           </button>

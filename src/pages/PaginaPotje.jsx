@@ -121,7 +121,35 @@ function PaginaPotje() {
 
   async function handleUndo(transactieId) {
     setToast(null)
-    const { error } = await supabase.from('transacties').delete().eq('id', transactieId)
+
+    // Zoek de transactie op in de huidige state om eigenaarschap en type te verifiëren
+    const transactie = transacties.find(t => t.id === transactieId)
+
+    // Veiligheidscheck 1: transactie moet van de huidige deelnemer zijn
+    if (!transactie || transactie.deelnemer_id !== deelnemer?.id) {
+      toonToast('Je kunt alleen je eigen transacties ongedaan maken.', 'fout')
+      return
+    }
+
+    // Veiligheidscheck 2: bij storting verwijderen — controleer of potsaldo na verwijdering >= 0 blijft
+    // Voorkomt dat een storting wordt teruggedraaid terwijl er al betalingen zijn gedaan
+    if (transactie.type === 'storting') {
+      const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
+      if (huidigSaldo < Number(transactie.bedrag)) {
+        toonToast(
+          'Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag.',
+          'fout'
+        )
+        return
+      }
+    }
+
+    // Verwijder alleen de eigen transactie (deelnemer_id als extra DB-filter via RLS)
+    const { error } = await supabase
+      .from('transacties')
+      .delete()
+      .eq('id', transactieId)
+      .eq('deelnemer_id', deelnemer.id) // expliciete ownership-check op DB-niveau
     if (error) {
       toonToast(logFout(error, { component: 'PaginaPotje', actie: 'undo' }), 'fout')
     } else {
@@ -255,7 +283,15 @@ function PaginaPotje() {
       )}
 
       {toast && (
-        <div className={`toast ${toast.type}`}>
+        // WCAG 4.1.3: role="status" + aria-live="polite" zodat screenreaders
+        // statusberichten aankondigen zonder de gebruiker te onderbreken.
+        // aria-atomic="true": hele toast wordt voorgelezen bij wijziging.
+        <div
+          className={`toast ${toast.type}`}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <span>{toast.bericht}</span>
           {toast.actie && (
             <button className="toast-knop" onClick={toast.actie.handler}>{toast.actie.label}</button>
