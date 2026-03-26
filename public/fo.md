@@ -12,6 +12,17 @@
 | 2026-03-24 | Stap 15c: Eindafrekening voor afgemelde deelnemers | Fairness-regel   | Nieuwe sluitingslogica: niet-actieve deelnemers betalen nooit meer dan gestort; tekort verdeeld over actieve deelnemers |
 | 2026-03-24 | Stap 16: UX-audit verbeteringen (alle behalve K2+G7) | Usability & accessibility | K1 MAX_NAAM fix, K3 contrast, K4 ARIA+focus-trap+Escape, K5 undo-transactie, G1 onboarding, G2 deel-link kaart, G3 "Gestort", G4 bottom-sheet, G5 touch target, G6 betaalknop, V1–V9 diversen |
 | 2026-03-26 | Hostingplatform gecorrigeerd van Netlify naar Cloudflare Pages | Correctie onjuiste documentatie | Sectie 6 bijgewerkt |
+| 2026-03-26 | Security: RLS ingeschakeld op alle tabellen (stap 18) | Critical security audit | Alle data beveiligd op databaseniveau; anon key alleen leestoegang tenzij geautoriseerd |
+| 2026-03-26 | Security: undo-delete beveiligd met eigenaarschapscheck + saldo-check | Critical security audit | Gebruikers kunnen alleen eigen transacties ongedaan maken; storting-undo geblokkeerd als saldo ontoereikend |
+| 2026-03-26 | UX: bevestigingsdialoog toegevoegd bij afmelden (ModalAfmelden) | High UX audit | Afmelden vereist nu expliciete bevestiging met waarschuwing over onomkeerbaarheid |
+| 2026-03-26 | UX: helpteksten afmelden/sluiten zichtbaar op mobiel | High UX audit | title-attribuut vervangen door inline helptekst (werkt op touch) |
+| 2026-03-26 | UX: terugknoppen gebruiken navigate(-1) i.p.v. hardcoded pad | High UX audit | Profiel, Open potjes, Gesloten potjes navigeren correct terug via browserhistory |
+| 2026-03-26 | UX: profielnaam-vergelijking synchroon via useRef | Bug fix | Opslaan-knop toont correct enabled/disabled-staat na opslaan of verwijderen |
+| 2026-03-26 | WCAG 1.3.1: deelnemerlijst omgezet naar semantische table | Critical accessibility audit | Screenreaders koppelen kolomhoofden correct aan celwaarden |
+| 2026-03-26 | WCAG 2.4.7: focus-ring toegevoegd op knoppen en tabelrijen | High accessibility audit | Toetsenbordgebruikers zien zichtbare focus bij navigatie |
+| 2026-03-26 | WCAG 2.1.1: Escape-toets in DeelnemerDetailSheet | High accessibility audit | Sheet sluit bij Escape, consistent met alle andere modals |
+| 2026-03-26 | WCAG 4.1.3: role=status + aria-live op toast | High accessibility audit | Screenreaders kondigen statusberichten aan zonder gebruiker te onderbreken |
+| 2026-03-26 | Fix: naam-match case-insensitief via ilike | Medium security/UX audit | Profielnaam "jan" matcht nu ook deelnemer "Jan" in Open/Gesloten potjes |
 
 ---
 
@@ -95,14 +106,14 @@ Er is geen technisch onderscheid in rechten. Iedere deelnemer kan storten, betal
 - Een deelnemer kan zichzelf afmelden via de knop "👋 Afmelden" op de potje-pagina.
 - Een afgemelde deelnemer telt niet meer mee bij toekomstige betalingen.
 - Historische betalingen (vóór het afmeldmoment) blijven ongewijzigd verdeeld.
-- Een afgemelde deelnemer kan zichzelf opnieuw aanmelden via "✅ Weer meedoen".
-- Bovenaan de pagina wordt een groene banner getoond met de namen van actieve deelnemers (zichtbaar zodra er iemand afgemeld is).
+- Afmelden is **onomkeerbaar** — een afgemelde deelnemer kan niet opnieuw worden aangemeld.
+- Vóór het afmelden verschijnt een bevestigingsdialoog (ModalAfmelden) met een waarschuwing over de drie gevolgen: niet meer meetellen bij betalingen, geen heractivatie mogelijk, inleg blijft zichtbaar.
 - Afgemelde deelnemers worden in de deelnemerslijst getoond met verminderde opaciteit, doorstreepte naam, lichtgrijze achtergrond en een badge "Afgemeld".
-- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers op drie niveaus:
-  1. **Knoppen verborgen** — "Storten" en "Rondje betaald" zijn niet zichtbaar; er verschijnt de melding *"Je hebt je afgemeld en kunt geen transacties meer invoeren."*
-  2. **Formulier disabled** — als `ModalTransactie` toch wordt geopend, zijn het invoerveld en de bevestigingsknop uitgeschakeld en wordt dezelfde melding getoond.
-  3. **Handler-guard** — `handleTransactie()` gooit een `NIET_ACTIEF`-fout vóór elke databaseaanroep; `ModalTransactie` vertaalt deze naar de juiste foutmelding.
-  4. **Database-niveau** — RLS-policy op `transacties` blokkeert INSERT als `actief = false`.
+- Storten en betalingen registreren is uitgeschakeld voor afgemelde deelnemers op vier niveaus:
+  1. **Knoppen uitgeschakeld** — "Storten" en "Rondje betaald" zijn disabled; er verschijnt de melding *"Je hebt je afgemeld en kunt geen transacties meer invoeren."*
+  2. **Formulier disabled** — als `ModalTransactie` toch wordt geopend, zijn het invoerveld en de bevestigingsknop uitgeschakeld.
+  3. **Handler-guard** — `handleTransactie()` gooit een `NIET_ACTIEF`-fout vóór elke databaseaanroep.
+  4. **Database-niveau** — RLS blokkeert INSERT voor afgemelde deelnemers.
 
 **Datamodel:**
 - `actief boolean DEFAULT true` — geeft aan of de deelnemer actief meedoet.
@@ -162,29 +173,40 @@ Bij verbindingsverlies toont de app een waarschuwingsbanner. Wijzigingen worden 
 
 ## 5. Gebruikersinterface
 
-### 5.1 Schermen
+### 5.1 Hoofdschermen
 
-| Scherm                | Route            | Beschrijving                             |
-|-----------------------|------------------|------------------------------------------|
-| Nieuw potje           | `/`              | Formulier om een potje aan te maken      |
-| Potje                 | `/potje/:id`     | Hoofdscherm met transacties en acties    |
-| Eindafrekening        | (inline)         | Getoond binnen `/potje/:id` na sluiten   |
+| # | Schermnaam      | Route                    | Beschrijving                                      | Tandwiel |
+|---|-----------------|--------------------------|---------------------------------------------------|----------|
+| 1 | Aanmaken        | `/`                      | Formulier om een potje aan te maken               | ✅        |
+| 2 | Deelnemer       | `/potje/:id` (modal)     | Naam invoeren om deel te nemen                    | ❌        |
+| 3 | Storten         | `/potje/:id/storten`     | Bedrag kiezen en storten                          | ❌        |
+| 4 | Overzicht       | `/potje/:id`             | Hoofdscherm met deelnemers en acties              | ✅        |
+| 5 | Eindafrekening  | `/potje/:id` (inline)    | Getoond na sluiten; per deelnemer afrekening      | ✅        |
 
-### 5.2 Modals
+### 5.2 Instellingenschermen
 
-| Modal           | Trigger                        | Beschrijving                          |
-|-----------------|--------------------------------|---------------------------------------|
-| Deelnemen       | Eerste bezoek aan potje-link   | Naam invoeren om deel te nemen        |
-| Storting        | Knop "Storten"                 | Bedrag invoeren voor storting         |
-| Betaling        | Knop "Rondje betaald"          | Bedrag invoeren voor betaling         |
-| Potje sluiten   | Knop "Potje sluiten"           | Bevestigingsdialoog                   |
+| # | Schermnaam      | Route                        | Beschrijving                                      |
+|---|-----------------|------------------------------|---------------------------------------------------|
+| S1 | Instellingen   | `/instellingen`              | Navigatiehub naar sub-schermen                    |
+| S2 | Open potjes    | `/instellingen/open`         | Lijst van actieve potjes op dit apparaat          |
+| S3 | Gesloten potjes| `/instellingen/gesloten`     | Lijst van afgeronde potjes met eigen verrekening  |
+| S4 | Profiel        | `/instellingen/profiel`      | Naam instellen en tekstgrootte kiezen             |
 
-### 5.3 Feedback aan gebruiker
+### 5.3 Modals
 
-- **Toast-meldingen:** korte bevestigingen na acties (3 seconden zichtbaar).
-- **Foutmeldingen:** inline bij formuliervelden of boven de modal.
-- **Verbindingsbanner:** zichtbaar bovenaan de pagina bij offline-status.
-- **Actief-banner:** groene banner met namen van actieve deelnemers, zichtbaar wanneer minimaal één deelnemer afgemeld is.
+| Modal           | Trigger                        | Beschrijving                                        |
+|-----------------|--------------------------------|-----------------------------------------------------|
+| Deelnemen       | Eerste bezoek aan potje-link   | Naam invoeren om deel te nemen                      |
+| Transactie      | Knop "Betaald"                 | Bedrag invoeren voor betaling uit het potje         |
+| Afmelden        | Knop "👋 Afmelden"              | Bevestigingsdialoog met waarschuwing (onomkeerbaar) |
+| Potje sluiten   | Knop "🔒 Pot sluiten"          | Bevestigingsdialoog (onomkeerbaar)                  |
+
+### 5.4 Feedback aan gebruiker
+
+- **Toast-meldingen:** korte bevestigingen na acties, met optionele undo-knop (10 seconden zichtbaar). Aangekondigd via `role="status"` en `aria-live="polite"`.
+- **Foutmeldingen:** inline bij formuliervelden of in de modal.
+- **Verbindingsbanner:** fixed bovenaan de pagina bij offline-status.
+- **Helpteksten:** zichtbaar onder uitgeschakelde knoppen op mobiel (vervangt `title`-attribuut).
 
 ---
 
