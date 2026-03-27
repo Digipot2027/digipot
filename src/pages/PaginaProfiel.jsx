@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
@@ -20,10 +20,10 @@ function PaginaProfiel() {
   const [tekstgrootte, setTekstgrootte] = useState(opgeslagenTekstgrootte)
   const [opgeslagen, setOpgeslagen] = useState(false)
   const [fout, setFout] = useState('')
-  // useRef zodat opgeslagenNaam synchroon bijgewerkt wordt na opslaan,
-  // zonder een re-render te triggeren. Voorkomt dat heeftWijziging de
-  // knop incorrect enabled/disabled toont na opslaan.
-  const opgeslagenNaamRef = useRef(opgeslagenNaam)
+  // Bijgehouden als state zodat heeftWijziging correct reageert na opslaan/verwijderen.
+  // State is hier correct: wijziging van opgeslagenNaamState triggert altijd een re-render
+  // die toch al plaatsvindt via setOpgeslagen, dus geen extra renders.
+  const [opgeslagenNaamState, setOpgeslagenNaamState] = useState(opgeslagenNaam)
 
   function handleTekstgrootte(waarde) {
     setTekstgrootte(waarde)
@@ -48,7 +48,7 @@ function PaginaProfiel() {
       localStorage.removeItem(PROFIEL_NAAM_KEY)
     }
 
-    opgeslagenNaamRef.current = naamTrimmed // synchroon bijwerken
+    setOpgeslagenNaamState(naamTrimmed)
     setNaam(naamTrimmed)
     setOpgeslagen(true)
     setTimeout(() => setOpgeslagen(false), 2500)
@@ -56,12 +56,12 @@ function PaginaProfiel() {
 
   function handleVerwijderen() {
     localStorage.removeItem(PROFIEL_NAAM_KEY)
-    opgeslagenNaamRef.current = '' // synchroon bijwerken
+    setOpgeslagenNaamState('')
     setNaam('')
     setOpgeslagen(false)
   }
 
-  const heeftWijziging = naam.trim() !== opgeslagenNaamRef.current
+  const heeftWijziging = naam.trim() !== opgeslagenNaamState
 
   return (
     <div className="pagina">
@@ -116,7 +116,7 @@ function PaginaProfiel() {
       {/* Tekstgrootte */}
       <div className="kaart">
         <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>Tekstgrootte</h2>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-400)', marginBottom: 16 }}>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)', marginBottom: 16 }}>
           De instelling wordt direct toegepast en onthouden.
         </p>
         <div
@@ -124,13 +124,25 @@ function PaginaProfiel() {
           aria-label="Tekstgrootte kiezen"
           style={{ display: 'flex', gap: 10 }}
         >
-          {TEKSTGROOTTES.map(({ waarde, label }) => {
+          {TEKSTGROOTTES.map(({ waarde, label }, index) => {
             const actief = tekstgrootte === waarde
             return (
               <button
                 key={waarde}
                 role="radio"
                 aria-checked={actief}
+                // WCAG 4.1.2: pijltjestoets-navigatie binnen radiogroup —
+                // rechts/neer = volgende optie, links/omhoog = vorige optie
+                onKeyDown={e => {
+                  const richtingen = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp']
+                  if (!richtingen.includes(e.key)) return
+                  e.preventDefault()
+                  const stap = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1
+                  const volgende = (index + stap + TEKSTGROOTTES.length) % TEKSTGROOTTES.length
+                  handleTekstgrootte(TEKSTGROOTTES[volgende].waarde)
+                  // Focus het volgende radio-element
+                  e.currentTarget.parentElement?.children[volgende]?.focus()
+                }}
                 onClick={() => handleTekstgrootte(waarde)}
                 style={{
                   flex: 1,
@@ -157,12 +169,12 @@ function PaginaProfiel() {
         <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--grijs-50)', borderRadius: 8, border: '1px solid var(--grijs-200)' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 4 }}>Voorbeeld:</p>
           <p style={{ fontSize: '1rem' }}>Vakantie Spanje 2026</p>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-400)' }}>Potje · 3 deelnemers · €45,00</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>Potje · 3 deelnemers · €45,00</p>
         </div>
       </div>
 
       {/* Naam verwijderen */}
-      {opgeslagenNaam && (
+      {opgeslagenNaamState && (
         <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
           <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)', marginBottom: 12 }}>
             Je naam wordt lokaal opgeslagen op dit apparaat. Er worden geen persoonlijke gegevens verstuurd.
@@ -177,7 +189,7 @@ function PaginaProfiel() {
         </div>
       )}
 
-      {!opgeslagenNaam && (
+      {!opgeslagenNaamState && (
         <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
           <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
             Je naam wordt lokaal opgeslagen op dit apparaat. Er worden geen persoonlijke gegevens verstuurd.
