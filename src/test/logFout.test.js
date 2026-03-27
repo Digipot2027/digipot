@@ -1,14 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock Sentry voor tests
+// Mock Sentry vóór de import van logFout zodat de mock al actief is
 vi.mock('@sentry/react', () => ({
   captureException: vi.fn(),
 }))
-
-// Mock import.meta.env
-vi.stubGlobal('import', {
-  meta: { env: { DEV: false, PROD: false } }
-})
 
 import * as Sentry from '@sentry/react'
 import { logFout } from '../utils/logFout'
