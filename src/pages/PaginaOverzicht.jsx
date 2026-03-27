@@ -34,7 +34,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 <div style={{ fontSize: 22, fontWeight: 700, color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
                   {formatBedrag(saldi.potSaldo)}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--grijs-400)' }}>saldo</div>
+                <div style={{ fontSize: 12, color: 'var(--grijs-500)' }}>saldo</div>
               </div>
               <button
                 onClick={() => navigate('/instellingen')}
@@ -143,13 +143,13 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
           {/* Saldo hint */}
           {ikBenActief && saldi.potSaldo === 0 && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-400)', textAlign: 'center', marginTop: -4 }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'center', marginTop: -4 }}>
               Geen saldo beschikbaar. Voeg eerst een storting toe.
             </p>
           )}
 
           {!ikBenActief && (
-            <p style={{ fontSize: '0.875rem', color: 'var(--grijs-400)', textAlign: 'center', padding: '4px 0' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', textAlign: 'center', padding: '4px 0' }}>
               Je hebt je afgemeld en kunt geen transacties meer invoeren.
             </p>
           )}
@@ -175,12 +175,12 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
           {/* Helpteksten onder rij 2 — zichtbaar op mobiel (title-attribuut werkt niet op touch) */}
           {ikBenActief && !ikBenGestort && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-400)', textAlign: 'left', marginTop: -4 }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
               Eerst storten om je te kunnen afmelden.
             </p>
           )}
           {!heeftTransacties && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-400)', textAlign: 'right', marginTop: -4 }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'right', marginTop: -4 }}>
               Pot sluiten kan pas als er transacties zijn.
             </p>
           )}

@@ -195,6 +195,18 @@ function PaginaPotje() {
   const saldi = berekenSaldi(deelnemers, transacties)
   const ikBenActief = deelnemer?.actief !== false
 
+  // WCAG 2.4.2: paginatitel aanpassen op basis van schermstatus
+  useEffect(() => {
+    if (!potje) return
+    if (potje.status === 'gesloten') {
+      document.title = `Eindafrekening: ${potje.naam} — Digipot`
+    } else if (!deelnemer) {
+      document.title = `Meedoen: ${potje.naam} — Digipot`
+    } else {
+      document.title = `${potje.naam} — Digipot`
+    }
+  }, [potje, deelnemer])
+
   // Skeleton loader
   if (laden) return (
     <div className="pagina">

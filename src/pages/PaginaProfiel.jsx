@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
@@ -20,6 +20,9 @@ function PaginaProfiel() {
   const [tekstgrootte, setTekstgrootte] = useState(opgeslagenTekstgrootte)
   const [opgeslagen, setOpgeslagen] = useState(false)
   const [fout, setFout] = useState('')
+
+  // WCAG 2.4.2: unieke paginatitel
+  useEffect(() => { document.title = 'Profiel — Digipot' }, [])
   // Bijgehouden als state zodat heeftWijziging correct reageert na opslaan/verwijderen.
   // State is hier correct: wijziging van opgeslagenNaamState triggert altijd een re-render
   // die toch al plaatsvindt via setOpgeslagen, dus geen extra renders.

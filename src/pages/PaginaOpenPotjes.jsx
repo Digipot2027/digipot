@@ -11,6 +11,9 @@ function PaginaOpenPotjes() {
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState('')
 
+  // WCAG 2.4.2: unieke paginatitel
+  useEffect(() => { document.title = 'Open potjes — Digipot' }, [])
+
   const deviceId = localStorage.getItem('digipot_device_id')
   const profielNaam = localStorage.getItem('digipot_profiel_naam')?.trim() || null
 
@@ -165,7 +168,7 @@ function PaginaOpenPotjes() {
                 <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {potje.naam}
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-400)' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
                   {potje.aantalDeelnemers} {potje.aantalDeelnemers === 1 ? 'deelnemer' : 'deelnemers'} · {datumLabel(potje.aangemaakt_op)}
                 </div>
               </div>
@@ -174,7 +177,7 @@ function PaginaOpenPotjes() {
                   <div style={{ fontSize: '1rem', fontWeight: 700, color: potje.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-400)' }}>
                     {formatBedrag(potje.potSaldo)}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--grijs-400)' }}>saldo</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>saldo</div>
                 </div>
                 <span style={{ fontSize: '1.25rem', color: 'var(--grijs-400)', lineHeight: 1 }}>›</span>
               </div>

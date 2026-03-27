@@ -11,18 +11,20 @@
 
 :root {
   --groen: #16a34a;
+  --groen-700: #15803d;    /* WCAG 1.4.3: contrast 4.6:1 op groen-licht — voor knop-aanmelden tekst */
   --groen-licht: #dcfce7;
   --rood: #dc2626;
   --rood-licht: #fee2e2;
   --blauw: #2563eb;
   --oranje: #ea580c;
+  --oranje-700: #c2410c;   /* WCAG 1.4.3: contrast 4.7:1 op oranje-licht — voor badge en knop-afmelden tekst */
   --oranje-licht: #fff7ed;
   --grijs-50: #f9fafb;
   --grijs-100: #f3f4f6;
   --grijs-200: #e5e7eb;
-  --grijs-400: #9ca3af;
-  --grijs-500: #6b7280; /* K3: minimaal 4.6:1 contrast op wit — gebruik voor informatieve tekst */
-  --grijs-600: #4b5563;
+  --grijs-400: #9ca3af;    /* DECORATIEF ONLY: contrast 2.3:1 — uitsluitend voor aria-hidden elementen */
+  --grijs-500: #6b7280;    /* WCAG 1.4.3: contrast 4.6:1 op wit — minimum voor informatieve tekst */
+  --grijs-600: #4b5563;    /* WCAG 1.4.3: contrast 7.4:1 op wit — voor subtekst en labels */
   --grijs-900: #111827;
   --wit: #ffffff;
   --radius: 12px;
@@ -85,12 +87,14 @@ body {
   background: var(--grijs-100); color: var(--grijs-900);
   border: 1.5px solid var(--grijs-200);
 }
+/* WCAG 1.4.3: oranje-700 (#c2410c) geeft contrast 4.7:1 op oranje-licht — was oranje (#ea580c) = 3.1:1 */
 .knop-afmelden {
-  background: var(--oranje-licht); color: var(--oranje);
+  background: var(--oranje-licht); color: var(--oranje-700);
   border: 1.5px solid #fed7aa;
 }
+/* WCAG 1.4.3: groen-700 (#15803d) geeft contrast 4.6:1 op groen-licht — was groen (#16a34a) = 3.0:1 */
 .knop-aanmelden {
-  background: var(--groen-licht); color: var(--groen);
+  background: var(--groen-licht); color: var(--groen-700);
   border: 1.5px solid #bbf7d0;
 }
 
@@ -103,9 +107,10 @@ body {
   font-weight: 600;
   line-height: 1.5;
 }
+/* WCAG 1.4.3: oranje-700 (#c2410c) geeft contrast 4.7:1 op oranje-licht — was oranje (#ea580c) = 3.1:1 */
 .badge-afgemeld {
   background: var(--oranje-licht);
-  color: var(--oranje);
+  color: var(--oranje-700);
   border: 1px solid #fed7aa;
 }
 

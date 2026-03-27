@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
@@ -8,6 +8,9 @@ function PaginaNieuwPotje() {
   const [naam, setNaam] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
+
+  // WCAG 2.4.2: unieke paginatitel per scherm
+  useEffect(() => { document.title = 'Nieuw potje — Digipot' }, [])
 
   const MAX_NAAM = 30 // K1: overeenkomstig DB-constraint potjes.naam
 

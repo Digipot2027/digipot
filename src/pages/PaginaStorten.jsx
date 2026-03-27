@@ -27,6 +27,9 @@ function PaginaStorten() {
   const [bezig, setBezig] = useState(false)
   const vrijeInvoerRef = useRef(null)
 
+  // WCAG 2.4.2: unieke paginatitel
+  useEffect(() => { document.title = 'Storten — Digipot' }, [])
+
   const MAX = 999.99
 
   const deviceId = (() => {

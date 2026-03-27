@@ -11,6 +11,9 @@ function PaginaGeslotenPotjes() {
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState('')
 
+  // WCAG 2.4.2: unieke paginatitel
+  useEffect(() => { document.title = 'Gesloten potjes — Digipot' }, [])
+
   const deviceId = localStorage.getItem('digipot_device_id')
   const profielNaam = localStorage.getItem('digipot_profiel_naam')?.trim() || null
 
@@ -173,7 +176,7 @@ function PaginaGeslotenPotjes() {
                 <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {potje.naam}
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-400)' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
                   Gesloten op {datumLabel(potje.gesloten_op)}
                 </div>
               </div>
@@ -189,7 +192,7 @@ function PaginaGeslotenPotjes() {
                         ? `+${formatBedrag(potje.mijnVerrekening)}`
                         : `-${formatBedrag(Math.abs(potje.mijnVerrekening))}`}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--grijs-400)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>
                       {potje.mijnVerrekening >= 0 ? 'ontvangen' : 'bijbetaald'}
                     </div>
                   </div>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
@@ -5,6 +6,9 @@ const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
 function PaginaInstellingen() {
   const navigate = useNavigate()
   const profielNaam = localStorage.getItem(PROFIEL_NAAM_KEY)
+
+  // WCAG 2.4.2: unieke paginatitel
+  useEffect(() => { document.title = 'Instellingen — Digipot' }, [])
 
   return (
     <div className="pagina">
@@ -106,7 +110,8 @@ function rijTitel() {
   return { fontSize: 15, fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 2 }
 }
 function rijSub() {
-  return { fontSize: 13, color: 'var(--grijs-400)' }
+  /* WCAG 1.4.3: grijs-600 = contrast 7.4:1 op wit — was grijs-400 = 2.3:1 */
+  return { fontSize: 13, color: 'var(--grijs-600)' }
 }
 function pijl() {
   return { fontSize: 20, color: 'var(--grijs-400)', lineHeight: 1 }

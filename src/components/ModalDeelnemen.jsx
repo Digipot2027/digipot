@@ -10,7 +10,7 @@ import { logFout } from '../utils/logFout'
  * - Als geen profielNaam: naam invoeren, dan door naar Stortingscherm.
  * - Na succesvol deelnemen navigeert PaginaPotje automatisch naar /potje/:id/storten.
  */
-function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, profielNaam = '' }) {
+function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profielNaam = '' }) {
   const [naam, setNaam] = useState(profielNaam)
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
@@ -29,9 +29,11 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, profielNaam = '' }
     }
   }, [heeftProfielNaam])
 
-  // Tab-trap binnen panel
+  // WCAG 2.1.1: Escape sluit de modal + tab-trap binnen panel
   useEffect(() => {
     function onKey(e) {
+      // Escape sluit de modal — alleen als onAnnuleer beschikbaar is
+      if (e.key === 'Escape' && onAnnuleer) { onAnnuleer(); return }
       if (e.key !== 'Tab') return
       const els = [...(panelRef.current?.querySelectorAll(
         'input, button:not([disabled])'
@@ -46,7 +48,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, profielNaam = '' }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [onAnnuleer])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -122,20 +124,36 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, profielNaam = '' }
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
             {heeftProfielNaam && !fout && (
-              <div style={{ fontSize: 12, color: 'var(--grijs-400)', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: 'var(--grijs-600)', marginTop: 4 }}>
                 Uit je profiel. Je kunt de naam aanpassen.
               </div>
             )}
             {fout && <div className="fout-tekst">{fout}</div>}
           </div>
 
-          <button
-            type="submit"
-            className="knop knop-primair"
-            disabled={laden || !naam.trim()}
-          >
-            {laden ? 'Bezig…' : 'Meedoen →'}
-          </button>
+          {/* WCAG 2.1.1: annuleer-knop zodat toetsenbordgebruikers de modal kunnen sluiten
+               zonder muis. Escape doet hetzelfde via de keydown-handler hierboven.
+               onAnnuleer is optioneel — in de primaire flow (deellink) is er geen terugoptie. */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {onAnnuleer && (
+              <button
+                type="button"
+                className="knop knop-secundair"
+                style={{ flex: 1 }}
+                onClick={onAnnuleer}
+              >
+                Annuleren
+              </button>
+            )}
+            <button
+              type="submit"
+              className="knop knop-primair"
+              style={{ flex: onAnnuleer ? 1 : undefined }}
+              disabled={laden || !naam.trim()}
+            >
+              {laden ? 'Bezig…' : 'Meedoen →'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
