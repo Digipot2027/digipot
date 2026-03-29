@@ -7,26 +7,48 @@ function rond(waarde) {
 }
 
 /**
- * Berekent saldi per deelnemer op basis van tijdgebaseerde verdeling.
+ * Hulpfunctie: verzamel gestort en betaald per deelnemer uit transacties.
+ */
+function verzamelPerDeelnemer(deelnemers, transacties) {
+  const gestort = {}
+  const betaald = {}
+  deelnemers.forEach(d => {
+    gestort[d.id] = 0
+    betaald[d.id] = 0
+  })
+  transacties
+    .filter(t => t.type === 'storting')
+    .forEach(t => {
+      if (gestort[t.deelnemer_id] !== undefined)
+        gestort[t.deelnemer_id] += Number(t.bedrag)
+    })
+  transacties
+    .filter(t => t.type === 'betaling')
+    .forEach(t => {
+      if (betaald[t.deelnemer_id] !== undefined)
+        betaald[t.deelnemer_id] += Number(t.bedrag)
+    })
+  return { gestort, betaald }
+}
+
+/**
+ * Berekent de lopende saldi per deelnemer (tijdens een actief potje).
  *
  * Terminologie:
- *   gestort    = inleg van een deelnemer in het potje
- *   betaald    = wat een deelnemer uit het potje heeft voorgeschoten
- *   aandeel    = berekend eerlijk deel van de totale uitgaven
- *   verrekening = betaald - aandeel (+ = ontvangt terug, - = moet bijbetalen)
+ *   gestort     = totaal ingelegd door een deelnemer in het potje (virtueel)
+ *   betaald     = wat een deelnemer werkelijk aan de horeca heeft voorgeschoten
+ *   verrekening = betaald − gestort (+ = ontvangt terug, − = moet bijbetalen)
  *
  * Regels:
- *   - Een deelnemer telt alleen mee bij betalingen waarvoor hij actief was
- *     (aangemeld én niet afgemeld op het moment van de betaling)
- *   - Bij gelijke tijdstippen: eerst aan-/afmelding, daarna pas betaling
- *   - Afronding op 2 decimalen met centcorrectie op de laatste deelnemer
+ *   - Verrekening = werkelijk betaald − ingelegd
+ *   - Verrekening nooit lager dan −gestort (je betaalt nooit meer bij dan je hebt ingelegd)
+ *   - Het resterende virtuele saldo verdwijnt bij sluiting
  */
 export function berekenSaldi(deelnemers, transacties) {
   if (!deelnemers || deelnemers.length === 0) {
     return { potTotaal: 0, potUitgaven: 0, potSaldo: 0, deelnemersSaldi: [] }
   }
 
-  // Pot-totalen
   const potTotaal = transacties
     .filter(t => t.type === 'storting')
     .reduce((sum, t) => sum + Number(t.bedrag), 0)
@@ -37,160 +59,116 @@ export function berekenSaldi(deelnemers, transacties) {
 
   const potSaldo = potTotaal - potUitgaven
 
-  // Initialiseer gestort, betaald en aandeel per deelnemer
-  const gestort = {}
-  const betaald = {}
-  const aandelen = {}
-  deelnemers.forEach(d => {
-    gestort[d.id] = 0
-    betaald[d.id] = 0
-    aandelen[d.id] = 0
+  const { gestort, betaald } = verzamelPerDeelnemer(deelnemers, transacties)
+
+  const deelnemersSaldi = deelnemers.map(d => {
+    const g = rond(gestort[d.id])
+    const b = rond(betaald[d.id])
+    const verrekening = rond(Math.max(b - g, -g))
+    return {
+      ...d,
+      gestort: g,
+      betaald: b,
+      aandeel: g, // tijdens lopend potje: aandeel = ingelegd (voor weergave)
+      verrekening,
+    }
   })
-
-  // Gestort per deelnemer
-  transacties
-    .filter(t => t.type === 'storting')
-    .forEach(t => {
-      if (gestort[t.deelnemer_id] !== undefined) {
-        gestort[t.deelnemer_id] += Number(t.bedrag)
-      }
-    })
-
-  // Betaald per deelnemer (wat zij hebben voorgeschoten uit de pot)
-  transacties
-    .filter(t => t.type === 'betaling')
-    .forEach(t => {
-      if (betaald[t.deelnemer_id] !== undefined) {
-        betaald[t.deelnemer_id] += Number(t.bedrag)
-      }
-    })
-
-  // Per betaling: verdeel aandeel over actieve deelnemers op dat moment
-  // Actief = aangemeld vóór of op betaaltijdstip, en nog niet afgemeld
-  // Bij gelijke tijdstippen: afmelding geldt al, aanmelding ook
-  transacties
-    .filter(t => t.type === 'betaling')
-    .forEach(betaling => {
-      const betalingTijd = new Date(betaling.aangemaakt_op).getTime()
-
-      const actief = deelnemers.filter(d => {
-        const aanmeldTijd = new Date(d.aangemaakt_op).getTime()
-        if (aanmeldTijd > betalingTijd) return false
-
-        if (d.afgemeld_op) {
-          // Bij gelijk tijdstip: afmelding gaat voor, dus deelnemer telt niet mee
-          return new Date(d.afgemeld_op).getTime() > betalingTijd
-        }
-
-        return d.actief !== false
-      })
-
-      if (actief.length === 0) return
-
-      const bedrag = Number(betaling.bedrag)
-      const aandeelPerPersoon = Math.floor((bedrag / actief.length) * 100) / 100
-      let verdeeld = 0
-
-      actief.forEach((d, index) => {
-        if (index === actief.length - 1) {
-          // Centcorrectie: laatste deelnemer vangt afrondingsverschil op
-          aandelen[d.id] += rond(bedrag - verdeeld)
-        } else {
-          aandelen[d.id] += aandeelPerPersoon
-          verdeeld += aandeelPerPersoon
-        }
-      })
-    })
-
-  // verrekening = betaald - aandeel
-  const deelnemersSaldi = deelnemers.map(d => ({
-    ...d,
-    gestort: rond(gestort[d.id]),
-    betaald: rond(betaald[d.id]),
-    aandeel: rond(aandelen[d.id]),
-    verrekening: rond(betaald[d.id] - aandelen[d.id])
-  }))
 
   return {
     potTotaal: rond(potTotaal),
     potUitgaven: rond(potUitgaven),
     potSaldo: rond(potSaldo),
-    deelnemersSaldi
+    deelnemersSaldi,
   }
 }
 
 /**
  * Berekent de eindafrekening bij het sluiten van een potje.
  *
- * De cap (verrekening >= -gestort) is een technisch vangnet tegen een falende
- * V2-databasecontrole. In normale werking kan de cap niet bijten omdat
- * betaald <= gestort altijd geldt (afgedwongen door V2).
+ * Rekenmodel:
  *
- * Tekortherverdeling:
- *   Als de cap bijt bij een afgemelde deelnemer, wordt het tekort doorgeschoven
- *   naar actieve deelnemers. Ook daar wordt de cap toegepast.
- *   Wat daarna overblijft verdwijnt (gewenst gedrag).
+ *   Afgemelde deelnemers:
+ *     Netto bijdrage = volledige inleg (vast)
+ *     Verrekening    = betaald − ingelegd
  *
- * Iedereen afgemeld:
- *   Als er geen actieve deelnemers zijn, verdwijnen alle resterende tekorten.
- *   Dit is gewenst gedrag.
+ *   Actieve deelnemers:
+ *     Netto bijdrage = ingelegd × (resterend voor actieven ÷ totaal ingelegd actieven)
+ *     Verrekening    = betaald − netto bijdrage
+ *
+ *     Resterend voor actieven = totaal betaald aan horeca − bijdrage afgemelde deelnemers
+ *
+ *   Cap: verrekening nooit lager dan −ingelegd
+ *     (je betaalt nooit meer bij dan je hebt ingelegd)
+ *
+ *   Tekorten boven de cap verdwijnen — worden NIET doorgeschoven.
+ *   Het resterende virtuele saldo verdwijnt bij sluiting.
  */
 export function berekenEindafrekening(deelnemers, transacties) {
-  const basis = berekenSaldi(deelnemers, transacties)
+  if (!deelnemers || deelnemers.length === 0) {
+    return { potTotaal: 0, potUitgaven: 0, potSaldo: 0, deelnemersSaldi: [] }
+  }
+
+  const potTotaal = rond(
+    transacties
+      .filter(t => t.type === 'storting')
+      .reduce((sum, t) => sum + Number(t.bedrag), 0)
+  )
+  const potUitgaven = rond(
+    transacties
+      .filter(t => t.type === 'betaling')
+      .reduce((sum, t) => sum + Number(t.bedrag), 0)
+  )
+  const potSaldo = rond(potTotaal - potUitgaven)
+
+  const { gestort, betaald } = verzamelPerDeelnemer(deelnemers, transacties)
+
   const actieveIds = new Set(
     deelnemers.filter(d => d.actief !== false).map(d => d.id)
   )
 
-  // Stap 1: cap toepassen op alle deelnemers, tekort verzamelen
-  let totaalTekort = 0
+  // Stap 1: bijdrage afgemelde deelnemers = volledige inleg (vast)
+  const totaalBijdrageAfgemelden = deelnemers
+    .filter(d => !actieveIds.has(d.id))
+    .reduce((sum, d) => sum + rond(gestort[d.id]), 0)
 
-  const gecapteSaldi = basis.deelnemersSaldi.map(ds => {
-    const ondergrens = -ds.gestort
-    if (ds.verrekening >= ondergrens) return ds
+  // Stap 2: factor voor actieve deelnemers
+  //   resterend = wat overblijft na aftrek bijdrage afgemelden
+  //   factor    = resterend ÷ totaal ingelegd door actieven
+  const totaalIngelegdActieven = deelnemers
+    .filter(d => actieveIds.has(d.id))
+    .reduce((sum, d) => sum + rond(gestort[d.id]), 0)
 
-    // Cap bijt: verrekening was lager dan -gestort
-    const gecapt = rond(ondergrens)
-    const tekort = rond(gecapt - ds.verrekening) // positief getal
-    totaalTekort = rond(totaalTekort + tekort)
-    return { ...ds, verrekening: gecapt }
-  })
+  const resterendVoorActieven = rond(potUitgaven - totaalBijdrageAfgemelden)
 
-  // Stap 2: tekort herverdelen over actieve deelnemers
-  // Als er geen tekort is of geen actieve deelnemers: klaar
-  if (totaalTekort === 0 || actieveIds.size === 0) {
-    return { ...basis, deelnemersSaldi: gecapteSaldi }
-  }
+  const factor = totaalIngelegdActieven > 0
+    ? resterendVoorActieven / totaalIngelegdActieven
+    : 0
 
-  const actieveIndices = gecapteSaldi
-    .map((ds, i) => actieveIds.has(ds.id) ? i : -1)
-    .filter(i => i !== -1)
+  // Stap 3: verrekening per deelnemer
+  const deelnemersSaldi = deelnemers.map(d => {
+    const g = rond(gestort[d.id])
+    const b = rond(betaald[d.id])
+    const isActief = actieveIds.has(d.id)
 
-  const aantalActief = actieveIndices.length
-  const aanpassingPerActief = Math.floor((totaalTekort / aantalActief) * 100) / 100
-  let reedVerdeeld = 0
+    // Netto bijdrage: actief = ingelegd × factor, afgemeld = volledige inleg
+    const nettoBijdrage = isActief ? rond(g * factor) : g
 
-  const aangepasteSaldi = gecapteSaldi.map((ds, i) => {
-    if (!actieveIds.has(ds.id)) return ds
+    // Verrekening = betaald − netto bijdrage, cap: nooit lager dan −ingelegd
+    const verrekening = rond(Math.max(b - nettoBijdrage, -g))
 
-    const isLaatste = i === actieveIndices[actieveIndices.length - 1]
-    const aanpassing = isLaatste
-      ? rond(totaalTekort - reedVerdeeld)
-      : aanpassingPerActief
-
-    if (!isLaatste) {
-      reedVerdeeld = rond(reedVerdeeld + aanpassingPerActief)
-    }
-
-    const nieuweVerrekening = rond(ds.verrekening - aanpassing)
-
-    // Stap 3: cap ook toepassen op actieve deelnemers na herverdeling
-    // Wat daarna overblijft verdwijnt (gewenst gedrag per systeemregel)
-    const ondergrens = -ds.gestort
     return {
-      ...ds,
-      verrekening: nieuweVerrekening < ondergrens ? rond(ondergrens) : nieuweVerrekening
+      ...d,
+      gestort: g,
+      betaald: b,
+      aandeel: nettoBijdrage, // netto bijdrage (voor weergave op eindafrekening)
+      verrekening,
     }
   })
 
-  return { ...basis, deelnemersSaldi: aangepasteSaldi }
+  return {
+    potTotaal,
+    potUitgaven,
+    potSaldo,
+    deelnemersSaldi,
+  }
 }
