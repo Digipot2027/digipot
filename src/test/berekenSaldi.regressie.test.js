@@ -257,6 +257,63 @@ describe('berekenSaldi — BS-4b: aandeel tijdens lopend potje', () => {
   })
 })
 
+// ─── BS-4c: geen ontvangers — bijbetalingen verdwijnen ──────────────────────
+
+describe('berekenEindafrekening — BS-4c: geen ontvangers', () => {
+  it('iedereen betaalt exact zijn netto bijdrage → iedereen quitte, niemand ontvangt', () => {
+    // A en B leggen elk €20 in en betalen elk €10 aan de kroeg.
+    // Totaal betaald = €20. Factor = 20/40 = 0,5
+    // Netto A = 10, netto B = 10
+    // Verrekening A = 10 - 10 = 0. Verrekening B = 10 - 10 = 0
+    // Niemand ontvangt, niemand betaalt bij — iedereen quitte.
+    const sluit = new Date(2026, 0, 1, 20, 0).toISOString()
+    const deelnemers = [
+      { id: 'a', naam: 'A', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true, afgemeld_op: null },
+      { id: 'b', naam: 'B', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true, afgemeld_op: null },
+    ]
+    const txs = [
+      { id: 's1', type: 'storting', deelnemer_id: 'a', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 's2', type: 'storting', deelnemer_id: 'b', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 'b1', type: 'betaling', deelnemer_id: 'a', bedrag: 10, aangemaakt_op: new Date(2026,0,1,19,0).toISOString() },
+      { id: 'b2', type: 'betaling', deelnemer_id: 'b', bedrag: 10, aangemaakt_op: new Date(2026,0,1,19,0).toISOString() },
+    ]
+    const r = berekenEindafrekening(deelnemers, txs, sluit)
+    // Factor = 20/40 = 0,5. Netto A = 10, netto B = 10
+    // Verrekening A = 10 - 10 = 0. Verrekening B = 10 - 10 = 0
+    // Niemand ontvangt, niemand betaalt bij — iedereen quitte
+    expect(r.deelnemersSaldi.find(s => s.id === 'a').verrekening).toBe(0)
+    expect(r.deelnemersSaldi.find(s => s.id === 'b').verrekening).toBe(0)
+    const som = r.deelnemersSaldi.reduce((s, d) => s + d.verrekening, 0)
+    expect(som).toBe(0)
+  })
+
+  it('afgemelde deelnemer betaalt bijdrage, actieve deelnemer ontvangt — som = 0', () => {
+    // B afgemeld: ingelegd €20, betaald €0 → vaste bijdrage €20, verrekening = -20
+    // Resterend actieven = 20 - 20 = 0. Factor = 0/20 = 0
+    // Netto A = 20 * 0 = 0. Verrekening A = 20 - 0 = +20
+    // A ontvangt €20 van B. Som = 0.
+    const sluit = new Date(2026, 0, 1, 20, 0).toISOString()
+    const deelnemers = [
+      { id: 'a', naam: 'A', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true,  afgemeld_op: null },
+      { id: 'b', naam: 'B', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: false, afgemeld_op: new Date(2026,0,1,19,0).toISOString() },
+    ]
+    const txs = [
+      { id: 's1', type: 'storting', deelnemer_id: 'a', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 's2', type: 'storting', deelnemer_id: 'b', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 'b1', type: 'betaling', deelnemer_id: 'a', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,30).toISOString() },
+    ]
+    const r = berekenEindafrekening(deelnemers, txs, sluit)
+    // B afgemeld: vaste bijdrage €20, verrekening = 0 - 20 = -20
+    // Resterend actieven = 20 - 20 = 0. Factor = 0/20 = 0
+    // Netto A = 20 * 0 = 0. Verrekening A = 20 - 0 = +20
+    // A ontvangt €20 van B — som = 0
+    const som = r.deelnemersSaldi.reduce((s, d) => s + d.verrekening, 0)
+    expect(Math.abs(som)).toBeLessThan(0.02)
+    expect(r.deelnemersSaldi.find(s => s.id === 'a').verrekening).toBeCloseTo(20, 1)
+    expect(r.deelnemersSaldi.find(s => s.id === 'b').verrekening).toBeCloseTo(-20, 1)
+  })
+})
+
 // ─── BS-5: centcorrectie en afrondingsinvariant ──────────────────────────────
 
 describe('berekenSaldi — BS-5: afrondingsinvariant', () => {
