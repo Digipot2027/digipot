@@ -139,6 +139,12 @@ Het tandwiel staat rechtsboven op scherm 1 (Aanmaken) en scherm 4 (Overzicht). K
 5. **Tekorten verdwijnen** — worden NIET doorgeschoven naar anderen
 6. **Virtueel saldo verdwijnt** — resterend saldo bij sluiting wordt niet verdeeld of teruggestort
 
+### Gelijktijdigheidsregels (bij sluiting)
+
+- **Aanmelden op zelfde moment als sluiting** → deelnemer telt **mee** (actief)
+- **Afmelden op zelfde moment als sluiting** → deelnemer telt **niet** mee (afgemeld)
+- Actief/afgemeld wordt bepaald op basis van `potje.gesloten_op` via `wasActiefOp()`
+
 ### Systeemregels
 
 - **V2 (primaire beveiliging)** — databasetrigger blokkeert elke betaling waarbij `SUM(betalingen) > SUM(stortingen)` voor dat potje

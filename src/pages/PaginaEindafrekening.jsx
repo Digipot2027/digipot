@@ -4,7 +4,7 @@ import { formatBedrag } from '../utils/formatBedrag'
 
 function PaginaEindafrekening({ potje, deelnemers, transacties }) {
   const navigate = useNavigate()
-  const saldi = berekenEindafrekening(deelnemers, transacties)
+  const saldi = berekenEindafrekening(deelnemers, transacties, potje.gesloten_op)
   const gesloten = new Date(potje.gesloten_op)
   const sluitDatum = gesloten.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
 

@@ -158,9 +158,80 @@ describe('berekenSaldi — BS-3: bedragen als string (Supabase JSON-formaat)', (
   })
 })
 
-// ─── BS-4: aandeel tijdens lopend potje = ingelegd ──────────────────────────
+// ─── BS-4: wasActiefOp — gelijktijdigheidsregels eindafrekening ─────────────
 
-describe('berekenSaldi — BS-4: aandeel tijdens lopend potje', () => {
+describe('berekenEindafrekening — BS-4: gelijktijdigheid aanmelden/afmelden bij sluiting', () => {
+  const sluit = new Date(2026, 0, 1, 20, 0).toISOString()
+
+  it('aangemeld op zelfde ms als sluiting → telt MEE (actief)', () => {
+    // A aangemeld precies op sluitmoment → actief → krijgt factor
+    const deelnemers = [
+      { id: 'a', naam: 'A', aangemaakt_op: sluit, actief: true, afgemeld_op: null },
+      { id: 'b', naam: 'B', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true, afgemeld_op: null },
+    ]
+    const txs = [
+      { id: 's1', type: 'storting', deelnemer_id: 'a', bedrag: 20, aangemaakt_op: sluit },
+      { id: 's2', type: 'storting', deelnemer_id: 'b', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 'b1', type: 'betaling', deelnemer_id: 'b', bedrag: 24, aangemaakt_op: new Date(2026,0,1,19,0).toISOString() },
+    ]
+    const r = berekenEindafrekening(deelnemers, txs, sluit)
+    // A actief → krijgt factor, niet vaste inleg
+    // Factor = 24 / 40 = 0,6. Netto A = 20 * 0,6 = 12. Verrekening A = 0 - 12 = -12
+    expect(r.deelnemersSaldi.find(s => s.id === 'a').verrekening).toBeCloseTo(-12, 1)
+  })
+
+  it('afgemeld op zelfde ms als sluiting → telt NIET mee (afgemeld)', () => {
+    // B afgemeld precies op sluitmoment → afgemeld → vaste bijdrage = inleg
+    const deelnemers = [
+      { id: 'a', naam: 'A', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true, afgemeld_op: null },
+      { id: 'b', naam: 'B', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: false, afgemeld_op: sluit },
+    ]
+    const txs = [
+      { id: 's1', type: 'storting', deelnemer_id: 'a', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 's2', type: 'storting', deelnemer_id: 'b', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 'b1', type: 'betaling', deelnemer_id: 'a', bedrag: 24, aangemaakt_op: new Date(2026,0,1,19,0).toISOString() },
+    ]
+    const r = berekenEindafrekening(deelnemers, txs, sluit)
+    // B afgemeld → vaste bijdrage = 20. Verrekening B = 0 - 20 = -20
+    expect(r.deelnemersSaldi.find(s => s.id === 'b').verrekening).toBeCloseTo(-20, 1)
+    // A actief → resterend = 24 - 20 = 4, factor = 4/20 = 0,2. Netto A = 20 * 0,2 = 4. Verrekening A = 24 - 4 = +20
+    expect(r.deelnemersSaldi.find(s => s.id === 'a').verrekening).toBeCloseTo(20, 1)
+  })
+
+  it('afgemeld vóór sluiting → telt niet mee', () => {
+    const vroeg = new Date(2026,0,1,19,0).toISOString()
+    const deelnemers = [
+      { id: 'a', naam: 'A', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true, afgemeld_op: null },
+      { id: 'b', naam: 'B', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: false, afgemeld_op: vroeg },
+    ]
+    const txs = [
+      { id: 's1', type: 'storting', deelnemer_id: 'a', bedrag: 30, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 's2', type: 'storting', deelnemer_id: 'b', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 'b1', type: 'betaling', deelnemer_id: 'a', bedrag: 25, aangemaakt_op: new Date(2026,0,1,19,30).toISOString() },
+    ]
+    const r = berekenEindafrekening(deelnemers, txs, sluit)
+    expect(r.deelnemersSaldi.find(s => s.id === 'b').verrekening).toBeCloseTo(-20, 1)
+  })
+
+  it('aangemeld ná sluiting → telt niet mee', () => {
+    const na = new Date(2026,0,1,21,0).toISOString()
+    const deelnemers = [
+      { id: 'a', naam: 'A', aangemaakt_op: new Date(2026,0,1,18,0).toISOString(), actief: true, afgemeld_op: null },
+      { id: 'b', naam: 'B', aangemaakt_op: na, actief: true, afgemeld_op: null },
+    ]
+    const txs = [
+      { id: 's1', type: 'storting', deelnemer_id: 'a', bedrag: 20, aangemaakt_op: new Date(2026,0,1,18,5).toISOString() },
+      { id: 'b1', type: 'betaling', deelnemer_id: 'a', bedrag: 16, aangemaakt_op: new Date(2026,0,1,19,0).toISOString() },
+    ]
+    const r = berekenEindafrekening(deelnemers, txs, sluit)
+    // B niet actief op sluitmoment → gestort = 0, bijdrage = 0, verrekening = 0
+    expect(r.deelnemersSaldi.find(s => s.id === 'b').verrekening).toBe(0)
+  })
+})
+
+// ─── BS-4b: aandeel tijdens lopend potje = ingelegd ──────────────────────────
+
+describe('berekenSaldi — BS-4b: aandeel tijdens lopend potje', () => {
   it('aandeel = ingelegd voor actieve deelnemer', () => {
     const r = berekenSaldi(
       [maakDeelnemer('a', 0), maakDeelnemer('b', 0)],

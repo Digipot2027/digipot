@@ -83,9 +83,29 @@ export function berekenSaldi(deelnemers, transacties) {
 }
 
 /**
+ * Bepaalt of een deelnemer actief was op een gegeven tijdstip.
+ *
+ * Regels bij gelijke tijdstippen:
+ *   - Aanmelden op zelfde moment als sluiting → deelnemer telt MEE (actief)
+ *   - Afmelden op zelfde moment als sluiting → deelnemer telt NIET mee (afgemeld)
+ */
+function wasActiefOp(deelnemer, tijdstipMs) {
+  const aangemeldMs = new Date(deelnemer.aangemaakt_op).getTime()
+  if (aangemeldMs > tijdstipMs) return false
+  if (!deelnemer.afgemeld_op) return true
+  // Afmelden op zelfde moment → niet actief
+  return new Date(deelnemer.afgemeld_op).getTime() > tijdstipMs
+}
+
+/**
  * Berekent de eindafrekening bij het sluiten van een potje.
  *
  * Rekenmodel:
+ *
+ *   Actief/afgemeld wordt bepaald op het moment van sluiting (sluitTijdstip):
+ *   - Aangemeld op of vóór sluiting, en niet afgemeld (of afgemeld ná sluiting) → actief
+ *   - Aangemeld op zelfde moment als sluiting → actief (telt mee)
+ *   - Afgemeld op zelfde moment als sluiting → afgemeld (telt niet mee)
  *
  *   Afgemelde deelnemers:
  *     Netto bijdrage = volledige inleg (vast)
@@ -102,11 +122,20 @@ export function berekenSaldi(deelnemers, transacties) {
  *
  *   Tekorten boven de cap verdwijnen — worden NIET doorgeschoven.
  *   Het resterende virtuele saldo verdwijnt bij sluiting.
+ *
+ * @param {Array} deelnemers
+ * @param {Array} transacties
+ * @param {string|null} sluitTijdstip  ISO-timestamp van sluiting (potje.gesloten_op).
+ *                                     Als null: huidige tijd (voor preview).
  */
-export function berekenEindafrekening(deelnemers, transacties) {
+export function berekenEindafrekening(deelnemers, transacties, sluitTijdstip = null) {
   if (!deelnemers || deelnemers.length === 0) {
     return { potTotaal: 0, potUitgaven: 0, potSaldo: 0, deelnemersSaldi: [] }
   }
+
+  const sluitMs = sluitTijdstip
+    ? new Date(sluitTijdstip).getTime()
+    : Date.now()
 
   const potTotaal = rond(
     transacties
@@ -122,8 +151,9 @@ export function berekenEindafrekening(deelnemers, transacties) {
 
   const { gestort, betaald } = verzamelPerDeelnemer(deelnemers, transacties)
 
+  // Actief/afgemeld bepaald op het moment van sluiting
   const actieveIds = new Set(
-    deelnemers.filter(d => d.actief !== false).map(d => d.id)
+    deelnemers.filter(d => wasActiefOp(d, sluitMs)).map(d => d.id)
   )
 
   // Stap 1: bijdrage afgemelde deelnemers = volledige inleg (vast)
