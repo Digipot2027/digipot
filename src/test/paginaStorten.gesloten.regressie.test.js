@@ -22,7 +22,6 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { parseBedrag } from '../utils/formatBedrag'
 
 const MAX = 999.99
 
