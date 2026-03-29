@@ -21,7 +21,17 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
             ⚙️
           </button>
         </div>
-        <p className="subtitel">Gesloten op {sluitDatum}</p>
+        {/* gesloten_door === null betekent automatisch gesloten door het systeem na 24 uur */}
+        <p className="subtitel">
+          {potje.gesloten_door === null
+            ? `Automatisch gesloten op ${sluitDatum}`
+            : `Gesloten op ${sluitDatum}`}
+        </p>
+        {potje.gesloten_door === null && (
+          <p style={{ fontSize: 12, color: 'var(--grijs-500)', marginTop: 4 }}>
+            Dit potje is na 24 uur automatisch gesloten en wordt na 7 dagen volledig verwijderd.
+          </p>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--grijs-200)' }}>
           <span style={{ color: 'var(--grijs-600)' }}>Totaal gestort</span>
