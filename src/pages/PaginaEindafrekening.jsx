@@ -53,7 +53,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--grijs-600)' }}>
                 <span>Betaald: {formatBedrag(d.betaald)}</span>
-                <span>Aandeel: {formatBedrag(d.aandeel)}</span>
+                <span>Netto bijdrage: {formatBedrag(d.aandeel)}</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--grijs-500)', marginTop: 2 }}>
                 Ingelegd: {formatBedrag(d.gestort)}

@@ -9,9 +9,24 @@ npm run dev       # Start Vite dev server with HMR
 npm run build     # Production build (outputs to dist/)
 npm run lint      # ESLint check
 npm run preview   # Preview production build locally
+npm run test      # Run tests in watch mode (Vitest)
+npm run test:run  # Run tests once (CI-mode)
+npm run test:ui   # Run tests with Vitest UI
 ```
 
-No test framework is configured.
+**Test framework: Vitest + @testing-library/react + @testing-library/jest-dom** (`jsdom` environment, setup in `src/test/setup.js`).
+
+Current test coverage (`src/test/`):
+- `berekenSaldi.test.js` — settlement calculation, all 5 reference scenarios (unit)
+- `berekenSaldi.regressie.test.js` — regression gaps: null transacties, unknown deelnemer_id, string bedragen (Supabase JSON), aandeel=ingelegd invariant, scenario D (five members, one inactive)
+- `formatBedrag.test.js` — currency formatting and parsing (unit)
+- `logFout.test.js` — error logging and Sentry routing (unit)
+- `vertaalFout.test.js` — error code translation (unit)
+- `deelLink.test.js` — all 6 share/clipboard code paths: native share (success, AbortError, fallback), clipboard API, execCommand fallback, both failing
+- `paginaStorten.regressie.test.js` — bedrag priority logic (snelkeuze vs vrije invoer), bedragGeldig boundary conditions, handleStorten validation paths
+- `filterLogica.regressie.test.js` — filter array construction (no id/name, device only, name only, both), potje-ID deduplication, mijnDeelnemer matching, mijnVerrekening null handling, logFout null contract for SALDO_TE_LAAG
+
+Not yet covered: modal components (ModalDeelnemen, ModalTransactie, ModalAfmelden, ModalSluiten), page components with Supabase dependency.
 
 ## Architecture
 
@@ -64,7 +79,7 @@ Na succesvol deelnemen navigeert `PaginaPotje` altijd naar `/potje/:id/storten`.
 
 ### Settlement calculation
 
-`src/utils/berekenSaldi.js` — time-based fairness: each expense is split equally among members who had joined at the time of that transaction. Returns per-member `gestort` (contributed), `aandeel` (owes), and `verrekening` (net balance).
+`src/utils/berekenSaldi.js` — inleg/factor-based model: verrekening = werkelijk betaald − ingelegd. For active members a factor is applied (total paid ÷ total contributed by actives). Inactive members always contribute their full inleg. Returns per-member `gestort` (contributed), `betaald` (paid to venue), `aandeel` (netto bijdrage), and `verrekening` (net balance).
 
 ### Modals
 
@@ -108,25 +123,26 @@ Het tandwiel staat rechtsboven op scherm 1 (Aanmaken) en scherm 4 (Overzicht). K
 
 | Term | Betekenis |
 |---|---|
-| `gestort` | Inleg van een deelnemer in het potje |
-| `betaald` | Wat een deelnemer uit het potje heeft voorgeschoten |
-| `aandeel` | Berekend eerlijk deel van de totale uitgaven |
-| `verrekening` | `betaald − aandeel` (+ = ontvangt terug, − = moet bijbetalen) |
+| `gestort` | Totaal ingelegd door een deelnemer in het potje (virtueel) |
+| `betaald` | Wat een deelnemer werkelijk aan de horeca heeft voorgeschoten |
+| `aandeel` | Netto bijdrage van de deelnemer (voor weergave op eindafrekening) |
+| `verrekening` | `betaald − netto bijdrage` (+ = ontvangt terug, − = moet bijbetalen) |
 
 ### Rekenregels
 
-1. **Tijdsgebaseerde verdeling** — een betaling wordt verdeeld over deelnemers die op dat moment actief waren (aangemeld én niet afgemeld)
-2. **Volgorde bij gelijke tijdstippen** — eerst aan-/afmelding, daarna pas betaling
-3. **Verrekening** = `betaald − aandeel`
-4. **Afronding** op 2 decimalen, centcorrectie op de laatste deelnemer
-5. **Cap (technisch vangnet)** — verrekening mag nooit lager zijn dan `−gestort`. Dit is een defensieve laag tegen een falende V2-controle, geen primaire functionele regel
-6. **Tekortherverdeling** — als cap bijt bij een afgemelde deelnemer, wordt het tekort doorgeschoven naar actieve deelnemers. Ook daar wordt de cap toegepast. Wat daarna overblijft verdwijnt
-7. **Iedereen afgemeld** — als er geen actieve deelnemers zijn bij sluiten, verdwijnen resterende tekorten. Dit is gewenst gedrag
+1. **Verrekening = werkelijk betaald − ingelegd** (basisformule)
+2. **Afgemelde deelnemers** — vaste bijdrage = volledige inleg. Verrekening = betaald − ingelegd
+3. **Actieve deelnemers** — netto bijdrage = ingelegd × factor
+   - Factor = resterend voor actieven ÷ totaal ingelegd door actieven
+   - Resterend voor actieven = totaal betaald aan horeca − bijdrage afgemelde deelnemers
+4. **Cap** — verrekening nooit lager dan `−gestort` (je betaalt nooit meer bij dan je hebt ingelegd)
+5. **Tekorten verdwijnen** — worden NIET doorgeschoven naar anderen
+6. **Virtueel saldo verdwijnt** — resterend saldo bij sluiting wordt niet verdeeld of teruggestort
 
 ### Systeemregels
 
-- **V2 (primaire beveiliging)** — databasetrigger blokkeert elke betaling waarbij `SUM(betalingen) > SUM(stortingen)` voor dat potje. Dit is de enige betrouwbare garantie
-- **Afmelden alleen mogelijk als `gestort > 0`** — een deelnemer die nog niets heeft gestort kan zich niet afmelden. Wordt afgedwongen in UI én database
+- **V2 (primaire beveiliging)** — databasetrigger blokkeert elke betaling waarbij `SUM(betalingen) > SUM(stortingen)` voor dat potje
+- **Afmelden alleen mogelijk als `gestort > 0`** — afgedwongen in UI én database
 - **Geen heractivatie** — afmelden is definitief
 - **Minimaal 2 deelnemers** per potje
 
@@ -134,57 +150,33 @@ Het tandwiel staat rechtsboven op scherm 1 (Aanmaken) en scherm 4 (Overzicht). K
 
 - Afmelden vóór storten — niet mogelijk (systeemregel)
 - Betaald > gestort — niet mogelijk (V2 databasetrigger)
-- Cap bijt in de praktijk — alleen mogelijk bij falende V2; cap is uitsluitend vangnet
 
 ### Referentiescenario's (volledige testdekking)
 
-**Scenario 1 — Basisgeval, één betaalt alles**
+**Scenario A — Vier deelnemers, niemand afgemeld**
 ```
-18:00  A, B, C aangemeld en gestort (€20, €15, €10)
-18:15  A betaalt €30 (3 actief → €10 p.p.)
-A: betaald €30, aandeel €10 → +€20
-B: betaald €0,  aandeel €10 → −€10
-C: betaald €0,  aandeel €10 → −€10 (grens exact geraakt)
-```
-
-**Scenario 2 — Gespreid aanmelden, betaling vóór instap telt niet mee**
-```
-18:00  A aangemeld, stort €25
-18:15  A betaalt €20 (1 actief → €20 voor A)
-18:30  B aangemeld, stort €15
-18:45  A betaalt €20 (2 actief → €10 p.p.)
-A: betaald €40, aandeel €30 → +€10
-B: betaald €0,  aandeel €10 → −€10
+Alice: ingelegd €25, betaald €36 → factor 0,700 → netto €17,50 → +€18,50
+Bob:   ingelegd €35, betaald €20 → netto €24,50 → −€4,50
+Charlie: ingelegd €45, betaald €20 → netto €31,50 → −€11,50
+David: ingelegd €55, betaald €36 → netto €38,50 → −€2,50
 ```
 
-**Scenario 3 — Afmelding ná storting, vóór betaling**
+**Scenario B — Vier deelnemers, één afgemeld (Charlie)**
 ```
-18:00  A, B, C aangemeld en gestort (€20, €20, €20)
-18:15  B meldt af
-18:30  A betaalt €30 (A en C actief → €15 p.p.)
-A: betaald €30, aandeel €15 → +€15
-B: betaald €0,  aandeel €0  → +€20 (volledige inleg terug)
-C: betaald €0,  aandeel €15 → −€15
-```
-
-**Scenario 4 — Afmelding tussen twee betalingen**
-```
-18:00  A, B aangemeld, A stort €5, B stort €5
-18:15  A betaalt €8 (2 actief → €4 p.p.)
-18:30  B meldt af
-18:45  A betaalt €2 (1 actief → €2 voor A)
-A: betaald €10, aandeel €6 → +€4
-B: betaald €0,  aandeel €4 → −€4
+Charlie afgemeld: vaste bijdrage €25
+Resterend actieven: €112 − €25 = €87, factor = 87/135 = 0,6444
+Alice: betaald €56, netto €16,11 → +€39,89
+Bob:   betaald €24, netto €29,00 → −€5,00
+David: betaald €32, netto €41,89 → −€9,89
 ```
 
-**Scenario 5 — Iedereen afgemeld, tekorten verdwijnen**
+**Scenario C — Vijf deelnemers, twee afgemeld (Bob, David)**
 ```
-18:00  A, B aangemeld, A stort €5, B stort €5
-18:15  A betaalt €8 (2 actief → €4 p.p.)
-18:30  A meldt af, B meldt af
-A: betaald €8, aandeel €4 → +€4
-B: betaald €0, aandeel €4 → −€4
-Geen actieve deelnemers → tekorten verdwijnen
+Bob afgemeld: €20. David afgemeld: €45. Totaal: €65
+Resterend actieven: €90 − €65 = €25, factor = 25/110 = 0,2273
+Alice: betaald €30, netto €4,55 → +€25,45
+Charlie: betaald €30, netto €10,23 → +€19,77
+Eva: betaald €30, netto €10,23 → +€19,77
 ```
 
 ## Foutafhandeling en logging (verplicht)
