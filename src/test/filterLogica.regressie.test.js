@@ -21,7 +21,7 @@
  *   LF-2  logFout geeft null terug bij SALDO_TE_LAAG (contract check)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // Mock Sentry zodat logFout testbaar is
 vi.mock('@sentry/react', () => ({ captureException: vi.fn() }))
