@@ -1,15 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
+import { valideerDeelnemerNaam } from '../utils/valideer'
 
-/**
- * Deelneemscherm (scherm 2)
- *
- * Gedrag:
- * - Als profielNaam aanwezig is: naam alvast ingevuld, focus op knop, gebruiker
- *   bevestigt met één tik en gaat direct naar Stortingscherm.
- * - Als geen profielNaam: naam invoeren, dan door naar Stortingscherm.
- * - Na succesvol deelnemen navigeert PaginaPotje automatisch naar /potje/:id/storten.
- */
 function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profielNaam = '' }) {
   const [naam, setNaam] = useState(profielNaam)
   const [laden, setLaden] = useState(false)
@@ -20,7 +12,6 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
   const MAX_DEELNEMERS = 20
   const heeftProfielNaam = profielNaam.length > 0
 
-  // Focus: bij profielnaam → focus op de knop, anders → focus op het invoerveld
   useEffect(() => {
     if (heeftProfielNaam) {
       panelRef.current?.querySelector('button:not([disabled])')?.focus()
@@ -32,7 +23,6 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
   // WCAG 2.1.1: Escape sluit de modal + tab-trap binnen panel
   useEffect(() => {
     function onKey(e) {
-      // Escape sluit de modal — alleen als onAnnuleer beschikbaar is
       if (e.key === 'Escape' && onAnnuleer) { onAnnuleer(); return }
       if (e.key !== 'Tab') return
       const els = [...(panelRef.current?.querySelectorAll(
@@ -54,32 +44,18 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
     e.preventDefault()
     setFout('')
 
-    const naamTrimmed = naam.trim()
-    if (!naamTrimmed) {
-      setFout('Vul je naam in om deel te nemen.')
-      return
-    }
-    if (naamTrimmed.length > MAX_NAAM) {
-      setFout(`Je naam mag maximaal ${MAX_NAAM} tekens zijn.`)
-      return
-    }
-    if (deelnemers.length >= MAX_DEELNEMERS) {
-      setFout(`Dit potje heeft het maximum van ${MAX_DEELNEMERS} deelnemers bereikt.`)
-      return
-    }
-
-    const bestaatAl = deelnemers.some(
-      d => d.naam.toLowerCase() === naamTrimmed.toLowerCase()
-    )
-    if (bestaatAl) {
-      setFout('Deze naam is al bezet in dit potje. Kies een andere naam.')
+    const validatieFout = valideerDeelnemerNaam(naam, deelnemers, {
+      maxNaam: MAX_NAAM,
+      maxDeelnemers: MAX_DEELNEMERS,
+    })
+    if (validatieFout) {
+      setFout(validatieFout)
       return
     }
 
     setLaden(true)
     try {
-      await onDeelnemen(naamTrimmed)
-      // Na succesvol deelnemen navigeert PaginaPotje naar /storten
+      await onDeelnemen(naam.trim())
     } catch (error) {
       setFout(logFout(error, { component: 'ModalDeelnemen', actie: 'deelnemen' }))
     } finally {
@@ -102,7 +78,6 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
           🍺 Meedoen aan {potjeNaam}
         </h2>
 
-        {/* Onboarding context */}
         <ul style={{ listStyle: 'none', marginBottom: 16, fontSize: 13, color: 'var(--grijs-600)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <li>💰 Stort geld in het potje</li>
           <li>🍺 Registreer wat de groep uitgeeft</li>
@@ -131,9 +106,6 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
             {fout && <div className="fout-tekst">{fout}</div>}
           </div>
 
-          {/* WCAG 2.1.1: annuleer-knop zodat toetsenbordgebruikers de modal kunnen sluiten
-               zonder muis. Escape doet hetzelfde via de keydown-handler hierboven.
-               onAnnuleer is optioneel — in de primaire flow (deellink) is er geen terugoptie. */}
           <div style={{ display: 'flex', gap: 10 }}>
             {onAnnuleer && (
               <button

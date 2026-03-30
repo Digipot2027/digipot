@@ -8,5 +8,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/utils/**', 'src/pages/**', 'src/components/**'],
+      exclude: ['src/test/**', 'src/main.jsx', 'src/supabaseClient.js', 'src/App.jsx'],
+    },
   },
 })

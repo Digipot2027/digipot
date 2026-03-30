@@ -67,7 +67,7 @@ function PaginaNieuwPotje() {
               id="naam"
               className={`input ${fout ? 'fout' : ''}`}
               type="text"
-              placeholder="bijv. Vakantie Spanje 2026"
+              placeholder="bijv. vrijmibo bij Arie"
               value={naam}
               onChange={e => { setNaam(e.target.value); setFout('') }}
               maxLength={MAX_NAAM}

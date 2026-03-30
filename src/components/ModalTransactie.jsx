@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
+import { valideerTransactieBedrag } from '../utils/valideer'
 
 function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
@@ -42,16 +43,14 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
     e.preventDefault()
     setFout('')
 
-    if (!bedrag || isNaN(bedragNum) || bedragNum <= 0) {
-      setFout('Voer een bedrag in van minimaal €0,01.')
-      return
-    }
-    if (bedragNum > MAX) {
-      setFout('Het maximale bedrag per transactie is €999,99.')
-      return
-    }
-    if (!isStorting && bedragNum > potSaldo) {
-      setFout(`Het potje heeft niet genoeg saldo. Maximaal beschikbaar: ${formatBedrag(potSaldo)}.`)
+    const validatieFout = valideerTransactieBedrag(bedrag, bedragNum, {
+      isStorting,
+      potSaldo,
+      formatBedrag,
+      max: MAX,
+    })
+    if (validatieFout) {
+      setFout(validatieFout)
       return
     }
 
@@ -73,7 +72,6 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
   }
 
   return (
-    // K4: role + aria-modal + aria-labelledby
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 500 }}
       role="dialog"
@@ -129,7 +127,6 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
               style={{ flex: 1 }}
               disabled={laden || !bedrag || !ikBenActief}
             >
-              {/* V6: context-specifieke laadtekst; V4: pijl op primaire knop */}
               {laden
                 ? (isStorting ? 'Storting registreren…' : 'Betaling registreren…')
                 : 'Bevestigen →'}
