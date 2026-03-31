@@ -12,7 +12,6 @@ import { formatBedrag } from '../utils/formatBedrag'
  * @returns {Array} [{van, aan, bedrag}]
  */
 function berekenVereffening(deelnemersSaldi) {
-  // Alleen deelnemers met een relevant saldo
   const crediteuren = deelnemersSaldi
     .filter(d => d.verrekening > 0.005)
     .map(d => ({ naam: d.naam, bedrag: d.verrekening }))
@@ -24,8 +23,6 @@ function berekenVereffening(deelnemersSaldi) {
     .sort((a, b) => b.bedrag - a.bedrag)
 
   const transacties = []
-
-  // Werk met kopieën zodat de originele saldi ongewijzigd blijven
   const cred = crediteuren.map(c => ({ ...c }))
   const deb  = debiteuren.map(d => ({ ...d }))
 
@@ -45,48 +42,35 @@ function berekenVereffening(deelnemersSaldi) {
 }
 
 /**
- * Opent de Tikkie-app. Als Tikkie niet geïnstalleerd is, valt terug
- * op tikkie.me in de browser zodat de gebruiker alsnog een verzoek
- * kan aanmaken.
+ * Opent de Tikkie-app via deep link.
+ * Fallback naar tikkie.me als de app niet geïnstalleerd is.
  */
-function openTikkie(bedrag, omschrijving) {
-  // Tikkie app deep link — werkt als de app geïnstalleerd is
-  // Tikkie heeft geen publieke API voor pre-filled deep links;
-  // we openen de app en tonen de omschrijving als tekst via share-sheet.
-  const tikkieUrl = `tikkie://`
-  const fallbackUrl = `https://tikkie.me`
-
-  // Probeer de app te openen; na 1,5s naar fallback als app niet reageert
+function openTikkie() {
   const start = Date.now()
-  window.location.href = tikkieUrl
-
+  window.location.href = 'tikkie://'
   setTimeout(() => {
-    // Als de pagina nog zichtbaar is (app niet geopend), open fallback
     if (Date.now() - start < 2000) {
-      window.open(fallbackUrl, '_blank')
+      window.open('https://tikkie.me', '_blank')
     }
   }, 1500)
 }
 
 function PaginaEindafrekening({ potje, deelnemers, transacties }) {
-  const navigate  = useNavigate()
-  const valuta    = potje.valuta ?? 'EUR'
-  const saldi     = berekenEindafrekening(deelnemers, transacties, potje.gesloten_op)
+  const navigate    = useNavigate()
+  const valuta      = potje.valuta ?? 'EUR'
+  const saldi       = berekenEindafrekening(deelnemers, transacties, potje.gesloten_op)
   const vereffening = berekenVereffening(saldi.deelnemersSaldi)
 
-  const gesloten  = new Date(potje.gesloten_op)
-  const sluitDatum = gesloten.toLocaleDateString('nl-NL', {
+  const sluitDatum = new Date(potje.gesloten_op).toLocaleDateString('nl-NL', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  // Bijhouden welke deelnemer is uitgeklapt
   const [opengeklapt, setOpengeklapt] = useState(null)
 
   function toggleDetail(id) {
     setOpengeklapt(prev => prev === id ? null : id)
   }
 
-  // Transacties per deelnemer voor het uitklappaneel
   function transactiesVoor(deelnemerId) {
     return transacties
       .filter(t => t.deelnemer_id === deelnemerId)
@@ -94,9 +78,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
   }
 
   function tijdLabel(iso) {
-    return new Date(iso).toLocaleTimeString('nl-NL', {
-      hour: '2-digit', minute: '2-digit',
-    })
+    return new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -141,64 +123,41 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
         </h2>
 
         {saldi.deelnemersSaldi.map((d, index) => {
-          const isAfgemeld  = d.actief === false
-          const isOpen      = opengeklapt === d.id
+          const isAfgemeld   = d.actief === false
+          const isOpen       = opengeklapt === d.id
           const dtransacties = transactiesVoor(d.id)
-          const isLaatste   = index === saldi.deelnemersSaldi.length - 1
+          const isLaatste    = index === saldi.deelnemersSaldi.length - 1
 
           return (
             <div
               key={d.id}
-              style={{
-                borderBottom: isLaatste ? 'none' : '1px solid var(--grijs-100)',
-                opacity: isAfgemeld ? 0.75 : 1,
-              }}
+              style={{ borderBottom: isLaatste ? 'none' : '1px solid var(--grijs-100)', opacity: isAfgemeld ? 0.75 : 1 }}
             >
               {/* Hoofdrij — klikbaar */}
               <button
                 onClick={() => toggleDetail(d.id)}
                 aria-expanded={isOpen}
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '14px 0',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  gap: 8,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  width: '100%', padding: '14px 0', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left', gap: 8,
                 }}
               >
-                {/* Links: naam + badge */}
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <strong
-                    style={{
-                      fontSize: '0.9375rem',
-                      textDecoration: isAfgemeld ? 'line-through' : 'none',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <strong style={{ fontSize: '0.9375rem', textDecoration: isAfgemeld ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {d.naam}
                   </strong>
                   {isAfgemeld && (
-                    <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>
-                      Afgemeld
-                    </span>
+                    <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
                   )}
                 </span>
-
-                {/* Rechts: verrekening + pijltje */}
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <span style={{ fontWeight: 700, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)' }}>
                     {d.verrekening >= 0
                       ? `+${formatBedrag(d.verrekening, valuta)}`
                       : `-${formatBedrag(Math.abs(d.verrekening), valuta)}`}
                   </span>
-                  <span style={{ fontSize: 12, color: 'var(--grijs-400)', lineHeight: 1, transform: isOpen ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: 'transform 0.15s' }}>
+                  <span style={{ fontSize: 12, color: 'var(--grijs-400)', lineHeight: 1, display: 'inline-block', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'none' }}>
                     ›
                   </span>
                 </span>
@@ -211,18 +170,11 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
 
               {/* Uitklappaneel */}
               {isOpen && (
-                <div style={{
-                  background: 'var(--grijs-50)',
-                  borderRadius: 8,
-                  padding: '12px 14px',
-                  marginBottom: 12,
-                  fontSize: 13,
-                }}>
+                <div style={{ background: 'var(--grijs-50)', borderRadius: 8, padding: '12px 14px', marginBottom: 12, fontSize: 13 }}>
                   {dtransacties.length === 0 ? (
                     <p style={{ color: 'var(--grijs-500)', margin: 0 }}>Geen transacties.</p>
                   ) : (
                     <>
-                      {/* Stortingen */}
                       {dtransacties.filter(t => t.type === 'storting').length > 0 && (
                         <>
                           <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -236,8 +188,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                           ))}
                         </>
                       )}
-
-                      {/* Betalingen */}
                       {dtransacties.filter(t => t.type === 'betaling').length > 0 && (
                         <>
                           <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, marginTop: 10, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -251,8 +201,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                           ))}
                         </>
                       )}
-
-                      {/* Totaalregel */}
                       <div style={{ borderTop: '1px solid var(--grijs-200)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
                         <span>Ingelegd</span>
                         <span>{formatBedrag(d.gestort, valuta)}</span>
@@ -270,27 +218,17 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
         })}
       </div>
 
-      {/* ── Vereffening (wie betaalt aan wie) ── */}
+      {/* ── Vereffening ── */}
       {vereffening.length > 0 && (
         <div className="kaart">
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
-            Vereffening
-          </h2>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Vereffening</h2>
           <p style={{ fontSize: 13, color: 'var(--grijs-600)', marginBottom: 16 }}>
             {vereffening.length === 1
               ? 'Eén overboeking om alles te vereffenen'
               : `${vereffening.length} overboekingen om alles te vereffenen`}
           </p>
-
           {vereffening.map((v, i) => (
-            <div
-              key={i}
-              style={{
-                borderBottom: i < vereffening.length - 1 ? '1px solid var(--grijs-100)' : 'none',
-                padding: '12px 0',
-              }}
-            >
-              {/* Wie → aan wie + bedrag */}
+            <div key={i} style={{ borderBottom: i < vereffening.length - 1 ? '1px solid var(--grijs-100)' : 'none', padding: '12px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontSize: '0.9375rem' }}>
                   <strong>{v.van}</strong>
@@ -301,12 +239,10 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                   {formatBedrag(v.bedrag, valuta)}
                 </span>
               </div>
-
-              {/* Tikkie-knop — zichtbaar voor de crediteur (v.aan ontvangt) */}
               <button
                 className="knop knop-secundair"
                 style={{ fontSize: '0.875rem', minHeight: 40 }}
-                onClick={() => openTikkie(v.bedrag, `${potje.naam} — ${v.van} aan ${v.aan}`)}
+                onClick={openTikkie}
                 aria-label={`Stuur een Tikkie van ${formatBedrag(v.bedrag, valuta)} aan ${v.van}`}
               >
                 💸 {v.aan}: stuur Tikkie naar {v.van}
@@ -316,14 +252,11 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
         </div>
       )}
 
-      {/* Geen vereffening nodig (bijv. alles al verrekend of saldo klopt exact) */}
       {vereffening.length === 0 && saldi.deelnemersSaldi.length > 0 && (
         <div className="kaart" style={{ textAlign: 'center', padding: '20px 24px' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
           <p style={{ fontWeight: 600, marginBottom: 4 }}>Alles vereffend</p>
-          <p style={{ fontSize: 13, color: 'var(--grijs-600)' }}>
-            Er hoeft niemand meer bij te betalen.
-          </p>
+          <p style={{ fontSize: 13, color: 'var(--grijs-600)' }}>Er hoeft niemand meer bij te betalen.</p>
         </div>
       )}
 
