@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 /**
  * ModalAfmelden — bevestigingsdialoog vóór definitief afmelden.
@@ -20,23 +21,8 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
     panelRef.current?.querySelector('button:not([disabled])')?.focus()
   }, [])
 
-  // Escape sluit modal, Tab-trap binnen panel (WCAG 2.1.1)
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === 'Escape') { onAnnuleer(); return }
-      if (e.key !== 'Tab') return
-      const els = [...(panelRef.current?.querySelectorAll('button:not([disabled])') ?? [])]
-      if (els.length < 2) return
-      const first = els[0], last = els[els.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault(); last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault(); first.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onAnnuleer])
+  // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
+  useFocusTrap(panelRef, onAnnuleer, { selector: 'button:not([disabled])' })
 
   async function handleBevestig() {
     setLaden(true)

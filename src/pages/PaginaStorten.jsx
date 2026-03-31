@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
@@ -12,17 +13,13 @@ function PaginaStorten() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const [potje, setPotje] = useState(null)
-  const [deelnemers, setDeelnemers] = useState([])
-  const [transacties, setTransacties] = useState([])
-  const [deelnemer, setDeelnemer] = useState(null)
-  const [laden, setLaden] = useState(true)
-  const [fout, setFout] = useState('')
+  // Data via usePotje — eigen formulierlogica blijft in deze component
+  const { potje, deelnemers, transacties, deelnemer, laden, fout } = usePotje(id)
 
-  // Bedragselectie: 'snelkeuze' of een getal, null = niets gekozen
-  const [gekozenBedrag, setGekozenBedrag] = useState(null) // een van SNELBEDRAGEN of null
-  const [vrijeInvoer, setVrijeInvoer] = useState('')       // vrij tekstveld
-  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false) // vrij invoer open?
+  // Bedragselectie
+  const [gekozenBedrag, setGekozenBedrag] = useState(null)
+  const [vrijeInvoer, setVrijeInvoer] = useState('')
+  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false)
   const [invoerFout, setInvoerFout] = useState('')
   const [bezig, setBezig] = useState(false)
   const vrijeInvoerRef = useRef(null)
@@ -31,37 +28,7 @@ function PaginaStorten() {
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
 
   const MAX = 999.99
-
-  const deviceId = (() => {
-    let did = localStorage.getItem('digipot_device_id')
-    if (!did) { did = crypto.randomUUID(); localStorage.setItem('digipot_device_id', did) }
-    return did
-  })()
-
-  const laadData = useCallback(async () => {
-    try {
-      const [{ data: p, error: pe }, { data: d, error: de }, { data: t, error: te }] =
-        await Promise.all([
-          supabase.from('potjes').select('*').eq('id', id).single(),
-          supabase.from('deelnemers').select('*').eq('potje_id', id).order('aangemaakt_op'),
-          supabase.from('transacties').select('*').eq('potje_id', id).order('aangemaakt_op'),
-        ])
-      if (pe) throw pe
-      if (de) throw de
-      if (te) throw te
-      setPotje(p)
-      setDeelnemers(d)
-      setTransacties(t)
-      const bekend = d.find(x => x.device_id === deviceId)
-      if (bekend) setDeelnemer(bekend)
-    } catch (e) {
-      setFout(logFout(e, { component: 'PaginaStorten', actie: 'laadData' }))
-    } finally {
-      setLaden(false)
-    }
-  }, [id, deviceId])
-
-  useEffect(() => { laadData() }, [laadData])
+  const valuta = potje?.valuta ?? 'EUR'
 
   // Focus vrij invoerveld zodra het zichtbaar wordt
   useEffect(() => {
@@ -124,11 +91,18 @@ function PaginaStorten() {
 
     setBezig(true)
     try {
-      await supabase.from('transacties')
+      await supabase
+        .from('transacties')
         .insert({ potje_id: id, deelnemer_id: deelnemer.id, type: 'storting', bedrag: effectiefBedrag })
-        .select().single()
+        .select()
+        .single()
       navigate(`/potje/${id}`, {
-        state: { toast: { bericht: `Storting van ${formatBedrag(effectiefBedrag)} geregistreerd.`, type: 'ok' } }
+        state: {
+          toast: {
+            bericht: `Storting van ${formatBedrag(effectiefBedrag, valuta)} geregistreerd.`,
+            type: 'ok',
+          },
+        },
       })
     } catch (e) {
       setInvoerFout(logFout(e, { component: 'PaginaStorten', actie: 'storten' }))
@@ -137,7 +111,7 @@ function PaginaStorten() {
     }
   }
 
-  // ── Skeleton loader ──────────────────────────────────────────────────────────
+  // ── Skeleton loader ───────────────────────────────────────────────────────────
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
@@ -159,7 +133,11 @@ function PaginaStorten() {
     <div className="pagina">
       <div className="kaart">
         <p style={{ color: 'var(--rood)' }}>{fout}</p>
-        <button className="knop knop-secundair" style={{ marginTop: 16 }} onClick={() => navigate(`/potje/${id}`)}>
+        <button
+          className="knop knop-secundair"
+          style={{ marginTop: 16 }}
+          onClick={() => navigate(`/potje/${id}`)}
+        >
           ← Terug
         </button>
       </div>
@@ -194,7 +172,7 @@ function PaginaStorten() {
       {reedGestort > 0 && (
         <div className="kaart" style={{ background: 'var(--groen-licht)', border: '1px solid #bbf7d0' }}>
           <p style={{ fontSize: '0.8125rem', color: 'var(--groen)', fontWeight: 500 }}>
-            Je hebt tot nu toe <strong>{formatBedrag(reedGestort)}</strong> ingelegd.
+            Je hebt tot nu toe <strong>{formatBedrag(reedGestort, valuta)}</strong> ingelegd.
           </p>
         </div>
       )}
@@ -222,7 +200,7 @@ function PaginaStorten() {
                   borderRadius: 10,
                   border: actief ? '2px solid var(--groen)' : '1.5px solid var(--grijs-200)',
                   background: actief ? 'var(--groen-licht)' : 'var(--grijs-50)',
-                  color: actief ? 'var(--groen)' : 'var(--grijs-900)', // grijs-900 = #111827, contrast 16.5:1 op grijs-50 (WCAG 1.4.3 ✅)
+                  color: actief ? 'var(--groen)' : 'var(--grijs-900)',
                   fontWeight: actief ? 700 : 500,
                   fontSize: '1.125rem',
                   cursor: 'pointer',
@@ -231,7 +209,7 @@ function PaginaStorten() {
                   minHeight: 64,
                 }}
               >
-                {formatBedrag(bedrag)}
+                {formatBedrag(bedrag, valuta)}
               </button>
             )
           })}
@@ -249,7 +227,9 @@ function PaginaStorten() {
           </button>
         ) : (
           <div className="veld" style={{ marginBottom: 0 }}>
-            <label className="label" htmlFor="vrij-bedrag">Ander bedrag (€)</label>
+            <label className="label" htmlFor="vrij-bedrag">
+              Ander bedrag ({valuta})
+            </label>
             <input
               id="vrij-bedrag"
               ref={vrijeInvoerRef}
@@ -263,7 +243,7 @@ function PaginaStorten() {
             />
             {vrijeInvoerActief && vrijeInvoerNum > 0 && !invoerFout && (
               <div className="teller" style={{ color: 'var(--groen)' }}>
-                = {formatBedrag(vrijeInvoerNum)}
+                = {formatBedrag(vrijeInvoerNum, valuta)}
               </div>
             )}
           </div>
@@ -276,7 +256,6 @@ function PaginaStorten() {
 
       {/* Samenvatting + bevestigen */}
       <div className="kaart">
-        {/* Geselecteerd bedrag tonen */}
         {bedragGeldig && (
           <div style={{
             display: 'flex',
@@ -292,7 +271,7 @@ function PaginaStorten() {
               Jouw storting
             </span>
             <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--groen)' }}>
-              {formatBedrag(effectiefBedrag)}
+              {formatBedrag(effectiefBedrag, valuta)}
             </span>
           </div>
         )}
@@ -323,12 +302,12 @@ function PaginaStorten() {
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
           <span style={{ color: 'var(--grijs-600)' }}>Huidig potsaldo</span>
           <strong style={{ color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
-            {formatBedrag(saldi.potSaldo)}
+            {formatBedrag(saldi.potSaldo, valuta)}
           </strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginTop: 8 }}>
           <span style={{ color: 'var(--grijs-600)' }}>Totaal ingelegd</span>
-          <strong>{formatBedrag(saldi.potTotaal)}</strong>
+          <strong>{formatBedrag(saldi.potTotaal, valuta)}</strong>
         </div>
       </div>
 

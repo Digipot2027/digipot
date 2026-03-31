@@ -1,90 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
-import { logFout } from '../utils/logFout'
-import { berekenSaldi } from '../utils/berekenSaldi'
+import { useMijnPotjes } from '../hooks/useMijnPotjes'
 import { formatBedrag } from '../utils/formatBedrag'
 
 function PaginaOpenPotjes() {
   const navigate = useNavigate()
-  const [potjes, setPotjes] = useState([])
-  const [laden, setLaden] = useState(true)
-  const [fout, setFout] = useState('')
+  const { potjes, laden, fout } = useMijnPotjes('open')
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Open potjes — Digipot' }, [])
 
-  const deviceId = localStorage.getItem('digipot_device_id')
-  const profielNaam = localStorage.getItem('digipot_profiel_naam')?.trim() || null
-
-  useEffect(() => {
-    async function laadPotjes() {
-      try {
-        // Zoek alle deelnemers-records voor dit device of deze profielnaam.
-        // ilike = case-insensitief: "jan" matcht ook "Jan" of "JAN" (fix Medium security/UX).
-        const filters = []
-        if (deviceId) filters.push(`device_id.eq.${deviceId}`)
-        if (profielNaam) filters.push(`naam.ilike.${profielNaam}`)
-
-        if (filters.length === 0) {
-          setPotjes([])
-          setLaden(false)
-          return
-        }
-
-        const { data: deelnemers, error: deError } = await supabase
-          .from('deelnemers')
-          .select('potje_id, naam, id')
-          .or(filters.join(','))
-
-        if (deError) throw deError
-        if (!deelnemers || deelnemers.length === 0) {
-          setPotjes([])
-          setLaden(false)
-          return
-        }
-
-        // Unieke potje-IDs
-        const potjeIds = [...new Set(deelnemers.map(d => d.potje_id))]
-
-        // Haal open potjes op, nieuwste bovenaan
-        const { data: openPotjes, error: pError } = await supabase
-          .from('potjes')
-          .select('*')
-          .in('id', potjeIds)
-          .eq('status', 'open')
-          .order('aangemaakt_op', { ascending: false })
-
-        if (pError) throw pError
-
-        // Per potje: deelnemers en transacties ophalen voor saldo
-        const verrijkt = await Promise.all((openPotjes || []).map(async potje => {
-          const [{ data: allDeelnemers }, { data: transacties }] = await Promise.all([
-            supabase.from('deelnemers').select('*').eq('potje_id', potje.id),
-            supabase.from('transacties').select('*').eq('potje_id', potje.id),
-          ])
-          const saldi = berekenSaldi(allDeelnemers || [], transacties || [])
-          return {
-            ...potje,
-            aantalDeelnemers: (allDeelnemers || []).length,
-            potSaldo: saldi.potSaldo,
-          }
-        }))
-
-        setPotjes(verrijkt)
-      } catch (e) {
-        setFout(logFout(e, { component: 'PaginaOpenPotjes', actie: 'laadPotjes' }))
-      } finally {
-        setLaden(false)
-      }
-    }
-
-    laadPotjes()
-  }, [deviceId, profielNaam])
-
   function datumLabel(iso) {
     return new Date(iso).toLocaleDateString('nl-NL', {
-      day: 'numeric', month: 'short', year: 'numeric'
+      day: 'numeric', month: 'short', year: 'numeric',
     })
   }
 
@@ -135,10 +63,7 @@ function PaginaOpenPotjes() {
           <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 20 }}>
             Je neemt nog niet deel aan een open potje op dit apparaat.
           </p>
-          <button
-            className="knop knop-primair"
-            onClick={() => navigate('/')}
-          >
+          <button className="knop knop-primair" onClick={() => navigate('/')}>
             Nieuw potje starten
           </button>
         </div>

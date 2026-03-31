@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
-import { logFout } from '../utils/logFout'
+import { usePotje } from '../hooks/usePotje'
+import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
-import { formatBedrag } from '../utils/formatBedrag'
+import { PROFIEL_NAAM_KEY } from '../constants'
 import ModalDeelnemen from '../components/ModalDeelnemen.jsx'
 import ModalTransactie from '../components/ModalTransactie.jsx'
 import ModalSluiten from '../components/ModalSluiten.jsx'
@@ -13,23 +13,26 @@ import PaginaOverzicht from './PaginaOverzicht.jsx'
 function PaginaPotje() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [potje, setPotje] = useState(null)
-  const [deelnemers, setDeelnemers] = useState([])
-  const [transacties, setTransacties] = useState([])
-  const [deelnemer, setDeelnemer] = useState(null)
-  const [laden, setLaden] = useState(true)
-  const [fout, setFout] = useState('')
-  const [online, setOnline] = useState(true)
+
+  const {
+    potje,
+    deelnemers,
+    transacties,
+    deelnemer,
+    setDeelnemer,
+    setDeelnemers,
+    setTransacties,
+    laden,
+    fout,
+    online,
+  } = usePotje(id)
+
   const [modaal, setModaal] = useState(null) // 'betaling' | 'sluiten'
   const [toast, setToast] = useState(null)
   const [afmeldenLaden, setAfmeldenLaden] = useState(false)
   const toastTimerRef = useRef(null)
 
-  const deviceId = (() => {
-    let did = localStorage.getItem('digipot_device_id')
-    if (!did) { did = crypto.randomUUID(); localStorage.setItem('digipot_device_id', did) }
-    return did
-  })()
+  // ── Toast ─────────────────────────────────────────────────────────────────────
 
   function toonToast(bericht, type = 'info', actie = null) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -38,159 +41,31 @@ function PaginaPotje() {
     toastTimerRef.current = setTimeout(() => setToast(null), duur)
   }
 
-  const laadData = useCallback(async () => {
-    try {
-      const [{ data: p, error: pe }, { data: d, error: de }, { data: t, error: te }] =
-        await Promise.all([
-          supabase.from('potjes').select('*').eq('id', id).single(),
-          supabase.from('deelnemers').select('*').eq('potje_id', id).order('aangemaakt_op'),
-          supabase.from('transacties').select('*').eq('potje_id', id).order('aangemaakt_op')
-        ])
-      if (pe) throw pe
-      if (de) throw de
-      if (te) throw te
-      setPotje(p)
-      setDeelnemers(d)
-      setTransacties(t)
-      const bekende = d.find(x => x.device_id === deviceId)
-      if (bekende) setDeelnemer(bekende)
-    } catch (e) {
-      setFout(logFout(e, { component: 'PaginaPotje', actie: 'laadData' }) || 'Dit potje bestaat niet. Controleer de link.')
-    } finally {
-      setLaden(false)
-    }
-  }, [id, deviceId])
-
+  // Verbinding hersteld → toast tonen
+  const vorigeOnline = useRef(online)
   useEffect(() => {
-    laadData()
+    if (!vorigeOnline.current && online) toonToast('Verbinding hersteld.', 'ok')
+    vorigeOnline.current = online
+  }, [online])
 
-    const kanaal = supabase.channel(`potje-${id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'potjes', filter: `id=eq.${id}` },
-        payload => setPotje(payload.new))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'deelnemers', filter: `potje_id=eq.${id}` },
-        payload => setDeelnemers(prev => [...prev.filter(d => d.id !== payload.new.id), payload.new].sort((a, b) => new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op))))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'deelnemers', filter: `potje_id=eq.${id}` },
-        payload => {
-          setDeelnemers(prev => prev.map(d => d.id === payload.new.id ? payload.new : d))
-          setDeelnemer(prev => prev && prev.id === payload.new.id ? payload.new : prev)
-        })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transacties', filter: `potje_id=eq.${id}` },
-        payload => setTransacties(prev => [...prev, payload.new]))
-      .subscribe(status => setOnline(status === 'SUBSCRIBED'))
+  // ── Acties ────────────────────────────────────────────────────────────────────
 
-    const handleOnline = () => { setOnline(true); toonToast('Verbinding hersteld.', 'ok') }
-    const handleOffline = () => setOnline(false)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
+  const { handleDeelnemen, handleTransactie, handleUndo, handleSluiten, handleAfmelden } =
+    usePotjeActies({
+      potjeId: id,
+      potje,
+      deelnemers,
+      transacties,
+      deelnemer,
+      setDeelnemer,
+      setDeelnemers,
+      setTransacties,
+      toonToast,
+      setModaal,
+      setAfmeldenLaden,
+    })
 
-    return () => {
-      supabase.removeChannel(kanaal)
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [id, laadData])
-
-  async function handleDeelnemen(naam) {
-    const { data, error } = await supabase
-      .from('deelnemers').insert({ potje_id: id, naam, device_id: deviceId }).select().single()
-    if (error) throw error
-    setDeelnemer(data)
-    // Na deelnemen direct door naar Stortingscherm
-    navigate(`/potje/${id}/storten`)
-  }
-
-  async function handleTransactie(type, bedrag) {
-    if (!ikBenActief) throw new Error('NIET_ACTIEF')
-    const saldi = berekenSaldi(deelnemers, transacties)
-    if (type === 'betaling' && bedrag > saldi.potSaldo) {
-      throw new Error(`SALDO_TE_LAAG:${saldi.potSaldo}`)
-    }
-    const { data, error } = await supabase.from('transacties')
-      .insert({ potje_id: id, deelnemer_id: deelnemer.id, type, bedrag })
-      .select().single()
-    if (error) throw error
-    setModaal(null)
-    toonToast(
-      type === 'storting'
-        ? `Storting van ${formatBedrag(bedrag)} geregistreerd.`
-        : `Betaling van ${formatBedrag(bedrag)} geregistreerd.`,
-      'ok',
-      { label: 'Ongedaan', handler: () => handleUndo(data.id) }
-    )
-  }
-
-  async function handleUndo(transactieId) {
-    setToast(null)
-
-    // Zoek de transactie op in de huidige state om eigenaarschap en type te verifiëren
-    const transactie = transacties.find(t => t.id === transactieId)
-
-    // Veiligheidscheck 1: transactie moet van de huidige deelnemer zijn
-    if (!transactie || transactie.deelnemer_id !== deelnemer?.id) {
-      toonToast('Je kunt alleen je eigen transacties ongedaan maken.', 'fout')
-      return
-    }
-
-    // Veiligheidscheck 2: bij storting verwijderen — controleer of potsaldo na verwijdering >= 0 blijft
-    // Voorkomt dat een storting wordt teruggedraaid terwijl er al betalingen zijn gedaan
-    if (transactie.type === 'storting') {
-      const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
-      if (huidigSaldo < Number(transactie.bedrag)) {
-        toonToast(
-          'Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag.',
-          'fout'
-        )
-        return
-      }
-    }
-
-    // Verwijder alleen de eigen transactie (deelnemer_id als extra DB-filter via RLS)
-    const { error } = await supabase
-      .from('transacties')
-      .delete()
-      .eq('id', transactieId)
-      .eq('deelnemer_id', deelnemer.id) // expliciete ownership-check op DB-niveau
-    if (error) {
-      toonToast(logFout(error, { component: 'PaginaPotje', actie: 'undo' }), 'fout')
-    } else {
-      setTransacties(prev => prev.filter(t => t.id !== transactieId))
-      toonToast('Transactie ongedaan gemaakt.', 'ok')
-    }
-  }
-
-  async function handleSluiten() {
-    const { error } = await supabase.from('potjes')
-      .update({ status: 'gesloten', gesloten_op: new Date().toISOString(), gesloten_door: deelnemer.id })
-      .eq('id', id).eq('status', 'open')
-    if (error) throw error
-    setModaal(null)
-  }
-
-  async function handleAfmelden() {
-    if (!deelnemer || afmeldenLaden) return
-    const saldi = berekenSaldi(deelnemers, transacties)
-    const mijnSaldi = saldi.deelnemersSaldi.find(s => s.id === deelnemer.id)
-    if ((mijnSaldi?.gestort ?? 0) === 0) {
-      toonToast('Je kunt je pas afmelden als je hebt gestort.', 'fout')
-      return
-    }
-    setAfmeldenLaden(true)
-    try {
-      const { data, error } = await supabase
-        .from('deelnemers')
-        .update({ actief: false, afgemeld_op: new Date().toISOString() })
-        .eq('id', deelnemer.id)
-        .select().single()
-      if (error) throw error
-      setDeelnemer(data)
-      setDeelnemers(prev => prev.map(d => d.id === data.id ? data : d))
-      toonToast('Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen.', 'info')
-    } catch (e) {
-      toonToast(logFout(e, { component: 'PaginaPotje', actie: 'afmelden' }), 'fout')
-    } finally {
-      setAfmeldenLaden(false)
-    }
-  }
+  // ── Afgeleide waarden ─────────────────────────────────────────────────────────
 
   const saldi = berekenSaldi(deelnemers, transacties)
   const ikBenActief = deelnemer?.actief !== false
@@ -207,7 +82,8 @@ function PaginaPotje() {
     }
   }, [potje, deelnemer])
 
-  // Skeleton loader
+  // ── Renders ───────────────────────────────────────────────────────────────────
+
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
@@ -232,7 +108,7 @@ function PaginaPotje() {
     </div>
   )
 
-  // Deelneemscherm: deelnemer nog niet bekend op dit device
+  // Deelneemscherm
   if (!deelnemer) {
     return (
       <>
@@ -246,7 +122,7 @@ function PaginaPotje() {
           potjeNaam={potje?.naam}
           deelnemers={deelnemers}
           onDeelnemen={handleDeelnemen}
-          profielNaam={localStorage.getItem('digipot_profiel_naam')?.trim() || ''}
+          profielNaam={localStorage.getItem(PROFIEL_NAAM_KEY)?.trim() || ''}
         />
       </>
     )
@@ -261,7 +137,9 @@ function PaginaPotje() {
   return (
     <>
       {!online && (
-        <div className="verbinding-banner">⚠️ Verbinding verbroken. Wijzigingen worden niet opgeslagen.</div>
+        <div className="verbinding-banner">
+          ⚠️ Verbinding verbroken. Wijzigingen worden niet opgeslagen.
+        </div>
       )}
       <div style={!online ? { paddingTop: 40 } : undefined}>
         <PaginaOverzicht
@@ -295,9 +173,7 @@ function PaginaPotje() {
       )}
 
       {toast && (
-        // WCAG 4.1.3: role="status" + aria-live="polite" zodat screenreaders
-        // statusberichten aankondigen zonder de gebruiker te onderbreken.
-        // aria-atomic="true": hele toast wordt voorgelezen bij wijziging.
+        // WCAG 4.1.3: role="status" + aria-live="polite" + aria-atomic="true"
         <div
           className={`toast ${toast.type}`}
           role="status"
@@ -306,7 +182,9 @@ function PaginaPotje() {
         >
           <span>{toast.bericht}</span>
           {toast.actie && (
-            <button className="toast-knop" onClick={toast.actie.handler}>{toast.actie.label}</button>
+            <button className="toast-knop" onClick={toast.actie.handler}>
+              {toast.actie.label}
+            </button>
           )}
         </div>
       )}

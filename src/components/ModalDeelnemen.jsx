@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
 import { valideerDeelnemerNaam } from '../utils/valideer'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profielNaam = '' }) {
   const [naam, setNaam] = useState(profielNaam)
@@ -20,25 +21,9 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
     }
   }, [heeftProfielNaam])
 
-  // WCAG 2.1.1: Escape sluit de modal + tab-trap binnen panel
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === 'Escape' && onAnnuleer) { onAnnuleer(); return }
-      if (e.key !== 'Tab') return
-      const els = [...(panelRef.current?.querySelectorAll(
-        'input, button:not([disabled])'
-      ) ?? [])]
-      if (els.length < 2) return
-      const first = els[0], last = els[els.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault(); last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault(); first.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onAnnuleer])
+  // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
+  // onAnnuleer kan undefined zijn als de modal niet sluitbaar is — gebruik no-op als fallback
+  useFocusTrap(panelRef, onAnnuleer ?? (() => {}))
 
   async function handleSubmit(e) {
     e.preventDefault()

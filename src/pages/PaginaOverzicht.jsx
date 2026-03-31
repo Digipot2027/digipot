@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
+import DeelnemerRij from '../components/DeelnemerRij.jsx'
 import DeelnemerDetailSheet from '../components/DeelnemerDetailSheet.jsx'
 import DeelKnop from '../components/DeelKnop.jsx'
 import ModalAfmelden from '../components/ModalAfmelden.jsx'
@@ -11,6 +12,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
   const [gekozenDeelnemer, setGekozenDeelnemer] = useState(null)
   const [afmeldenModaal, setAfmeldenModaal] = useState(false)
 
+  const valuta = potje?.valuta ?? 'EUR'
   const saldi = berekenSaldi(deelnemers, transacties)
   const actieveDeelnemers = deelnemers.filter(d => d.actief !== false)
   const ikBenActief = ikzelf?.actief !== false
@@ -32,7 +34,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
-                  {formatBedrag(saldi.potSaldo)}
+                  {formatBedrag(saldi.potSaldo, valuta)}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--grijs-500)' }}>saldo</div>
               </div>
@@ -82,40 +84,16 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               </tr>
             </thead>
             <tbody>
-              {deelnemers.map(d => {
-                const s = saldi.deelnemersSaldi.find(x => x.id === d.id)
-                const isAfgemeld = d.actief === false
-                return (
-                  <tr
-                    key={d.id}
-                    onClick={() => setGekozenDeelnemer(d)}
-                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setGekozenDeelnemer(d)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Details van ${d.naam}${isAfgemeld ? ', afgemeld' : ''}`}
-                    style={{
-                      background: isAfgemeld ? 'var(--grijs-50)' : 'transparent',
-                      borderBottom: '1px solid var(--grijs-100)',
-                      cursor: 'pointer',
-                      opacity: isAfgemeld ? 0.6 : 1,
-                    }}
-                  >
-                    <td style={{ padding: '10px 6px' }}>
-                      <span style={{ fontWeight: d.id === ikzelf?.id ? 600 : 400, display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, textDecoration: isAfgemeld ? 'line-through' : 'none', color: 'var(--grijs-900)' }}>
-                        {d.naam}{d.id === ikzelf?.id ? ' (jij)' : ''}
-                        {isAfgemeld && <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Afgemeld</span>}
-                        <span style={{ fontSize: 12, color: 'var(--grijs-400)', fontWeight: 400, textDecoration: 'none' }} aria-hidden="true">›</span>
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right', padding: '10px 6px' }}>
-                      {formatBedrag(s?.gestort || 0)}
-                    </td>
-                    <td style={{ fontSize: 14, color: (s?.betaald || 0) > 0 ? 'var(--grijs-900)' : 'var(--grijs-400)', textAlign: 'right', padding: '10px 6px' }}>
-                      {formatBedrag(s?.betaald || 0)}
-                    </td>
-                  </tr>
-                )
-              })}
+              {deelnemers.map(d => (
+                <DeelnemerRij
+                  key={d.id}
+                  deelnemer={d}
+                  saldi={saldi.deelnemersSaldi.find(x => x.id === d.id)}
+                  isIkzelf={d.id === ikzelf?.id}
+                  onClick={() => setGekozenDeelnemer(d)}
+                  valuta={valuta}
+                />
+              ))}
             </tbody>
           </table>
         </div>
@@ -173,7 +151,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </button>
           </div>
 
-          {/* Helpteksten onder rij 2 — zichtbaar op mobiel (title-attribuut werkt niet op touch) */}
+          {/* Helpteksten onder rij 2 — zichtbaar op mobiel */}
           {ikBenActief && !ikBenGestort && (
             <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
               Eerst storten om je te kunnen afmelden.
@@ -198,7 +176,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
         />
       )}
 
-      {/* Afmeld-bevestigingsmodal — onomkeerbare actie vereist expliciete bevestiging */}
+      {/* Afmeld-bevestigingsmodal */}
       {afmeldenModaal && (
         <ModalAfmelden
           deelnemerNaam={ikzelf?.naam}

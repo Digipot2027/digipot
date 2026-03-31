@@ -238,7 +238,10 @@ describe('valideerTransactieBedrag — VT-09 t/m VT-14: saldocheck bij betaling'
 
   it('VT-14: foutmelding saldo-check bevat het geformatteerde saldo', () => {
     const fout = valideerBedrag('100', { isStorting: false, potSaldo: 25.5 })
-    expect(fout).toContain('€25,50')
+    // formatBedrag('nl-NL') geeft '€\u00a025,50' (non-breaking space na €-teken).
+    // Test op de numerieke waarde i.p.v. het exacte symbool om locale-variaties te vermijden.
+    expect(fout).toContain('25,50')
+    expect(fout).toContain('niet genoeg saldo')
   })
 })
 

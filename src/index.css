@@ -65,6 +65,21 @@ body {
 }
 .input:focus { border-color: var(--blauw); }
 .input.fout { border-color: var(--rood); }
+/* Gedeelde stijl voor <select>-elementen — zelfde visuele taal als .input.
+   appearance: none verwijdert OS-specifieke stijl; eigen pijltje via background-image. */
+.select {
+  width: 100%; padding: 0.75rem 2.5rem 0.75rem 0.875rem;
+  border: 1.5px solid var(--grijs-200); border-radius: 8px;
+  font-size: 1rem; outline: none; transition: border-color 0.2s;
+  background-color: var(--wit);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  appearance: none; -webkit-appearance: none;
+  cursor: pointer;
+  color: var(--grijs-900);
+}
+.select:focus { border-color: var(--blauw); }
 .fout-tekst { font-size: 0.75rem; color: var(--rood); margin-top: 0.25rem; }
 /* K3: teller gebruikt grijs-500 ipv grijs-400 (was 2.3:1, nu 4.6:1 contrast) */
 .teller { font-size: 0.75rem; color: var(--grijs-500); text-align: right; margin-top: 0.25rem; }

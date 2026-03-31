@@ -1,98 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
-import { logFout } from '../utils/logFout'
-import { berekenEindafrekening } from '../utils/berekenSaldi'
+import { useMijnPotjes } from '../hooks/useMijnPotjes'
 import { formatBedrag } from '../utils/formatBedrag'
 
 function PaginaGeslotenPotjes() {
   const navigate = useNavigate()
-  const [potjes, setPotjes] = useState([])
-  const [laden, setLaden] = useState(true)
-  const [fout, setFout] = useState('')
+  const { potjes, laden, fout } = useMijnPotjes('gesloten')
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Gesloten potjes — Digipot' }, [])
 
-  const deviceId = localStorage.getItem('digipot_device_id')
-  const profielNaam = localStorage.getItem('digipot_profiel_naam')?.trim() || null
-
-  useEffect(() => {
-    async function laadPotjes() {
-      try {
-        // ilike = case-insensitief: "jan" matcht ook "Jan" of "JAN" (fix Medium security/UX).
-        const filters = []
-        if (deviceId) filters.push(`device_id.eq.${deviceId}`)
-        if (profielNaam) filters.push(`naam.ilike.${profielNaam}`)
-
-        if (filters.length === 0) {
-          setPotjes([])
-          setLaden(false)
-          return
-        }
-
-        const { data: deelnemers, error: deError } = await supabase
-          .from('deelnemers')
-          .select('potje_id, naam, id')
-          .or(filters.join(','))
-
-        if (deError) throw deError
-        if (!deelnemers || deelnemers.length === 0) {
-          setPotjes([])
-          setLaden(false)
-          return
-        }
-
-        const potjeIds = [...new Set(deelnemers.map(d => d.potje_id))]
-
-        // Haal gesloten potjes op, nieuwste bovenaan (op sluitdatum)
-        const { data: geslotenPotjes, error: pError } = await supabase
-          .from('potjes')
-          .select('*')
-          .in('id', potjeIds)
-          .eq('status', 'gesloten')
-          .order('gesloten_op', { ascending: false })
-
-        if (pError) throw pError
-
-        // Per potje: deelnemers + transacties voor eindafrekening
-        const verrijkt = await Promise.all((geslotenPotjes || []).map(async potje => {
-          const [{ data: allDeelnemers }, { data: transacties }] = await Promise.all([
-            supabase.from('deelnemers').select('*').eq('potje_id', potje.id),
-            supabase.from('transacties').select('*').eq('potje_id', potje.id),
-          ])
-
-          const saldi = berekenEindafrekening(allDeelnemers || [], transacties || [])
-
-          // Zoek verrekening voor dit device / deze naam
-          const mijnDeelnemer = (allDeelnemers || []).find(d =>
-            d.device_id === deviceId ||
-            (profielNaam && d.naam.toLowerCase() === profielNaam.toLowerCase())
-          )
-          const mijnVerrekening = mijnDeelnemer
-            ? saldi.deelnemersSaldi.find(s => s.id === mijnDeelnemer.id)?.verrekening ?? null
-            : null
-
-          return {
-            ...potje,
-            mijnVerrekening,
-          }
-        }))
-
-        setPotjes(verrijkt)
-      } catch (e) {
-        setFout(logFout(e, { component: 'PaginaGeslotenPotjes', actie: 'laadPotjes' }))
-      } finally {
-        setLaden(false)
-      }
-    }
-
-    laadPotjes()
-  }, [deviceId, profielNaam])
-
   function datumLabel(iso) {
     return new Date(iso).toLocaleDateString('nl-NL', {
-      day: 'numeric', month: 'short', year: 'numeric'
+      day: 'numeric', month: 'short', year: 'numeric',
     })
   }
 
@@ -143,10 +63,7 @@ function PaginaGeslotenPotjes() {
           <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 20 }}>
             Je hebt nog geen afgeronde potjes op dit apparaat.
           </p>
-          <button
-            className="knop knop-primair"
-            onClick={() => navigate('/')}
-          >
+          <button className="knop knop-primair" onClick={() => navigate('/')}>
             Nieuw potje starten
           </button>
         </div>
@@ -186,7 +103,7 @@ function PaginaGeslotenPotjes() {
                     <div style={{
                       fontSize: '1rem',
                       fontWeight: 700,
-                      color: potje.mijnVerrekening >= 0 ? 'var(--groen)' : 'var(--rood)'
+                      color: potje.mijnVerrekening >= 0 ? 'var(--groen)' : 'var(--rood)',
                     }}>
                       {potje.mijnVerrekening >= 0
                         ? `+${formatBedrag(potje.mijnVerrekening)}`

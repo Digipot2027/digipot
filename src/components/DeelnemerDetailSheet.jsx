@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { formatBedrag } from '../utils/formatBedrag'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 // Formatteert timestamp naar "uu:mm" of "dag maand uu:mm" als ouder dan vandaag
 function volledigTijdLabel(iso) {
@@ -14,14 +15,10 @@ function volledigTijdLabel(iso) {
 }
 
 function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
-  // WCAG 2.1.1: Escape-toets sluit de sheet (consistent met andere modals)
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === 'Escape') onSluiten()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onSluiten])
+  const panelRef = useRef(null)
+
+  // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
+  useFocusTrap(panelRef, onSluiten)
 
   const mijnTransacties = transacties
     .filter(t => t.deelnemer_id === deelnemer.id)
@@ -41,15 +38,17 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
       aria-labelledby="detail-titel"
       onClick={e => { if (e.target === e.currentTarget) onSluiten() }}
     >
-      <div style={{
-        background: 'var(--wit)',
-        width: '100%',
-        borderRadius: '16px 16px 0 0',
-        padding: 24,
-        paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
-        maxHeight: '80vh',
-        overflowY: 'auto',
-      }}>
+      <div
+        ref={panelRef}
+        style={{
+          background: 'var(--wit)',
+          width: '100%',
+          borderRadius: '16px 16px 0 0',
+          padding: 24,
+          paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
+          maxHeight: '80vh',
+          overflowY: 'auto',
+        }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

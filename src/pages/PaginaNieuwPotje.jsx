@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { MAX_NAAM, STANDAARD_VALUTA, VALUTA_OPTIES } from '../constants'
 
 function PaginaNieuwPotje() {
   const navigate = useNavigate()
   const [naam, setNaam] = useState('')
+  const [valuta, setValuta] = useState(STANDAARD_VALUTA)
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
 
   // WCAG 2.4.2: unieke paginatitel per scherm
   useEffect(() => { document.title = 'Nieuw potje — Digipot' }, [])
-
-  const MAX_NAAM = 30 // K1: overeenkomstig DB-constraint potjes.naam
 
   async function handleAanmaken(e) {
     e.preventDefault()
@@ -32,7 +32,7 @@ function PaginaNieuwPotje() {
     try {
       const { data, error } = await supabase
         .from('potjes')
-        .insert({ naam: naamTrimmed })
+        .insert({ naam: naamTrimmed, valuta })
         .select()
         .single()
 
@@ -61,6 +61,8 @@ function PaginaNieuwPotje() {
         <p className="subtitel">Start een nieuw groepspotje en deel de link met je vrienden.</p>
 
         <form onSubmit={handleAanmaken}>
+
+          {/* Potjenaam */}
           <div className="veld">
             <label className="label" htmlFor="naam">Naam van het potje</label>
             <input
@@ -76,6 +78,26 @@ function PaginaNieuwPotje() {
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
             {fout && <div className="fout-tekst">{fout}</div>}
+          </div>
+
+          {/* Valutakeuze */}
+          <div className="veld">
+            <label className="label" htmlFor="valuta">Valuta</label>
+            <select
+              id="valuta"
+              className="select"
+              value={valuta}
+              onChange={e => setValuta(e.target.value)}
+            >
+              {VALUTA_OPTIES.map(opt => (
+                <option key={opt.waarde} value={opt.waarde}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <div className="teller">
+              Niet aanpasbaar na aanmaken
+            </div>
           </div>
 
           <button
