@@ -1,14 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMijnPotjes } from '../hooks/useMijnPotjes'
 import { formatBedrag } from '../utils/formatBedrag'
 
 function PaginaOpenPotjes() {
   const navigate = useNavigate()
-  const { potjes, laden, fout } = useMijnPotjes('open')
+  const { potjes, laden, fout, herlaad } = useMijnPotjes('open')
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Open potjes — Digipot' }, [])
+
+  // WCAG 4.1.3: focus op foutmelding zodat screenreaders de fout aankondigen
+  const foutRef = useCallback(node => {
+    if (node && fout) node.focus()
+  }, [fout])
 
   function datumLabel(iso) {
     return new Date(iso).toLocaleDateString('nl-NL', {
@@ -47,9 +52,25 @@ function PaginaOpenPotjes() {
         </div>
       </div>
 
+      {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
-        <div className="kaart">
-          <p style={{ color: 'var(--rood)', fontSize: '0.875rem' }}>{fout}</p>
+        <div
+          ref={foutRef}
+          role="alert"
+          tabIndex={-1}
+          className="kaart"
+          style={{ outline: 'none' }}
+        >
+          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>
+            {fout}
+          </p>
+          <button
+            className="knop knop-secundair"
+            onClick={herlaad}
+            style={{ marginTop: 4 }}
+          >
+            Opnieuw proberen
+          </button>
         </div>
       )}
 
@@ -100,7 +121,7 @@ function PaginaOpenPotjes() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '1rem', fontWeight: 700, color: potje.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-400)' }}>
-                    {formatBedrag(potje.potSaldo)}
+                    {formatBedrag(potje.potSaldo, potje.valuta)}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>saldo</div>
                 </div>

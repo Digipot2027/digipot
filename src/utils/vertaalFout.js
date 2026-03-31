@@ -27,8 +27,18 @@ export function vertaalFout(error) {
   if (bericht.includes('JWT') || bericht.includes('auth'))
     return 'Sessie verlopen. Ververs de pagina.'
 
-  if (bericht.includes('fetch') || bericht.includes('network'))
+  if (bericht.includes('fetch') || bericht.includes('network') || bericht.includes('NetworkError'))
     return 'Verbinding verbroken. Wijzigingen worden niet opgeslagen. Controleer je internet.'
+
+  // PostgreSQL-foutcodes (van directe DB-errors via Supabase)
+  if (bericht.includes('42703') || (bericht.includes('column') && bericht.includes('does not exist')))
+    return 'Databasefout: een vereiste kolom ontbreekt. Voer de openstaande migraties uit.'
+
+  if (bericht.includes('42P01') || (bericht.includes('relation') && bericht.includes('does not exist')))
+    return 'Databasefout: een vereiste tabel ontbreekt. Voer de openstaande migraties uit.'
+
+  if (bericht.includes('PGRST') || bericht.includes('406') || bericht.includes('400'))
+    return 'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
 
   return 'Er is iets misgegaan. Probeer het opnieuw.'
 }

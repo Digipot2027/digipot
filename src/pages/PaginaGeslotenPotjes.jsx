@@ -1,14 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMijnPotjes } from '../hooks/useMijnPotjes'
 import { formatBedrag } from '../utils/formatBedrag'
 
 function PaginaGeslotenPotjes() {
   const navigate = useNavigate()
-  const { potjes, laden, fout } = useMijnPotjes('gesloten')
+  const { potjes, laden, fout, herlaad } = useMijnPotjes('gesloten')
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Gesloten potjes — Digipot' }, [])
+
+  // WCAG 4.1.3: focus op foutmelding zodat screenreaders de fout aankondigen
+  const foutRef = useCallback(node => {
+    if (node && fout) node.focus()
+  }, [fout])
 
   function datumLabel(iso) {
     return new Date(iso).toLocaleDateString('nl-NL', {
@@ -47,9 +52,25 @@ function PaginaGeslotenPotjes() {
         </div>
       </div>
 
+      {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
-        <div className="kaart">
-          <p style={{ color: 'var(--rood)', fontSize: '0.875rem' }}>{fout}</p>
+        <div
+          ref={foutRef}
+          role="alert"
+          tabIndex={-1}
+          className="kaart"
+          style={{ outline: 'none' }}
+        >
+          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>
+            {fout}
+          </p>
+          <button
+            className="knop knop-secundair"
+            onClick={herlaad}
+            style={{ marginTop: 4 }}
+          >
+            Opnieuw proberen
+          </button>
         </div>
       )}
 
@@ -106,8 +127,8 @@ function PaginaGeslotenPotjes() {
                       color: potje.mijnVerrekening >= 0 ? 'var(--groen)' : 'var(--rood)',
                     }}>
                       {potje.mijnVerrekening >= 0
-                        ? `+${formatBedrag(potje.mijnVerrekening)}`
-                        : `-${formatBedrag(Math.abs(potje.mijnVerrekening))}`}
+                        ? `+${formatBedrag(potje.mijnVerrekening, potje.valuta)}`
+                        : `-${formatBedrag(Math.abs(potje.mijnVerrekening), potje.valuta)}`}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>
                       {potje.mijnVerrekening >= 0 ? 'ontvangen' : 'bijbetaald'}
