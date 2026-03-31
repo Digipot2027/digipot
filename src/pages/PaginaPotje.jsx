@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { usePotje } from '../hooks/usePotje'
 import { usePotjeActies } from '../hooks/usePotjeActies'
@@ -34,23 +34,28 @@ function PaginaPotje() {
 
   // ── Toast ─────────────────────────────────────────────────────────────────────
 
-  function toonToast(bericht, type = 'info', actie = null) {
+  // useCallback zodat toonToast stabiel is als dependency in useEffect hieronder.
+  const toonToast = useCallback((bericht, type = 'info', actie = null) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setToast({ bericht, type, actie })
     const duur = actie ? 10000 : type === 'info' ? 5000 : 3000
     toastTimerRef.current = setTimeout(() => setToast(null), duur)
-  }
+  }, [])
 
-  // Verbinding hersteld → toast tonen
+  // Verbinding hersteld → toast tonen.
+  // setTimeout(..., 0) verschuift de setState naar een microtask zodat hij
+  // niet synchroon in de effect-body valt (react-hooks/set-state-in-effect).
   const vorigeOnline = useRef(online)
   useEffect(() => {
-    if (!vorigeOnline.current && online) toonToast('Verbinding hersteld.', 'ok')
+    if (!vorigeOnline.current && online) {
+      setTimeout(() => toonToast('Verbinding hersteld.', 'ok'), 0)
+    }
     vorigeOnline.current = online
-  }, [online])
+  }, [online, toonToast])
 
   // ── Acties ────────────────────────────────────────────────────────────────────
 
-  const { handleDeelnemen, handleTransactie, handleUndo, handleSluiten, handleAfmelden } =
+  const { handleDeelnemen, handleTransactie, handleSluiten, handleAfmelden } =
     usePotjeActies({
       potjeId: id,
       potje,

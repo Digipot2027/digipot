@@ -37,13 +37,6 @@ function formatSaldiWaarde(waarde, valuta = 'EUR') {
   return formatBedrag(waarde || 0, valuta)
 }
 
-// ── Testdata ──────────────────────────────────────────────────────────────────
-
-const actief    = { id: 'd1', naam: 'Alice', actief: true }
-const afgemeld  = { id: 'd2', naam: 'Bob',   actief: false }
-const saldiVol  = { gestort: 25, betaald: 30 }
-const saldiLeeg = { gestort: 0,  betaald: 0  }
-
 // ── DR-01 t/m DR-04: aria-label ───────────────────────────────────────────────
 
 describe('DeelnemerRij — DR-01 t/m DR-04: aria-label opbouw', () => {
@@ -104,7 +97,6 @@ describe('DeelnemerRij — DR-08 t/m DR-10: naamweergave', () => {
 describe('DeelnemerRij — DR-11 t/m DR-12: saldi-fallback bij null/undefined', () => {
   it('DR-11: null saldi → formatteert als 0', () => {
     const result = formatSaldiWaarde(null, 'EUR')
-    // formatBedrag(0) geeft '€ 0,00' of vergelijkbaar — bevat altijd '0'
     expect(result).toMatch(/0/)
   })
 
