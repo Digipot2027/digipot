@@ -7,9 +7,6 @@ import { formatBedrag } from '../utils/formatBedrag'
  * Berekent de minimale vereffening tussen crediteuren en debiteuren.
  * Algoritme: grootste debiteur koppelen aan grootste crediteur (greedy).
  * Resultaat: maximaal n-1 transacties voor n deelnemers.
- *
- * @param {Array} deelnemersSaldi - output van berekenEindafrekening
- * @returns {Array} [{van, aan, bedrag}]
  */
 function berekenVereffening(deelnemersSaldi) {
   const crediteuren = deelnemersSaldi
@@ -65,6 +62,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
+  // Bijhouden welke deelnemer is uitgeklapt
   const [opengeklapt, setOpengeklapt] = useState(null)
 
   function toggleDetail(id) {
@@ -131,46 +129,77 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
           return (
             <div
               key={d.id}
-              style={{ borderBottom: isLaatste ? 'none' : '1px solid var(--grijs-100)', opacity: isAfgemeld ? 0.75 : 1 }}
+              style={{
+                borderBottom: isLaatste ? 'none' : '1px solid var(--grijs-100)',
+                opacity: isAfgemeld ? 0.75 : 1,
+                padding: '12px 0',
+              }}
             >
-              {/* Hoofdrij — klikbaar */}
+              {/* Hoofdrij — klikbaar voor uitklappen */}
               <button
                 onClick={() => toggleDetail(d.id)}
                 aria-expanded={isOpen}
                 style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  width: '100%', padding: '14px 0', background: 'none', border: 'none',
-                  cursor: 'pointer', textAlign: 'left', gap: 8,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                  width: '100%', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left', gap: 8, padding: 0,
                 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <strong style={{ fontSize: '0.9375rem', textDecoration: isAfgemeld ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {d.naam}
-                  </strong>
-                  {isAfgemeld && (
-                    <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
-                  )}
+                {/* Links: naam + vaste subtekst */}
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <strong style={{
+                      fontSize: '0.9375rem',
+                      textDecoration: isAfgemeld ? 'line-through' : 'none',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {d.naam}
+                    </strong>
+                    {isAfgemeld && (
+                      <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
+                    )}
+                  </span>
+                  {/* Betaald + ingelegd altijd zichtbaar */}
+                  <span style={{ fontSize: 13, color: 'var(--grijs-600)' }}>
+                    Betaald: {formatBedrag(d.betaald, valuta)}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--grijs-500)' }}>
+                    Ingelegd: {formatBedrag(d.gestort, valuta)}
+                  </span>
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <span style={{ fontWeight: 700, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)' }}>
+
+                {/* Rechts: verrekening + pijltje */}
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                  <span style={{ fontWeight: 700, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', fontSize: '1rem' }}>
                     {d.verrekening >= 0
                       ? `+${formatBedrag(d.verrekening, valuta)}`
                       : `-${formatBedrag(Math.abs(d.verrekening), valuta)}`}
                   </span>
-                  <span style={{ fontSize: 12, color: 'var(--grijs-400)', lineHeight: 1, display: 'inline-block', transition: 'transform 0.15s', transform: isOpen ? 'rotate(90deg)' : 'none' }}>
-                    ›
+                  <span style={{
+                    fontSize: 11, color: 'var(--grijs-500)',
+                    display: 'flex', alignItems: 'center', gap: 3,
+                  }}>
+                    details
+                    <span style={{
+                      fontSize: 12, color: 'var(--grijs-400)', lineHeight: 1,
+                      display: 'inline-block', transition: 'transform 0.15s',
+                      transform: isOpen ? 'rotate(90deg)' : 'none',
+                    }}>›</span>
                   </span>
                 </span>
               </button>
 
               {/* Status label */}
-              <div style={{ fontSize: 12, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', marginTop: -8, paddingBottom: 10 }}>
+              <div style={{ fontSize: 12, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', marginTop: 6 }}>
                 {d.verrekening >= 0 ? '✅ Ontvangt geld terug' : '⚠️ Moet bijbetalen'}
               </div>
 
-              {/* Uitklappaneel */}
+              {/* Uitklappaneel — transacties per tijdstip */}
               {isOpen && (
-                <div style={{ background: 'var(--grijs-50)', borderRadius: 8, padding: '12px 14px', marginBottom: 12, fontSize: 13 }}>
+                <div style={{
+                  background: 'var(--grijs-50)', borderRadius: 8,
+                  padding: '12px 14px', marginTop: 10, fontSize: 13,
+                }}>
                   {dtransacties.length === 0 ? (
                     <p style={{ color: 'var(--grijs-500)', margin: 0 }}>Geen transacties.</p>
                   ) : (
@@ -201,14 +230,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                           ))}
                         </>
                       )}
-                      <div style={{ borderTop: '1px solid var(--grijs-200)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                        <span>Ingelegd</span>
-                        <span>{formatBedrag(d.gestort, valuta)}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                        <span>Betaald aan horeca</span>
-                        <span style={{ color: 'var(--groen)' }}>{formatBedrag(d.betaald, valuta)}</span>
-                      </div>
                     </>
                   )}
                 </div>
