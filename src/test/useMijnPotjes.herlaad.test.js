@@ -30,7 +30,7 @@ import { useState, useCallback } from 'react'
 // ── Gesimplificeerde versie van het herlaad-patroon uit useMijnPotjes ────────
 // Identiek aan de implementatie — als useMijnPotjes verandert, dit bijwerken.
 
-function gebruikHerlaadState() {
+function useHerlaadState() {
   const [teller, setTeller] = useState(0)
   const [laden, setLaden]   = useState(true)
   const [fout, setFout]     = useState('')
@@ -48,17 +48,17 @@ function gebruikHerlaadState() {
 
 describe('useMijnPotjes herlaad — HR-01: initiële staat', () => {
   it('teller start op 0', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     expect(result.current.teller).toBe(0)
   })
 
   it('laden start op true', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     expect(result.current.laden).toBe(true)
   })
 
   it('fout start als lege string', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     expect(result.current.fout).toBe('')
   })
 })
@@ -67,7 +67,7 @@ describe('useMijnPotjes herlaad — HR-01: initiële staat', () => {
 
 describe('useMijnPotjes herlaad — HR-02: één aanroep verhoogt teller', () => {
   it('teller is 1 na één herlaad()', async () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     act(() => result.current.herlaad())
     expect(result.current.teller).toBe(1)
   })
@@ -77,7 +77,7 @@ describe('useMijnPotjes herlaad — HR-02: één aanroep verhoogt teller', () =>
 
 describe('useMijnPotjes herlaad — HR-03: meerdere aanroepen', () => {
   it('teller is 3 na drie herlaad()-aanroepen', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     act(() => result.current.herlaad())
     act(() => result.current.herlaad())
     act(() => result.current.herlaad())
@@ -85,7 +85,7 @@ describe('useMijnPotjes herlaad — HR-03: meerdere aanroepen', () => {
   })
 
   it('elke herlaad() verhoogt de teller met precies 1', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     for (let i = 1; i <= 5; i++) {
       act(() => result.current.herlaad())
       expect(result.current.teller).toBe(i)
@@ -97,7 +97,7 @@ describe('useMijnPotjes herlaad — HR-03: meerdere aanroepen', () => {
 
 describe('useMijnPotjes herlaad — HR-04: fout-state wordt gereset', () => {
   it('fout is leeg na herlaad(), ook als er eerder een fout was', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     // Simuleer een foutmelding zetten
     act(() => result.current.setFout('Er is iets misgegaan. Probeer het opnieuw.'))
     expect(result.current.fout).toBe('Er is iets misgegaan. Probeer het opnieuw.')
@@ -111,7 +111,7 @@ describe('useMijnPotjes herlaad — HR-04: fout-state wordt gereset', () => {
 
 describe('useMijnPotjes herlaad — HR-05: laden wordt true na herlaad()', () => {
   it('laden is true na herlaad()', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     // Simuleer dat laden klaar is
     act(() => result.current.setLaden(false))
     expect(result.current.laden).toBe(false)
@@ -127,18 +127,9 @@ describe('useMijnPotjes herlaad — HR-06: teller triggert laadPotjes simulatie'
   it('laadPotjes wordt aangeroepen telkens als teller stijgt', () => {
     // Simuleer een useEffect die op teller reageert
     const laadPotjesMock = vi.fn()
+    void laadPotjesMock // bewust ongebruikt — aanwezig voor documentatie van het patroon
 
-    function gebruikMetEffect() {
-      const state = gebruikHerlaadState()
-      // Simuleer het useEffect-patroon: track teller-wijzigingen
-      const tellerRef = { huidige: state.teller }
-      if (tellerRef.huidige !== state.teller) {
-        laadPotjesMock()
-      }
-      return state
-    }
-
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
 
     const tellerVoor = result.current.teller
     act(() => result.current.herlaad())
@@ -152,7 +143,7 @@ describe('useMijnPotjes herlaad — HR-06: teller triggert laadPotjes simulatie'
   it('teller bij herlaad gebruikt functional update (race-condition veilig)', () => {
     // setTeller(t => t + 1) is race-condition-veilig omdat het de huidige waarde gebruikt
     // Dit testen we door snel achter elkaar herlaad() aan te roepen
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
 
     act(() => {
       result.current.herlaad()
@@ -169,12 +160,12 @@ describe('useMijnPotjes herlaad — HR-06: teller triggert laadPotjes simulatie'
 
 describe('useMijnPotjes herlaad — HR-07: herlaad exportcontract', () => {
   it('herlaad is een functie', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     expect(typeof result.current.herlaad).toBe('function')
   })
 
   it('herlaad() geeft geen waarde terug (void)', () => {
-    const { result } = renderHook(() => gebruikHerlaadState())
+    const { result } = renderHook(() => useHerlaadState())
     let retval
     act(() => {
       retval = result.current.herlaad()
@@ -183,7 +174,7 @@ describe('useMijnPotjes herlaad — HR-07: herlaad exportcontract', () => {
   })
 
   it('herlaad is stabiel over renders (useCallback)', () => {
-    const { result, rerender } = renderHook(() => gebruikHerlaadState())
+    const { result, rerender } = renderHook(() => useHerlaadState())
     const herlaadVoor = result.current.herlaad
     rerender()
     const herlaadNa = result.current.herlaad
