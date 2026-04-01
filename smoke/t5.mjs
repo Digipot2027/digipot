@@ -32,7 +32,7 @@ await runScenario({
 
   deelnemers: [
     { naam: 'Beek',        isBeek: true,  aankomstMinuut: 0  },
-    { naam: 'Poiesz',      isBeek: false, aankomstMinuut: 0  },
+    { naam: 'Poison',      isBeek: false, aankomstMinuut: 0, device_id: '96779e1b-3bf8-422c-a0df-ff4167931bd4' },
     { naam: 'Cynthia',     isBeek: false, aankomstMinuut: 0  },
     { naam: 'Dijl',        isBeek: false, aankomstMinuut: 0  },
     { naam: 'Miek',        isBeek: false, aankomstMinuut: 0  },
@@ -47,7 +47,7 @@ await runScenario({
   events: [
     // T+2 — Ronde 1: 6 vroegen (incl. Grote Strik) → pot €41
     { minuut:   2, type: 'storting', naam: 'Beek',        bedrag:  8 },
-    { minuut:   2, type: 'storting', naam: 'Poiesz',      bedrag:  6 },
+    { minuut:   2, type: 'storting', naam: 'Poison',      bedrag:  6 },
     { minuut:   2, type: 'storting', naam: 'Cynthia',     bedrag:  9 },
     { minuut:   2, type: 'storting', naam: 'Dijl',        bedrag:  8 },
     { minuut:   2, type: 'storting', naam: 'Miek',        bedrag:  6 },
@@ -67,7 +67,7 @@ await runScenario({
     { minuut:  61, type: 'storting', naam: 'Henri',       bedrag: 10 },
     // T+62 — Ronde 2: 9 actieven → pot €146
     { minuut:  62, type: 'storting', naam: 'Beek',        bedrag:  8 },
-    { minuut:  62, type: 'storting', naam: 'Poiesz',      bedrag:  6 },
+    { minuut:  62, type: 'storting', naam: 'Poison',      bedrag:  6 },
     { minuut:  62, type: 'storting', naam: 'Cynthia',     bedrag:  9 },
     { minuut:  62, type: 'storting', naam: 'Dijl',        bedrag:  8 },
     { minuut:  62, type: 'storting', naam: 'Miek',        bedrag:  6 },
@@ -82,7 +82,7 @@ await runScenario({
     { minuut:  91, type: 'storting', naam: 'Nadia',       bedrag:  7 },
     // T+92 — Ronde 3: 10 actieven (Nadia T+90 aanwezig) → pot €95
     { minuut:  92, type: 'storting', naam: 'Beek',        bedrag:  8 },
-    { minuut:  92, type: 'storting', naam: 'Poiesz',      bedrag:  6 },
+    { minuut:  92, type: 'storting', naam: 'Poison',      bedrag:  6 },
     { minuut:  92, type: 'storting', naam: 'Cynthia',     bedrag:  9 },
     { minuut:  92, type: 'storting', naam: 'Dijl',        bedrag:  8 },
     { minuut:  92, type: 'storting', naam: 'Miek',        bedrag:  6 },
@@ -95,7 +95,7 @@ await runScenario({
     { minuut: 120, type: 'betaling', naam: 'Laird',       bedrag: 82 },
     // T+125 — Ronde 4: 10 actieven → pot €88
     { minuut: 125, type: 'storting', naam: 'Beek',        bedrag:  8 },
-    { minuut: 125, type: 'storting', naam: 'Poiesz',      bedrag:  6 },
+    { minuut: 125, type: 'storting', naam: 'Poison',      bedrag:  6 },
     { minuut: 125, type: 'storting', naam: 'Cynthia',     bedrag:  9 },
     { minuut: 125, type: 'storting', naam: 'Dijl',        bedrag:  8 },
     { minuut: 125, type: 'storting', naam: 'Miek',        bedrag:  6 },
@@ -108,7 +108,7 @@ await runScenario({
     { minuut: 160, type: 'betaling', naam: 'Henri',       bedrag: 74 },
     // T+165 — Ronde 5: 10 actieven (incl. Nadia) → pot €69
     { minuut: 165, type: 'storting', naam: 'Beek',        bedrag:  7 },
-    { minuut: 165, type: 'storting', naam: 'Poiesz',      bedrag:  5 },
+    { minuut: 165, type: 'storting', naam: 'Poison',      bedrag:  5 },
     { minuut: 165, type: 'storting', naam: 'Cynthia',     bedrag:  8 },
     { minuut: 165, type: 'storting', naam: 'Dijl',        bedrag:  7 },
     { minuut: 165, type: 'storting', naam: 'Miek',        bedrag:  5 },

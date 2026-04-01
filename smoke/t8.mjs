@@ -17,7 +17,7 @@ await runScenario({
     { naam: 'Maaike',  isBeek: false, aankomstMinuut: 0   }, // koppel Beek, weg T+59
     { naam: 'Beer',    isBeek: false, aankomstMinuut: 0   },
     { naam: 'Cynthia', isBeek: false, aankomstMinuut: 0   },
-    { naam: 'Poiesz',  isBeek: false, aankomstMinuut: 0   },
+    { naam: 'Poison',  isBeek: false, aankomstMinuut: 0, device_id: '96779e1b-3bf8-422c-a0df-ff4167931bd4' },
     { naam: 'As',      isBeek: false, aankomstMinuut: 30  }, // koppel Henri
     { naam: 'Marlene', isBeek: false, aankomstMinuut: 60  }, // koppel Laird
     { naam: 'Laird',   isBeek: false, aankomstMinuut: 60  }, // koppel Marlene
@@ -35,7 +35,7 @@ await runScenario({
     { minuut:   2, type: 'storting', naam: 'Maaike',  bedrag:  6 },
     { minuut:   2, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut:   2, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut:   2, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:   2, type: 'storting', naam: 'Poison',  bedrag:  6 },
     // T+30 — As aankomst
     { minuut:  30, type: 'aankomst', naam: 'As' },
     { minuut:  31, type: 'storting', naam: 'As',      bedrag:  5 },
@@ -44,7 +44,7 @@ await runScenario({
     { minuut:  32, type: 'storting', naam: 'Maaike',  bedrag:  6 },
     { minuut:  32, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut:  32, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut:  32, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:  32, type: 'storting', naam: 'Poison',  bedrag:  6 },
     // T+55 — Betaling 1: Beer €79 (≤€81 ✓) → pot €2
     { minuut:  55, type: 'betaling', naam: 'Beer',    bedrag: 79 },
     // T+59 — Maaike afgemeld
@@ -58,7 +58,7 @@ await runScenario({
     { minuut:  62, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut:  62, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut:  62, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut:  62, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:  62, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut:  62, type: 'storting', naam: 'As',      bedrag:  5 },
     // T+90 — Dijl+Henri aankomst
     { minuut:  90, type: 'aankomst', naam: 'Dijl' },
@@ -69,7 +69,7 @@ await runScenario({
     { minuut:  92, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut:  92, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut:  92, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut:  92, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:  92, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut:  92, type: 'storting', naam: 'As',      bedrag:  5 },
     { minuut:  92, type: 'storting', naam: 'Marlene', bedrag:  8 },
     { minuut:  92, type: 'storting', naam: 'Laird',   bedrag:  9 },
@@ -82,7 +82,7 @@ await runScenario({
     { minuut: 122, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut: 122, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut: 122, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut: 122, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut: 122, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut: 122, type: 'storting', naam: 'As',      bedrag:  5 },
     { minuut: 122, type: 'storting', naam: 'Marlene', bedrag:  8 },
     { minuut: 122, type: 'storting', naam: 'Laird',   bedrag:  9 },
@@ -97,7 +97,7 @@ await runScenario({
     { minuut: 156, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut: 156, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut: 156, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut: 156, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut: 156, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut: 156, type: 'storting', naam: 'As',      bedrag:  5 },
     { minuut: 156, type: 'storting', naam: 'Marlene', bedrag:  8 },
     { minuut: 156, type: 'storting', naam: 'Laird',   bedrag:  9 },
@@ -113,7 +113,7 @@ await runScenario({
     { minuut: 186, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut: 186, type: 'storting', naam: 'Beer',    bedrag:  9 },
     { minuut: 186, type: 'storting', naam: 'Cynthia', bedrag:  9 },
-    { minuut: 186, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut: 186, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut: 186, type: 'storting', naam: 'As',      bedrag:  5 },
     { minuut: 186, type: 'storting', naam: 'Marlene', bedrag:  8 },
     { minuut: 186, type: 'storting', naam: 'Laird',   bedrag:  9 },
@@ -129,7 +129,7 @@ await runScenario({
     { minuut: 216, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut: 216, type: 'storting', naam: 'Beer',    bedrag:  8 },
     { minuut: 216, type: 'storting', naam: 'Cynthia', bedrag:  8 },
-    { minuut: 216, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut: 216, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut: 216, type: 'storting', naam: 'As',      bedrag:  5 },
     { minuut: 216, type: 'storting', naam: 'Marlene', bedrag:  7 },
     { minuut: 216, type: 'storting', naam: 'Laird',   bedrag:  8 },
@@ -145,7 +145,7 @@ await runScenario({
     { minuut: 260, type: 'storting', naam: 'Beek',    bedrag:  7 },
     { minuut: 260, type: 'storting', naam: 'Beer',    bedrag:  8 },
     { minuut: 260, type: 'storting', naam: 'Cynthia', bedrag:  8 },
-    { minuut: 260, type: 'storting', naam: 'Poiesz',  bedrag:  5 },
+    { minuut: 260, type: 'storting', naam: 'Poison',  bedrag:  5 },
     { minuut: 260, type: 'storting', naam: 'As',      bedrag:  4 },
     { minuut: 260, type: 'storting', naam: 'Marlene', bedrag:  7 },
     { minuut: 260, type: 'storting', naam: 'Laird',   bedrag:  8 },

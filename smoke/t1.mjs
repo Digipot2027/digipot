@@ -33,7 +33,7 @@ const SCENARIO = {
   deelnemers: [
     { naam: 'Beek',    isBeek: true  },
     { naam: 'Beer',    isBeek: false },
-    { naam: 'Poiesz',  isBeek: false },
+    { naam: 'Poison',  isBeek: false, device_id: '96779e1b-3bf8-422c-a0df-ff4167931bd4' },
     { naam: 'Tesser',  isBeek: false },
     { naam: 'Chantal', isBeek: false },
   ],
@@ -42,19 +42,19 @@ const SCENARIO = {
   events: [
     { minuut:  5, type: 'storting', naam: 'Beek',    bedrag: 5  },
     { minuut:  5, type: 'storting', naam: 'Beer',    bedrag: 6  },
-    { minuut:  5, type: 'storting', naam: 'Poiesz',  bedrag: 4  },
+    { minuut:  5, type: 'storting', naam: 'Poison',  bedrag: 4  },
     { minuut:  5, type: 'storting', naam: 'Tesser',  bedrag: 7  },
     { minuut:  5, type: 'storting', naam: 'Chantal', bedrag: 4  },
     { minuut: 15, type: 'betaling', naam: 'Beer',    bedrag: 26 },
     { minuut: 25, type: 'storting', naam: 'Beek',    bedrag: 5  },
     { minuut: 25, type: 'storting', naam: 'Beer',    bedrag: 6  },
-    { minuut: 25, type: 'storting', naam: 'Poiesz',  bedrag: 4  },
+    { minuut: 25, type: 'storting', naam: 'Poison',  bedrag: 4  },
     { minuut: 25, type: 'storting', naam: 'Tesser',  bedrag: 7  },
     { minuut: 25, type: 'storting', naam: 'Chantal', bedrag: 5  },
     { minuut: 35, type: 'betaling', naam: 'Tesser',  bedrag: 27 },
     { minuut: 45, type: 'storting', naam: 'Beek',    bedrag: 5  },
     { minuut: 45, type: 'storting', naam: 'Beer',    bedrag: 6  },
-    { minuut: 45, type: 'storting', naam: 'Poiesz',  bedrag: 4  },
+    { minuut: 45, type: 'storting', naam: 'Poison',  bedrag: 4  },
     { minuut: 45, type: 'storting', naam: 'Tesser',  bedrag: 6  },
     { minuut: 45, type: 'storting', naam: 'Chantal', bedrag: 4  },
     { minuut: 55, type: 'betaling', naam: 'Beek',    bedrag: 24 },
@@ -73,7 +73,7 @@ const SCENARIO = {
     saldi: {
       Beek:     9.19,
       Beer:     8.23,
-      Poiesz: -11.85,
+      Poison: -11.85,
       Tesser:   7.26,
       Chantal: -12.83,
     },
@@ -187,10 +187,10 @@ async function main() {
     const [rec] = await sbInsert('deelnemers', {
       potje_id:  potje.id,
       naam:      d.naam,
-      device_id: d.isBeek ? SMOKE_DEVICE_ID : crypto.randomUUID(),
+      device_id: d.isBeek ? SMOKE_DEVICE_ID : (d.device_id ?? crypto.randomUUID()),
     })
     dm[d.naam] = rec
-    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : ''}`)
+    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : d.device_id ? ' <- Poison' : ''}`)
   }
 
   console.log('\nEvents uitvoeren...')

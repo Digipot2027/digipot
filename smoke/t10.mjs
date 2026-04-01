@@ -22,7 +22,7 @@ await runScenario({
     { naam: 'Maaike',      isBeek: false, aankomstMinuut: 0   }, // koppel Beek, weg T+44
     { naam: 'As',          isBeek: false, aankomstMinuut: 0   }, // koppel Henri
     { naam: 'Beer',        isBeek: false, aankomstMinuut: 0   },
-    { naam: 'Poiesz',      isBeek: false, aankomstMinuut: 0   },
+    { naam: 'Poison',      isBeek: false, aankomstMinuut: 0, device_id: '96779e1b-3bf8-422c-a0df-ff4167931bd4' },
     { naam: 'Spoeling',    isBeek: false, aankomstMinuut: 0   }, // weg T+29
     { naam: 'Chantal',     isBeek: false, aankomstMinuut: 30  }, // koppel Tesser
     { naam: 'Tesser',      isBeek: false, aankomstMinuut: 30  }, // koppel Chantal
@@ -50,7 +50,7 @@ await runScenario({
     { minuut:   2, type: 'storting', naam: 'Maaike',   bedrag:  6 },
     { minuut:   2, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut:   2, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:   2, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:   2, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:   2, type: 'storting', naam: 'Spoeling', bedrag:  4 },
     // T+29 — Spoeling afgemeld
     { minuut:  29, type: 'afmelden', naam: 'Spoeling' },
@@ -64,7 +64,7 @@ await runScenario({
     { minuut:  32, type: 'storting', naam: 'Maaike',   bedrag:  6 },
     { minuut:  32, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut:  32, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:  32, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  32, type: 'storting', naam: 'Poison',   bedrag:  6 },
     // T+44 — Maaike afgemeld
     { minuut:  44, type: 'afmelden', naam: 'Maaike' },
     // T+45 — Marlene+Laird aankomst (koppel)
@@ -85,7 +85,7 @@ await runScenario({
     { minuut:  62, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:  62, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut:  62, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:  62, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  62, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:  62, type: 'storting', naam: 'Chantal',  bedrag:  7 },
     { minuut:  62, type: 'storting', naam: 'Tesser',   bedrag: 10 },
     { minuut:  62, type: 'storting', naam: 'Marlene',  bedrag:  8 },
@@ -101,7 +101,7 @@ await runScenario({
     { minuut:  92, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:  92, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut:  92, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:  92, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  92, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:  92, type: 'storting', naam: 'Chantal',  bedrag:  7 },
     { minuut:  92, type: 'storting', naam: 'Tesser',   bedrag: 10 },
     { minuut:  92, type: 'storting', naam: 'Marlene',  bedrag:  8 },
@@ -123,7 +123,7 @@ await runScenario({
     { minuut: 122, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut: 122, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut: 122, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut: 122, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut: 122, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut: 122, type: 'storting', naam: 'Marlene',  bedrag:  8 },
     { minuut: 122, type: 'storting', naam: 'Laird',    bedrag:  9 },
     { minuut: 122, type: 'storting', naam: 'Henri',    bedrag: 10 },
@@ -145,7 +145,7 @@ await runScenario({
     { minuut: 156, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut: 156, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut: 156, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut: 156, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut: 156, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut: 156, type: 'storting', naam: 'Marlene',  bedrag:  8 },
     { minuut: 156, type: 'storting', naam: 'Laird',    bedrag:  9 },
     { minuut: 156, type: 'storting', naam: 'Henri',    bedrag: 10 },
@@ -166,7 +166,7 @@ await runScenario({
     { minuut: 186, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut: 186, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut: 186, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut: 186, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut: 186, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut: 186, type: 'storting', naam: 'Marlene',  bedrag:  8 },
     { minuut: 186, type: 'storting', naam: 'Laird',    bedrag:  9 },
     { minuut: 186, type: 'storting', naam: 'Henri',    bedrag: 10 },
@@ -187,7 +187,7 @@ await runScenario({
     { minuut: 216, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut: 216, type: 'storting', naam: 'As',       bedrag:  5 },
     { minuut: 216, type: 'storting', naam: 'Beer',     bedrag:  8 },
-    { minuut: 216, type: 'storting', naam: 'Poiesz',   bedrag:  5 },
+    { minuut: 216, type: 'storting', naam: 'Poison',   bedrag:  5 },
     { minuut: 216, type: 'storting', naam: 'Marlene',  bedrag:  7 },
     { minuut: 216, type: 'storting', naam: 'Laird',    bedrag:  8 },
     { minuut: 216, type: 'storting', naam: 'Henri',    bedrag:  8 },
@@ -210,7 +210,7 @@ await runScenario({
     { minuut: 242, type: 'storting', naam: 'Beek',     bedrag:  7 },
     { minuut: 242, type: 'storting', naam: 'As',       bedrag:  4 },
     { minuut: 242, type: 'storting', naam: 'Beer',     bedrag:  8 },
-    { minuut: 242, type: 'storting', naam: 'Poiesz',   bedrag:  5 },
+    { minuut: 242, type: 'storting', naam: 'Poison',   bedrag:  5 },
     { minuut: 242, type: 'storting', naam: 'Marlene',  bedrag:  7 },
     { minuut: 242, type: 'storting', naam: 'Laird',    bedrag:  8 },
     { minuut: 242, type: 'storting', naam: 'Henri',    bedrag:  8 },
@@ -231,7 +231,7 @@ await runScenario({
     { minuut: 285, type: 'storting', naam: 'Beek',     bedrag:  6 },
     { minuut: 285, type: 'storting', naam: 'As',       bedrag:  4 },
     { minuut: 285, type: 'storting', naam: 'Beer',     bedrag:  7 },
-    { minuut: 285, type: 'storting', naam: 'Poiesz',   bedrag:  5 },
+    { minuut: 285, type: 'storting', naam: 'Poison',   bedrag:  5 },
     { minuut: 285, type: 'storting', naam: 'Marlene',  bedrag:  6 },
     { minuut: 285, type: 'storting', naam: 'Laird',    bedrag:  7 },
     { minuut: 285, type: 'storting', naam: 'Henri',    bedrag:  7 },

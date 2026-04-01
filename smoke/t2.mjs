@@ -138,7 +138,7 @@ const SCENARIO = {
   deelnemers: [
     { naam: 'Beek',    isBeek: true,  aankomstMinuut: 0  },
     { naam: 'Beer',    isBeek: false, aankomstMinuut: 0  },
-    { naam: 'Poiesz',  isBeek: false, aankomstMinuut: 0  },
+    { naam: 'Poison',  isBeek: false, aankomstMinuut: 0, device_id: '96779e1b-3bf8-422c-a0df-ff4167931bd4' },
     { naam: 'Cynthia', isBeek: false, aankomstMinuut: 0  },
     { naam: 'Dijl',    isBeek: false, aankomstMinuut: 0  },
     { naam: 'Tesser',  isBeek: false, aankomstMinuut: 0  },
@@ -148,13 +148,13 @@ const SCENARIO = {
   events: [
     { minuut:   5, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut:   5, type: 'storting', naam: 'Beer',    bedrag:  9 },
-    { minuut:   5, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:   5, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut:   5, type: 'storting', naam: 'Cynthia', bedrag:  9 },
     { minuut:   5, type: 'storting', naam: 'Dijl',    bedrag:  8 },
     { minuut:   5, type: 'storting', naam: 'Tesser',  bedrag: 10 },
     { minuut:  40, type: 'storting', naam: 'Beek',    bedrag:  7 },
     { minuut:  40, type: 'storting', naam: 'Beer',    bedrag:  9 },
-    { minuut:  40, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:  40, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut:  40, type: 'storting', naam: 'Cynthia', bedrag:  8 },
     { minuut:  40, type: 'storting', naam: 'Dijl',    bedrag:  8 },
     { minuut:  40, type: 'storting', naam: 'Tesser',  bedrag: 10 },
@@ -163,7 +163,7 @@ const SCENARIO = {
     { minuut:  55, type: 'betaling', naam: 'Beer',    bedrag: 98 },
     { minuut:  70, type: 'storting', naam: 'Beek',    bedrag:  8 },
     { minuut:  70, type: 'storting', naam: 'Beer',    bedrag:  9 },
-    { minuut:  70, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut:  70, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut:  70, type: 'storting', naam: 'Cynthia', bedrag:  9 },
     { minuut:  70, type: 'storting', naam: 'Dijl',    bedrag:  8 },
     { minuut:  70, type: 'storting', naam: 'Tesser',  bedrag: 10 },
@@ -172,12 +172,12 @@ const SCENARIO = {
     { minuut:  90, type: 'betaling', naam: 'Tesser',  bedrag: 56 },
     { minuut: 100, type: 'storting', naam: 'Beek',    bedrag:  7 },
     { minuut: 100, type: 'storting', naam: 'Beer',    bedrag:  9 },
-    { minuut: 100, type: 'storting', naam: 'Poiesz',  bedrag:  6 },
+    { minuut: 100, type: 'storting', naam: 'Poison',  bedrag:  6 },
     { minuut: 100, type: 'storting', naam: 'Cynthia', bedrag:  8 },
     { minuut: 100, type: 'storting', naam: 'Dijl',    bedrag:  8 },
     { minuut: 100, type: 'storting', naam: 'Tesser',  bedrag: 10 },
     { minuut: 108, type: 'storting', naam: 'Nadia',   bedrag:  8 },
-    { minuut: 110, type: 'betaling', naam: 'Poiesz',  bedrag: 58 },
+    { minuut: 110, type: 'betaling', naam: 'Poison',  bedrag: 58 },
     { minuut: 115, type: 'storting', naam: 'Kwak',    bedrag:  4 },
     { minuut: 118, type: 'betaling', naam: 'Cynthia', bedrag:  6 },
     { minuut: 120, type: 'sluiting' },
@@ -185,7 +185,7 @@ const SCENARIO = {
   verwacht: {
     potTotaal: 220, potUitgaven: 218,
     saldi: {
-      Beek: -29.73, Beer: 62.33, Poiesz: +34.22, Cynthia: -27.69,
+      Beek: -29.73, Beer: 62.33, Poison: +34.22, Cynthia: -27.69,
       Dijl: -31.71, Tesser: 16.36, Nadia: -15.85, Kwak: -7.93,
     },
   },
@@ -214,10 +214,10 @@ async function main() {
   for (const d of SCENARIO.deelnemers.filter(d => d.aankomstMinuut === 0)) {
     const [rec] = await sbInsert('deelnemers', {
       potje_id: potje.id, naam: d.naam,
-      device_id: d.isBeek ? SMOKE_DEVICE_ID : crypto.randomUUID(),
+      device_id: d.isBeek ? SMOKE_DEVICE_ID : (d.device_id ?? crypto.randomUUID()),
     })
     dm[d.naam] = rec
-    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : ''}`)
+    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : d.device_id ? ' <- Poison' : ''}`)
   }
 
   console.log('\nEvents uitvoeren...')

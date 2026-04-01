@@ -165,7 +165,7 @@ const SCENARIO = {
   deelnemers: [
     { naam: 'Beek',    isBeek: true,  aankomstMinuut: 0 },
     { naam: 'Beer',    isBeek: false, aankomstMinuut: 0 },
-    { naam: 'Poiesz',  isBeek: false, aankomstMinuut: 0 },
+    { naam: 'Poison',  isBeek: false, aankomstMinuut: 0, device_id: '96779e1b-3bf8-422c-a0df-ff4167931bd4' },
     { naam: 'Cynthia', isBeek: false, aankomstMinuut: 0 },
     { naam: 'Raaf',    isBeek: false, aankomstMinuut: 0 },
     { naam: 'Dijl',    isBeek: false, aankomstMinuut: 0 },
@@ -179,7 +179,7 @@ const SCENARIO = {
     // T+2 — Ronde 1 (incl. Spoeling) — pot €81
     { minuut:   2, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:   2, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:   2, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:   2, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:   2, type: 'storting', naam: 'Cynthia',  bedrag:  9 },
     { minuut:   2, type: 'storting', naam: 'Raaf',     bedrag:  7 },
     { minuut:   2, type: 'storting', naam: 'Dijl',     bedrag:  8 },
@@ -192,7 +192,7 @@ const SCENARIO = {
     // T+30 — Ronde 2 (excl. Spoeling) — pot €158
     { minuut:  30, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:  30, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:  30, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  30, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:  30, type: 'storting', naam: 'Cynthia',  bedrag:  9 },
     { minuut:  30, type: 'storting', naam: 'Raaf',     bedrag:  7 },
     { minuut:  30, type: 'storting', naam: 'Dijl',     bedrag:  8 },
@@ -204,7 +204,7 @@ const SCENARIO = {
     // T+60 — Ronde 3 — pot €110
     { minuut:  60, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:  60, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:  60, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  60, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:  60, type: 'storting', naam: 'Cynthia',  bedrag:  9 },
     { minuut:  60, type: 'storting', naam: 'Raaf',     bedrag:  7 },
     { minuut:  60, type: 'storting', naam: 'Dijl',     bedrag:  8 },
@@ -216,7 +216,7 @@ const SCENARIO = {
     // T+90 — Ronde 4 — pot €92
     { minuut:  90, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:  90, type: 'storting', naam: 'Beer',     bedrag:  9 },
-    { minuut:  90, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  90, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:  90, type: 'storting', naam: 'Cynthia',  bedrag:  9 },
     { minuut:  90, type: 'storting', naam: 'Raaf',     bedrag:  7 },
     { minuut:  90, type: 'storting', naam: 'Dijl',     bedrag:  8 },
@@ -226,7 +226,7 @@ const SCENARIO = {
     // T+95 — Bijstortronde (saldo op raakt bij volgende betaling) — pot €164
     { minuut:  95, type: 'storting', naam: 'Beek',     bedrag:  8 },
     { minuut:  95, type: 'storting', naam: 'Beer',     bedrag:  8 },
-    { minuut:  95, type: 'storting', naam: 'Poiesz',   bedrag:  6 },
+    { minuut:  95, type: 'storting', naam: 'Poison',   bedrag:  6 },
     { minuut:  95, type: 'storting', naam: 'Cynthia',  bedrag:  9 },
     { minuut:  95, type: 'storting', naam: 'Raaf',     bedrag:  8 },
     { minuut:  95, type: 'storting', naam: 'Dijl',     bedrag:  8 },
@@ -238,7 +238,7 @@ const SCENARIO = {
     // T+105 — Ronde 5 — pot €79
     { minuut: 105, type: 'storting', naam: 'Beek',     bedrag:  7 },
     { minuut: 105, type: 'storting', naam: 'Beer',     bedrag:  8 },
-    { minuut: 105, type: 'storting', naam: 'Poiesz',   bedrag:  5 },
+    { minuut: 105, type: 'storting', naam: 'Poison',   bedrag:  5 },
     { minuut: 105, type: 'storting', naam: 'Cynthia',  bedrag:  8 },
     { minuut: 105, type: 'storting', naam: 'Raaf',     bedrag:  6 },
     { minuut: 105, type: 'storting', naam: 'Dijl',     bedrag:  7 },
@@ -268,7 +268,7 @@ const SCENARIO = {
     saldi: {
       Beek:     -46.79,
       Beer:      42.23,
-      Poiesz:   -34.84,
+      Poison:   -34.84,
       Cynthia:   19.43,
       Raaf:     -41.81,
       Dijl:     -46.79,
@@ -411,10 +411,10 @@ async function main() {
     const [rec] = await sbInsert('deelnemers', {
       potje_id:  potje.id,
       naam:      d.naam,
-      device_id: d.isBeek ? SMOKE_DEVICE_ID : crypto.randomUUID(),
+      device_id: d.isBeek ? SMOKE_DEVICE_ID : (d.device_id ?? crypto.randomUUID()),
     })
     dm[d.naam] = rec
-    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : ''}`)
+    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : d.device_id ? ' <- Poison' : ''}`)
   }
 
   console.log('\nEvents uitvoeren...')

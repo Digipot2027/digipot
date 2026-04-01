@@ -303,10 +303,10 @@ async function main() {
   for (const d of SCENARIO.deelnemers.filter(d => d.aankomstMinuut === 0)) {
     const [rec] = await sbInsert('deelnemers', {
       potje_id: potje.id, naam: d.naam,
-      device_id: d.isBeek ? SMOKE_DEVICE_ID : crypto.randomUUID(),
+      device_id: d.isBeek ? SMOKE_DEVICE_ID : (d.device_id ?? crypto.randomUUID()),
     })
     dm[d.naam] = rec
-    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : ''}`)
+    console.log(`  ${d.naam}${d.isBeek ? ' <- jij' : d.device_id ? ' <- Poison' : ''}`)
   }
 
   console.log('\nEvents uitvoeren...')
@@ -321,7 +321,7 @@ async function main() {
       const def = SCENARIO.deelnemers.find(d => d.naam === ev.naam)
       const [rec] = await sbInsert('deelnemers', {
         potje_id: potje.id, naam: ev.naam,
-        device_id: def?.isBeek ? SMOKE_DEVICE_ID : crypto.randomUUID(),
+        device_id: def?.isBeek ? SMOKE_DEVICE_ID : (def?.device_id ?? crypto.randomUUID()),
       })
       dm[ev.naam] = rec
       console.log(`  T+${String(ev.minuut).padStart(3)}m  aankomst  ${ev.naam}`)
