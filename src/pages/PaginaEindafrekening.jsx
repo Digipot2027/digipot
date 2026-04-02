@@ -1,42 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { berekenEindafrekening } from '../utils/berekenSaldi'
+import { berekenEindafrekening, berekenVereffening } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
-
-/**
- * Berekent de minimale vereffening tussen crediteuren en debiteuren.
- * Algoritme: grootste debiteur koppelen aan grootste crediteur (greedy).
- * Resultaat: maximaal n-1 transacties voor n deelnemers.
- */
-function berekenVereffening(deelnemersSaldi) {
-  const crediteuren = deelnemersSaldi
-    .filter(d => d.verrekening > 0.005)
-    .map(d => ({ naam: d.naam, bedrag: d.verrekening }))
-    .sort((a, b) => b.bedrag - a.bedrag)
-
-  const debiteuren = deelnemersSaldi
-    .filter(d => d.verrekening < -0.005)
-    .map(d => ({ naam: d.naam, bedrag: Math.abs(d.verrekening) }))
-    .sort((a, b) => b.bedrag - a.bedrag)
-
-  const transacties = []
-  const cred = crediteuren.map(c => ({ ...c }))
-  const deb  = debiteuren.map(d => ({ ...d }))
-
-  let ci = 0, di = 0
-  while (ci < cred.length && di < deb.length) {
-    const bedrag = Math.round(Math.min(cred[ci].bedrag, deb[di].bedrag) * 100) / 100
-    if (bedrag >= 0.01) {
-      transacties.push({ van: deb[di].naam, aan: cred[ci].naam, bedrag })
-    }
-    cred[ci].bedrag = Math.round((cred[ci].bedrag - bedrag) * 100) / 100
-    deb[di].bedrag  = Math.round((deb[di].bedrag  - bedrag) * 100) / 100
-    if (cred[ci].bedrag < 0.01) ci++
-    if (deb[di].bedrag  < 0.01) di++
-  }
-
-  return transacties
-}
 
 /**
  * Opent de Tikkie-app via deep link.
@@ -62,7 +27,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  // Bijhouden welke deelnemer is uitgeklapt
   const [opengeklapt, setOpengeklapt] = useState(null)
 
   function toggleDetail(id) {
@@ -135,7 +99,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                 padding: '12px 0',
               }}
             >
-              {/* Hoofdrij — klikbaar voor uitklappen */}
               <button
                 onClick={() => toggleDetail(d.id)}
                 aria-expanded={isOpen}
@@ -145,7 +108,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                   cursor: 'pointer', textAlign: 'left', gap: 8, padding: 0,
                 }}
               >
-                {/* Links: naam + vaste subtekst */}
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <strong style={{
@@ -159,7 +121,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                       <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
                     )}
                   </span>
-                  {/* Betaald + ingelegd altijd zichtbaar */}
                   <span style={{ fontSize: 13, color: 'var(--grijs-600)' }}>
                     Betaald: {formatBedrag(d.betaald, valuta)}
                   </span>
@@ -168,7 +129,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                   </span>
                 </span>
 
-                {/* Rechts: verrekening + pijltje */}
                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
                   <span style={{ fontWeight: 700, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', fontSize: '1rem' }}>
                     {d.verrekening >= 0
@@ -189,12 +149,10 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                 </span>
               </button>
 
-              {/* Status label */}
               <div style={{ fontSize: 12, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', marginTop: 6 }}>
                 {d.verrekening >= 0 ? '✅ Ontvangt geld terug' : '⚠️ Moet bijbetalen'}
               </div>
 
-              {/* Uitklappaneel — transacties per tijdstip */}
               {isOpen && (
                 <div style={{
                   background: 'var(--grijs-50)', borderRadius: 8,

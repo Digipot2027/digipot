@@ -7,6 +7,7 @@ import PaginaInstellingen from './pages/PaginaInstellingen.jsx'
 import PaginaProfiel from './pages/PaginaProfiel.jsx'
 import PaginaOpenPotjes from './pages/PaginaOpenPotjes.jsx'
 import PaginaGeslotenPotjes from './pages/PaginaGeslotenPotjes.jsx'
+import PaginaNietGevonden from './pages/PaginaNietGevonden.jsx'
 
 function App() {
   return (
@@ -22,6 +23,9 @@ function App() {
         <Route path="/instellingen/profiel" element={<PaginaProfiel />} />
         <Route path="/instellingen/open" element={<PaginaOpenPotjes />} />
         <Route path="/instellingen/gesloten" element={<PaginaGeslotenPotjes />} />
+
+        {/* Catch-all — onbekende routes */}
+        <Route path="*" element={<PaginaNietGevonden />} />
       </Routes>
     </ErrorBoundary>
   )

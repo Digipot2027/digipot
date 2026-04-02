@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
+import { PROFIEL_NAAM_KEY } from '../constants'
 
 function PaginaInstellingen() {
   const navigate = useNavigate()
@@ -31,10 +30,7 @@ function PaginaInstellingen() {
       <div className="kaart" style={{ padding: 0, overflow: 'hidden' }}>
 
         {/* Open potjes */}
-        <button
-          onClick={() => navigate('/instellingen/open')}
-          style={rij()}
-        >
+        <button onClick={() => navigate('/instellingen/open')} style={rij()}>
           <div style={rijLinks()}>
             <span style={{ fontSize: 20 }}>🟢</span>
             <div>
@@ -48,10 +44,7 @@ function PaginaInstellingen() {
         <div style={scheiding()} />
 
         {/* Gesloten potjes */}
-        <button
-          onClick={() => navigate('/instellingen/gesloten')}
-          style={rij()}
-        >
+        <button onClick={() => navigate('/instellingen/gesloten')} style={rij()}>
           <div style={rijLinks()}>
             <span style={{ fontSize: 20 }}>🔒</span>
             <div>
@@ -65,10 +58,7 @@ function PaginaInstellingen() {
         <div style={scheiding()} />
 
         {/* Profiel */}
-        <button
-          onClick={() => navigate('/instellingen/profiel')}
-          style={rij()}
-        >
+        <button onClick={() => navigate('/instellingen/profiel')} style={rij()}>
           <div style={rijLinks()}>
             <span style={{ fontSize: 20 }}>👤</span>
             <div>
@@ -89,35 +79,17 @@ function PaginaInstellingen() {
   )
 }
 
-// Stijlhulpfuncties — voorkomen herhaling van inline styles
 function rij() {
   return {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 20px',
-    width: '100%',
-    background: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    textAlign: 'left',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '16px 20px', width: '100%', background: 'transparent',
+    border: 'none', cursor: 'pointer', textAlign: 'left',
   }
 }
-function rijLinks() {
-  return { display: 'flex', alignItems: 'center', gap: 14 }
-}
-function rijTitel() {
-  return { fontSize: 15, fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 2 }
-}
-function rijSub() {
-  /* WCAG 1.4.3: grijs-600 = contrast 7.4:1 op wit — was grijs-400 = 2.3:1 */
-  return { fontSize: 13, color: 'var(--grijs-600)' }
-}
-function pijl() {
-  return { fontSize: 20, color: 'var(--grijs-400)', lineHeight: 1 }
-}
-function scheiding() {
-  return { height: 1, background: 'var(--grijs-100)', margin: '0 20px' }
-}
+function rijLinks() { return { display: 'flex', alignItems: 'center', gap: 14 } }
+function rijTitel() { return { fontSize: 15, fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 2 } }
+function rijSub()   { return { fontSize: 13, color: 'var(--grijs-600)' } }
+function pijl()     { return { fontSize: 20, color: 'var(--grijs-400)', lineHeight: 1 } }
+function scheiding(){ return { height: 1, background: 'var(--grijs-100)', margin: '0 20px' } }
 
 export default PaginaInstellingen

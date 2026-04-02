@@ -54,21 +54,9 @@ function PaginaOpenPotjes() {
 
       {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
-        <div
-          ref={foutRef}
-          role="alert"
-          tabIndex={-1}
-          className="kaart"
-          style={{ outline: 'none' }}
-        >
-          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>
-            {fout}
-          </p>
-          <button
-            className="knop knop-secundair"
-            onClick={herlaad}
-            style={{ marginTop: 4 }}
-          >
+        <div ref={foutRef} role="alert" tabIndex={-1} className="kaart" style={{ outline: 'none' }}>
+          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>{fout}</p>
+          <button className="knop knop-secundair" onClick={herlaad} style={{ marginTop: 4 }}>
             Opnieuw proberen
           </button>
         </div>
@@ -78,9 +66,7 @@ function PaginaOpenPotjes() {
       {!fout && potjes.length === 0 && (
         <div className="kaart" style={{ textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🍺</div>
-          <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>
-            Geen open potjes
-          </p>
+          <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>Geen open potjes</p>
           <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 20 }}>
             Je neemt nog niet deel aan een open potje op dit apparaat.
           </p>
@@ -90,46 +76,50 @@ function PaginaOpenPotjes() {
         </div>
       )}
 
-      {/* Lijst */}
+      {/* Lijst
+          WCAG 21: <ul>/<li> zodat screenreaders het aantal items aankondigen.
+          Knoppen zitten binnen <li> — dit behoudt de semantiek en de klikbaarheid. */}
       {potjes.length > 0 && (
-        <div className="kaart" style={{ padding: 0, overflow: 'hidden' }}>
+        <ul
+          className="kaart"
+          style={{ padding: 0, overflow: 'hidden', listStyle: 'none' }}
+          aria-label="Open potjes"
+        >
           {potjes.map((potje, index) => (
-            <button
+            <li
               key={potje.id}
-              onClick={() => navigate(`/potje/${potje.id}`)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '16px 20px',
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: index < potjes.length - 1 ? '1px solid var(--grijs-100)' : 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
+              style={{ borderBottom: index < potjes.length - 1 ? '1px solid var(--grijs-100)' : 'none' }}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {potje.naam}
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
-                  {potje.aantalDeelnemers} {potje.aantalDeelnemers === 1 ? 'deelnemer' : 'deelnemers'} · {datumLabel(potje.aangemaakt_op)}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: potje.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-400)' }}>
-                    {formatBedrag(potje.potSaldo, potje.valuta)}
+              <button
+                onClick={() => navigate(`/potje/${potje.id}`)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '16px 20px', width: '100%', background: 'transparent',
+                  border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {potje.naam}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>saldo</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
+                    {potje.aantalDeelnemers} {potje.aantalDeelnemers === 1 ? 'deelnemer' : 'deelnemers'} · {datumLabel(potje.aangemaakt_op)}
+                  </div>
                 </div>
-                <span style={{ fontSize: '1.25rem', color: 'var(--grijs-400)', lineHeight: 1 }}>›</span>
-              </div>
-            </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: potje.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-400)' }}>
+                      {formatBedrag(potje.potSaldo, potje.valuta)}
+                    </div>
+                    {/* UX punt 5: consistent label met Overzichtscherm */}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>nog te besteden</div>
+                  </div>
+                  <span style={{ fontSize: '1.25rem', color: 'var(--grijs-400)', lineHeight: 1 }}>›</span>
+                </div>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
     </div>

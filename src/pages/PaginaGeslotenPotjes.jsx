@@ -54,21 +54,9 @@ function PaginaGeslotenPotjes() {
 
       {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
-        <div
-          ref={foutRef}
-          role="alert"
-          tabIndex={-1}
-          className="kaart"
-          style={{ outline: 'none' }}
-        >
-          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>
-            {fout}
-          </p>
-          <button
-            className="knop knop-secundair"
-            onClick={herlaad}
-            style={{ marginTop: 4 }}
-          >
+        <div ref={foutRef} role="alert" tabIndex={-1} className="kaart" style={{ outline: 'none' }}>
+          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>{fout}</p>
+          <button className="knop knop-secundair" onClick={herlaad} style={{ marginTop: 4 }}>
             Opnieuw proberen
           </button>
         </div>
@@ -78,9 +66,7 @@ function PaginaGeslotenPotjes() {
       {!fout && potjes.length === 0 && (
         <div className="kaart" style={{ textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-          <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>
-            Geen gesloten potjes
-          </p>
+          <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>Geen gesloten potjes</p>
           <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 20 }}>
             Je hebt nog geen afgeronde potjes op dit apparaat.
           </p>
@@ -90,56 +76,54 @@ function PaginaGeslotenPotjes() {
         </div>
       )}
 
-      {/* Lijst */}
+      {/* Lijst
+          WCAG 21: <ul>/<li> zodat screenreaders het aantal items aankondigen. */}
       {potjes.length > 0 && (
-        <div className="kaart" style={{ padding: 0, overflow: 'hidden' }}>
+        <ul
+          className="kaart"
+          style={{ padding: 0, overflow: 'hidden', listStyle: 'none' }}
+          aria-label="Gesloten potjes"
+        >
           {potjes.map((potje, index) => (
-            <button
+            <li
               key={potje.id}
-              onClick={() => navigate(`/potje/${potje.id}`)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '16px 20px',
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: index < potjes.length - 1 ? '1px solid var(--grijs-100)' : 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
+              style={{ borderBottom: index < potjes.length - 1 ? '1px solid var(--grijs-100)' : 'none' }}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {potje.naam}
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
-                  Gesloten op {datumLabel(potje.gesloten_op)}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
-                {potje.mijnVerrekening !== null && (
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{
-                      fontSize: '1rem',
-                      fontWeight: 700,
-                      color: potje.mijnVerrekening >= 0 ? 'var(--groen)' : 'var(--rood)',
-                    }}>
-                      {potje.mijnVerrekening >= 0
-                        ? `+${formatBedrag(potje.mijnVerrekening, potje.valuta)}`
-                        : `-${formatBedrag(Math.abs(potje.mijnVerrekening), potje.valuta)}`}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>
-                      {potje.mijnVerrekening >= 0 ? 'ontvangen' : 'bijbetaald'}
-                    </div>
+              <button
+                onClick={() => navigate(`/potje/${potje.id}`)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '16px 20px', width: '100%', background: 'transparent',
+                  border: 'none', cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {potje.naam}
                   </div>
-                )}
-                <span style={{ fontSize: '1.25rem', color: 'var(--grijs-400)', lineHeight: 1 }}>›</span>
-              </div>
-            </button>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
+                    Gesloten op {datumLabel(potje.gesloten_op)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
+                  {potje.mijnVerrekening !== null && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: potje.mijnVerrekening >= 0 ? 'var(--groen)' : 'var(--rood)' }}>
+                        {potje.mijnVerrekening >= 0
+                          ? `+${formatBedrag(potje.mijnVerrekening, potje.valuta)}`
+                          : `-${formatBedrag(Math.abs(potje.mijnVerrekening), potje.valuta)}`}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>
+                        {potje.mijnVerrekening >= 0 ? 'ontvangen' : 'bijbetaald'}
+                      </div>
+                    </div>
+                  )}
+                  <span style={{ fontSize: '1.25rem', color: 'var(--grijs-400)', lineHeight: 1 }}>›</span>
+                </div>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
     </div>

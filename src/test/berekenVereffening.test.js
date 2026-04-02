@@ -1,9 +1,8 @@
 /**
  * berekenVereffening — unit tests voor het vereffening-algoritme
  *
- * berekenVereffening staat als module-private functie in PaginaEindafrekening.jsx.
- * De logica wordt hier geëxtraheerd en als pure functie getest.
- * Als de implementatie verandert, moet dit testbestand worden bijgewerkt.
+ * berekenVereffening staat nu als geëxporteerde functie in utils/berekenSaldi.js.
+ * Verplaatst vanuit PaginaEindafrekening (was module-private, niet testbaar via import).
  *
  * Algoritme: greedy — grootste debiteur koppelen aan grootste crediteur.
  * Doel: minimaal aantal transacties (maximaal n-1 voor n deelnemers).
@@ -24,39 +23,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-
-// ── Extractie van berekenVereffening uit PaginaEindafrekening ────────────────
-// Identiek aan de implementatie in de component.
-
-function berekenVereffening(deelnemersSaldi) {
-  const crediteuren = deelnemersSaldi
-    .filter(d => d.verrekening > 0.005)
-    .map(d => ({ naam: d.naam, bedrag: d.verrekening }))
-    .sort((a, b) => b.bedrag - a.bedrag)
-
-  const debiteuren = deelnemersSaldi
-    .filter(d => d.verrekening < -0.005)
-    .map(d => ({ naam: d.naam, bedrag: Math.abs(d.verrekening) }))
-    .sort((a, b) => b.bedrag - a.bedrag)
-
-  const transacties = []
-  const cred = crediteuren.map(c => ({ ...c }))
-  const deb  = debiteuren.map(d => ({ ...d }))
-
-  let ci = 0, di = 0
-  while (ci < cred.length && di < deb.length) {
-    const bedrag = Math.round(Math.min(cred[ci].bedrag, deb[di].bedrag) * 100) / 100
-    if (bedrag >= 0.01) {
-      transacties.push({ van: deb[di].naam, aan: cred[ci].naam, bedrag })
-    }
-    cred[ci].bedrag = Math.round((cred[ci].bedrag - bedrag) * 100) / 100
-    deb[di].bedrag  = Math.round((deb[di].bedrag  - bedrag) * 100) / 100
-    if (cred[ci].bedrag < 0.01) ci++
-    if (deb[di].bedrag  < 0.01) di++
-  }
-
-  return transacties
-}
+import { berekenVereffening } from '../utils/berekenSaldi'
 
 // ── BV-01: één crediteur, één debiteur, exact gelijk bedrag ──────────────────
 
@@ -91,13 +58,12 @@ describe('berekenVereffening — BV-02: crediteur heeft meer', () => {
 describe('berekenVereffening — BV-03: debiteur heeft meer', () => {
   it('crediteur wordt volledig vergoed, debiteur heeft restant voor volgende', () => {
     const saldi = [
-      { naam: 'Alice', verrekening:  10 },
-      { naam: 'Bob',   verrekening: -20 },
-      { naam: 'Charlie', verrekening: 10 },
+      { naam: 'Alice',   verrekening:  10 },
+      { naam: 'Bob',     verrekening: -20 },
+      { naam: 'Charlie', verrekening:  10 },
     ]
     const result = berekenVereffening(saldi)
     expect(result).toHaveLength(2)
-    // Bob (20) betaalt aan Alice (10) en Charlie (10)
     const totaalVanBob = result.filter(t => t.van === 'Bob').reduce((s, t) => s + t.bedrag, 0)
     expect(totaalVanBob).toBeCloseTo(20, 1)
   })
@@ -108,15 +74,13 @@ describe('berekenVereffening — BV-03: debiteur heeft meer', () => {
 describe('berekenVereffening — BV-04: twee debiteuren, één crediteur', () => {
   it('beide debiteuren betalen aan de crediteur', () => {
     const saldi = [
-      { naam: 'Alice', verrekening:  30 },
-      { naam: 'Bob',   verrekening: -20 },
+      { naam: 'Alice',   verrekening:  30 },
+      { naam: 'Bob',     verrekening: -20 },
       { naam: 'Charlie', verrekening: -10 },
     ]
     const result = berekenVereffening(saldi)
     expect(result).toHaveLength(2)
-    // Alle transacties gaan naar Alice
     expect(result.every(t => t.aan === 'Alice')).toBe(true)
-    // Bob (grootste debiteur) eerst
     expect(result[0].van).toBe('Bob')
     expect(result[0].bedrag).toBe(20)
     expect(result[1].van).toBe('Charlie')
@@ -125,8 +89,8 @@ describe('berekenVereffening — BV-04: twee debiteuren, één crediteur', () =>
 
   it('totaal ontvangen door crediteur = som van alle schulden', () => {
     const saldi = [
-      { naam: 'Alice', verrekening:  30 },
-      { naam: 'Bob',   verrekening: -20 },
+      { naam: 'Alice',   verrekening:  30 },
+      { naam: 'Bob',     verrekening: -20 },
       { naam: 'Charlie', verrekening: -10 },
     ]
     const result = berekenVereffening(saldi)
@@ -140,13 +104,12 @@ describe('berekenVereffening — BV-04: twee debiteuren, één crediteur', () =>
 describe('berekenVereffening — BV-05: één debiteur, twee crediteuren', () => {
   it('debiteur betaalt aan grootste crediteur eerst', () => {
     const saldi = [
-      { naam: 'Alice', verrekening:  20 },
-      { naam: 'Bob',   verrekening:  10 },
+      { naam: 'Alice',   verrekening:  20 },
+      { naam: 'Bob',     verrekening:  10 },
       { naam: 'Charlie', verrekening: -30 },
     ]
     const result = berekenVereffening(saldi)
     expect(result).toHaveLength(2)
-    // Alice heeft grootste tegoed → wordt eerst vergoed
     expect(result[0]).toEqual({ van: 'Charlie', aan: 'Alice', bedrag: 20 })
     expect(result[1]).toEqual({ van: 'Charlie', aan: 'Bob',   bedrag: 10 })
   })
@@ -175,7 +138,7 @@ describe('berekenVereffening — BV-06: twee debiteuren, twee crediteuren', () =
     ]
     const result = berekenVereffening(saldi)
     const totaal = result.reduce((s, t) => s + t.bedrag, 0)
-    expect(totaal).toBeCloseTo(20, 1) // 15 + 5
+    expect(totaal).toBeCloseTo(20, 1)
   })
 
   it('alle transacties hebben een positief bedrag', () => {
@@ -230,14 +193,13 @@ describe('berekenVereffening — BV-09: drempelwaarde 0.005', () => {
     expect(result).toHaveLength(1)
   })
 
-  it('verrekening van -0.005 wordt genegeerd', () => {
+  it('verrekening van -0.004 wordt genegeerd', () => {
     const saldi = [
-      { naam: 'Alice', verrekening:  10 },
-      { naam: 'Bob',   verrekening: -10 },
-      { naam: 'Charlie', verrekening: -0.004 }, // onder drempel
+      { naam: 'Alice',   verrekening:  10 },
+      { naam: 'Bob',     verrekening: -10 },
+      { naam: 'Charlie', verrekening: -0.004 },
     ]
     const result = berekenVereffening(saldi)
-    // Charlie wordt niet meegenomen
     expect(result.every(t => t.van !== 'Charlie')).toBe(true)
   })
 })
@@ -256,9 +218,9 @@ describe('berekenVereffening — BV-10: afrondingscorrectheid', () => {
 
   it('geen NaN-bedragen in het resultaat', () => {
     const saldi = [
-      { naam: 'Alice', verrekening:  10.23 },
-      { naam: 'Bob',   verrekening: -11.85 },
-      { naam: 'Charlie', verrekening: 1.62 },
+      { naam: 'Alice',   verrekening:  10.23 },
+      { naam: 'Bob',     verrekening: -11.85 },
+      { naam: 'Charlie', verrekening:   1.62 },
     ]
     const result = berekenVereffening(saldi)
     expect(result.every(t => !isNaN(t.bedrag))).toBe(true)
@@ -301,13 +263,6 @@ describe('berekenVereffening — BV-11: maximaal n-1 transacties', () => {
 // ── BV-12: T1-scenario uit de smoke test ────────────────────────────────────
 
 describe('berekenVereffening — BV-12: T1-scenario', () => {
-  // T1 eindafrekening:
-  // Beek:    +€7,19  (crediteur)
-  // Beer:    +€10,23 (crediteur)
-  // Poiesz:  −€11,85 (debiteur)
-  // Tesser:  +€7,26  (crediteur)
-  // Chantal: −€12,83 (debiteur)
-
   const saldi = [
     { naam: 'Beek',    verrekening:   7.19 },
     { naam: 'Beer',    verrekening:  10.23 },
@@ -327,10 +282,9 @@ describe('berekenVereffening — BV-12: T1-scenario', () => {
     result.forEach(t => {
       ontvangenPerNaam[t.aan] = (ontvangenPerNaam[t.aan] ?? 0) + t.bedrag
     })
-    expect(ontvangenPerNaam['Beer'] ?? 0).toBeCloseTo(10.23, 1)
-    expect(ontvangenPerNaam['Tesser'] ?? 0).toBeCloseTo(7.26, 1)
-    const beekOntvangen = ontvangenPerNaam['Beek'] ?? 0
-    expect(beekOntvangen).toBeCloseTo(7.19, 1)
+    expect(ontvangenPerNaam['Beer']   ?? 0).toBeCloseTo(10.23, 1)
+    expect(ontvangenPerNaam['Tesser'] ?? 0).toBeCloseTo(7.26,  1)
+    expect(ontvangenPerNaam['Beek']   ?? 0).toBeCloseTo(7.19,  1)
   })
 
   it('alle debiteuren betalen hun volledige schuld', () => {
@@ -339,15 +293,13 @@ describe('berekenVereffening — BV-12: T1-scenario', () => {
     result.forEach(t => {
       betaaldPerNaam[t.van] = (betaaldPerNaam[t.van] ?? 0) + t.bedrag
     })
-    expect(betaaldPerNaam['Poiesz'] ?? 0).toBeCloseTo(11.85, 1)
+    expect(betaaldPerNaam['Poiesz']  ?? 0).toBeCloseTo(11.85, 1)
     expect(betaaldPerNaam['Chantal'] ?? 0).toBeCloseTo(12.83, 1)
   })
 
   it('Beer (grootste crediteur) wordt eerst vergoed', () => {
     const result = berekenVereffening(saldi)
-    // Beer heeft het grootste tegoed (€10,23) → staat als eerste in crediteuren
-    const eersteOntvangerVanGrootsteDebiteur = result[0].aan
-    expect(eersteOntvangerVanGrootsteDebiteur).toBe('Beer')
+    expect(result[0].aan).toBe('Beer')
   })
 
   it('alle transacties hebben positief bedrag ≥ 0.01', () => {

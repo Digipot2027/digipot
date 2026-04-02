@@ -48,17 +48,28 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
           paddingBottom: 'calc(24px + env(safe-area-inset-bottom))',
           maxHeight: '80vh',
           overflowY: 'auto',
-        }}>
-
+        }}
+      >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <h2 id="detail-titel" style={{ fontSize: 18, fontWeight: 700 }}>{deelnemer.naam}</h2>
             {isAfgemeld && <span className="badge badge-afgemeld">Afgemeld</span>}
           </div>
+          {/*
+            WCAG punt 20: sluitknop had padding: 4 → touch target te klein op iOS (min 44px).
+            Vervangen door min-width + min-height: 44px met negatieve margin zodat de
+            visuele positie gelijk blijft maar het klikgebied voldoet aan Apple HIG.
+          */}
           <button
             onClick={onSluiten}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--grijs-400)', padding: 4 }}
+            style={{
+              background: 'none', border: 'none', fontSize: 18,
+              cursor: 'pointer', color: 'var(--grijs-400)',
+              minWidth: 44, minHeight: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginRight: -10, // compenseert optisch voor extra breedte
+            }}
             aria-label="Sluiten"
           >
             ✕
