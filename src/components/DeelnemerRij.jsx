@@ -10,6 +10,11 @@ import { formatBedrag } from '../utils/formatBedrag'
  * WCAG 1.4.3: kleuren via CSS-variabelen met gedocumenteerde contrastwaarden.
  * WCAG 2.1.1: Enter/Space opent detail-sheet (toetsenbordtoegang).
  *
+ * Mobiel (punt 3): naam-cel gebruikt overflow:hidden + text-overflow:ellipsis zodat
+ * lange namen niet de bedragkolommen wegdrukken in de fixed-layout tabel.
+ * De volledige naam is altijd beschikbaar via aria-label op de rij én via de
+ * detail-sheet die opent bij aantikken.
+ *
  * @param {Object}   props
  * @param {object}   props.deelnemer    - Deelnemer-record
  * @param {object}   props.saldi        - Saldi-object voor deze deelnemer ({ gestort, betaald })
@@ -34,8 +39,10 @@ function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = 'EUR' }) {
         opacity: isAfgemeld ? 0.6 : 1,
       }}
     >
-      {/* Naam-cel */}
-      <td style={{ padding: '10px 6px' }}>
+      {/* Naam-cel — overflow:hidden + ellipsis zodat lange namen de bedragkolommen
+          niet wegdrukken in de table-layout:fixed tabel op smalle schermen (320px).
+          Volledige naam is beschikbaar via aria-label op de <tr> en via de detail-sheet. */}
+      <td style={{ padding: '10px 6px', overflow: 'hidden' }}>
         <span style={{
           fontWeight: isIkzelf ? 600 : 400,
           display: 'flex',
@@ -44,21 +51,29 @@ function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = 'EUR' }) {
           fontSize: 14,
           textDecoration: isAfgemeld ? 'line-through' : 'none',
           color: 'var(--grijs-900)',
+          overflow: 'hidden',
         }}>
-          {deelnemer.naam}{isIkzelf ? ' (jij)' : ''}
+          <span style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+          }}>
+            {deelnemer.naam}{isIkzelf ? ' (jij)' : ''}
+          </span>
           {isAfgemeld && (
-            <span className="badge badge-afgemeld" style={{ fontSize: 10 }}>Afgemeld</span>
+            <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
           )}
           {/* Pijltje als visuele hint — aria-hidden want al duidelijk via role="button" */}
           <span
-            style={{ fontSize: 12, color: 'var(--grijs-400)', fontWeight: 400, textDecoration: 'none' }}
+            style={{ fontSize: 12, color: 'var(--grijs-400)', fontWeight: 400, textDecoration: 'none', flexShrink: 0 }}
             aria-hidden="true"
           >›</span>
         </span>
       </td>
 
       {/* Ingelegd-cel */}
-      <td style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right', padding: '10px 6px' }}>
+      <td style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right', padding: '10px 6px', whiteSpace: 'nowrap' }}>
         {formatBedrag(saldi?.gestort || 0, valuta)}
       </td>
 
@@ -68,6 +83,7 @@ function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = 'EUR' }) {
         color: (saldi?.betaald || 0) > 0 ? 'var(--grijs-900)' : 'var(--grijs-400)',
         textAlign: 'right',
         padding: '10px 6px',
+        whiteSpace: 'nowrap',
       }}>
         {formatBedrag(saldi?.betaald || 0, valuta)}
       </td>

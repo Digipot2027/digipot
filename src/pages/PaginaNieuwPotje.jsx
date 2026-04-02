@@ -2,12 +2,17 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
-import { MAX_NAAM, STANDAARD_VALUTA, VALUTA_OPTIES } from '../constants'
+import { MAX_NAAM, STANDAARD_VALUTA } from '../constants'
+
+// MULTICURRENCY: valutakeuze tijdelijk verborgen.
+// STANDAARD_VALUTA ('EUR') wordt altijd meegestuurd via hidden state.
+// Heractiveringsinstructie: verwijder de comment hieronder en herstel het
+// <div className="veld"> blok voor valutaselectie (zie git history of TO).
 
 function PaginaNieuwPotje() {
   const navigate = useNavigate()
   const [naam, setNaam] = useState('')
-  const [valuta, setValuta] = useState(STANDAARD_VALUTA)
+  const [valuta] = useState(STANDAARD_VALUTA)   // vast EUR zolang multicurrency verborgen is
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
 
@@ -80,25 +85,33 @@ function PaginaNieuwPotje() {
             {fout && <div className="fout-tekst">{fout}</div>}
           </div>
 
-          {/* Valutakeuze */}
-          <div className="veld">
-            <label className="label" htmlFor="valuta">Valuta</label>
-            <select
-              id="valuta"
-              className="select"
-              value={valuta}
-              onChange={e => setValuta(e.target.value)}
-            >
-              {VALUTA_OPTIES.map(opt => (
-                <option key={opt.waarde} value={opt.waarde}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <div className="teller">
-              Niet aanpasbaar na aanmaken
+          {/*
+            MULTICURRENCY — tijdelijk verborgen (zie opmerking bovenaan dit bestand).
+            Valuta staat vast op EUR via state; geen zichtbaar veld nodig.
+
+            Herstelblok (plak terug als multicurrency geactiveerd wordt):
+            ────────────────────────────────────────────────────────────────
+            import { MAX_NAAM, STANDAARD_VALUTA, VALUTA_OPTIES } from '../constants'
+            const [valuta, setValuta] = useState(STANDAARD_VALUTA)
+
+            <div className="veld">
+              <label className="label" htmlFor="valuta">Valuta</label>
+              <select
+                id="valuta"
+                className="select"
+                value={valuta}
+                onChange={e => setValuta(e.target.value)}
+              >
+                {VALUTA_OPTIES.map(opt => (
+                  <option key={opt.waarde} value={opt.waarde}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <div className="teller">Niet aanpasbaar na aanmaken</div>
             </div>
-          </div>
+            ────────────────────────────────────────────────────────────────
+          */}
 
           <button
             type="submit"

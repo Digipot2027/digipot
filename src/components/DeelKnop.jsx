@@ -7,7 +7,9 @@ import { deelLink } from '../utils/deelLink'
  * - Mobiel (iOS/Android): native share sheet met Signal, WhatsApp etc.
  * - Desktop (macOS, Windows): kopieert URL direct naar klembord + visuele feedback
  *
- * De knoptekst past zich aan het platform aan zodat de verwachting klopt.
+ * Knoptekst: "Nodig vrienden uit" (mobiel) / "Link kopiëren" (desktop).
+ * "Nodig vrienden uit" maakt het doel expliciet — anderen laten meedoen —
+ * in plaats van het technische middel (een potje delen).
  */
 function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
   const [status, setStatus] = useState('idle') // 'idle' | 'gekopieerd' | 'fout'
@@ -36,7 +38,7 @@ function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
     ? '✅ Link gekopieerd!'
     : status === 'fout'
     ? '⚠️ Kopiëren mislukt'
-    : isMobiel ? '🔗 Deel potje' : '🔗 Link kopiëren'
+    : isMobiel ? '👥 Nodig vrienden uit' : '🔗 Link kopiëren'
 
   return (
     <button
@@ -48,7 +50,7 @@ function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
         status === 'gekopieerd'
           ? 'Link gekopieerd naar klembord'
           : isMobiel
-          ? 'Deel dit potje met anderen'
+          ? 'Nodig vrienden uit voor dit potje'
           : 'Kopieer de link naar dit potje'
       }
     >
