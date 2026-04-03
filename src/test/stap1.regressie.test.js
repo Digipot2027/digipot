@@ -6,6 +6,10 @@
  *   1. constants — correcte waarden, geen typefouten
  *   2. useDeviceId — UUID aanmaken + hergebruik (puur localStorage-contract)
  *   3. useFocusTrap — Escape-callback + Tab-cycling (DOM-interactie via jsdom)
+ *
+ * Let op (SEC-M1): useDeviceId valideert de opgeslagen UUID tegen het UUID v4-patroon.
+ * Testwaarden in localStorage moeten altijd geldige UUID v4's zijn, anders worden
+ * ze als ongeldig beschouwd en vervangen door een nieuw UUID.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -57,11 +61,17 @@ describe('constants', () => {
 
 import { useDeviceId } from '../hooks/useDeviceId'
 
+// Geldige UUID v4-waarden voor gebruik in tests (SEC-M1: validatie vereist echte UUID v4).
+// Ongeldige strings zoals 'bestaand-uuid-5678' worden door useDeviceId verworpen.
+const GELDIG_UUID_A = 'a1b2c3d4-e5f6-4789-ab12-cd34ef567890'
+const GELDIG_UUID_B = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
+const GELDIG_UUID_STUB = '12345678-1234-4234-8234-123456789abc'
+
 describe('useDeviceId', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.stubGlobal('crypto', {
-      randomUUID: vi.fn(() => 'test-uuid-1234'),
+      randomUUID: vi.fn(() => GELDIG_UUID_STUB),
     })
   })
 
@@ -72,20 +82,21 @@ describe('useDeviceId', () => {
 
   it('maakt een nieuw UUID aan als er nog geen staat opgeslagen', () => {
     const { result } = renderHook(() => useDeviceId())
-    expect(result.current).toBe('test-uuid-1234')
-    expect(localStorage.getItem('digipot_device_id')).toBe('test-uuid-1234')
+    expect(result.current).toBe(GELDIG_UUID_STUB)
+    expect(localStorage.getItem('digipot_device_id')).toBe(GELDIG_UUID_STUB)
   })
 
   it('hergebruikt het bestaande UUID uit localStorage', () => {
-    localStorage.setItem('digipot_device_id', 'bestaand-uuid-5678')
+    // SEC-M1: waarde moet een geldig UUID v4 zijn, anders wordt hij verworpen
+    localStorage.setItem('digipot_device_id', GELDIG_UUID_A)
     const { result } = renderHook(() => useDeviceId())
-    expect(result.current).toBe('bestaand-uuid-5678')
+    expect(result.current).toBe(GELDIG_UUID_A)
     expect(crypto.randomUUID).not.toHaveBeenCalled()
   })
 
   it('slaat het nieuwe UUID op in localStorage', () => {
     renderHook(() => useDeviceId())
-    expect(localStorage.getItem('digipot_device_id')).toBe('test-uuid-1234')
+    expect(localStorage.getItem('digipot_device_id')).toBe(GELDIG_UUID_STUB)
   })
 
   it('geeft altijd een niet-lege string terug', () => {
@@ -95,11 +106,20 @@ describe('useDeviceId', () => {
   })
 
   it('stabiel over re-renders — geeft hetzelfde UUID terug', () => {
-    localStorage.setItem('digipot_device_id', 'stabiel-uuid')
+    // SEC-M1: geldige UUID v4 vereist voor hergebruik
+    localStorage.setItem('digipot_device_id', GELDIG_UUID_B)
     const { result, rerender } = renderHook(() => useDeviceId())
     const eerste = result.current
     rerender()
     expect(result.current).toBe(eerste)
+  })
+
+  it('verwerpt een ongeldige UUID en genereert een nieuwe', () => {
+    // Verificatie dat SEC-M1 werkt: ongeldige waarden worden nooit hergebruikt
+    localStorage.setItem('digipot_device_id', 'geen-uuid')
+    const { result } = renderHook(() => useDeviceId())
+    expect(result.current).toBe(GELDIG_UUID_STUB)
+    expect(crypto.randomUUID).toHaveBeenCalled()
   })
 })
 
