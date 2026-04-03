@@ -9,6 +9,7 @@ import { formatBedrag } from '../utils/formatBedrag'
  * WCAG 1.3.1: gebruikt <tr> binnen een semantische <table> met <th scope="col">.
  * WCAG 1.4.3: kleuren via CSS-variabelen met gedocumenteerde contrastwaarden.
  * WCAG 2.1.1: Enter/Space opent detail-sheet (toetsenbordtoegang).
+ *   Space-handler roept e.preventDefault() aan om paginascroll te voorkomen.
  *
  * Mobiel (punt 3): naam-cel gebruikt overflow:hidden + text-overflow:ellipsis zodat
  * lange namen niet de bedragkolommen wegdrukken in de fixed-layout tabel.
@@ -25,10 +26,19 @@ import { formatBedrag } from '../utils/formatBedrag'
 function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = 'EUR' }) {
   const isAfgemeld = deelnemer.actief === false
 
+  // WCAG-3: Space-toets scrollt de pagina als e.preventDefault() ontbreekt.
+  // Enter heeft dit probleem niet, maar we behandelen beide consistent.
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick()
+    }
+  }
+
   return (
     <tr
       onClick={onClick}
-      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
+      onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
       aria-label={`Details van ${deelnemer.naam}${isAfgemeld ? ', afgemeld' : ''}`}

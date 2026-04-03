@@ -23,9 +23,23 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
   const saldi       = berekenEindafrekening(deelnemers, transacties, potje.gesloten_op)
   const vereffening = berekenVereffening(saldi.deelnemersSaldi)
 
-  const sluitDatum = new Date(potje.gesloten_op).toLocaleDateString('nl-NL', {
+  // Datum en tijd van sluiting
+  const sluitMoment = new Date(potje.gesloten_op)
+  const sluitDatum = sluitMoment.toLocaleDateString('nl-NL', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
+  const sluitTijd = sluitMoment.toLocaleTimeString('nl-NL', {
+    hour: '2-digit', minute: '2-digit',
+  })
+
+  // Naam van de sluiter opzoeken via gesloten_door (UUID → deelnemer.naam)
+  const sluiterNaam = potje.gesloten_door
+    ? (deelnemers.find(d => d.id === potje.gesloten_door)?.naam ?? null)
+    : null
+
+  const sluitRegel = sluiterNaam
+    ? `Gesloten op ${sluitDatum} door ${sluiterNaam} om ${sluitTijd}.`
+    : `Automatisch gesloten op ${sluitDatum} om ${sluitTijd}.`
 
   const [opengeklapt, setOpengeklapt] = useState(null)
 
@@ -58,18 +72,15 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
             ⚙️
           </button>
         </div>
-        <p className="subtitel">
-          {potje.gesloten_door === null
-            ? `Automatisch gesloten op ${sluitDatum}`
-            : `Gesloten op ${sluitDatum}`}
+
+        <p className="subtitel">{sluitRegel}</p>
+
+        <p style={{ fontSize: 12, color: 'var(--grijs-500)', marginTop: -8, marginBottom: 12 }}>
+          Dit potje wordt na 7 dagen volledig verwijderd.
         </p>
-        {potje.gesloten_door === null && (
-          <p style={{ fontSize: 12, color: 'var(--grijs-500)', marginTop: 4 }}>
-            Dit potje is na 24 uur automatisch gesloten en wordt na 7 dagen volledig verwijderd.
-          </p>
-        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--grijs-200)' }}>
-          <span style={{ color: 'var(--grijs-600)' }}>Totaal gestort</span>
+          <span style={{ color: 'var(--grijs-600)' }}>Totaal in de pot gestort</span>
           <strong>{formatBedrag(saldi.potTotaal, valuta)}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
@@ -125,7 +136,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                     Betaald: {formatBedrag(d.betaald, valuta)}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--grijs-500)' }}>
-                    Ingelegd: {formatBedrag(d.gestort, valuta)}
+                    In de pot: {formatBedrag(d.gestort, valuta)}
                   </span>
                 </span>
 
@@ -165,7 +176,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                       {dtransacties.filter(t => t.type === 'storting').length > 0 && (
                         <>
                           <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            Stortingen
+                            In de pot gestort
                           </p>
                           {dtransacties.filter(t => t.type === 'storting').map(t => (
                             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>

@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 1.1
-**Datum:** 2026-04-02
+**Versie:** 1.2
+**Datum:** 2026-04-03
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -21,10 +21,11 @@
 10. Instellingenscherm S2 — Open potjes
 11. Instellingenscherm S3 — Gesloten potjes
 12. Instellingenscherm S4 — Profiel
-13. Dwarsdoorsnijdende functionaliteit
-14. Validaties en begrenzingen
-15. Uitgestelde functionaliteit
-16. Wijzigingslog
+13. Scherm 404 — Pagina niet gevonden
+14. Dwarsdoorsnijdende functionaliteit
+15. Validaties en begrenzingen
+16. Uitgestelde functionaliteit
+17. Wijzigingslog
 
 ---
 
@@ -65,6 +66,7 @@ Er is geen login, geen account en geen betaalintegratie. Alles draait op apparaa
 | S2 | Open potjes | `/instellingen/open` | — |
 | S3 | Gesloten potjes | `/instellingen/gesloten` | — |
 | S4 | Profiel | `/instellingen/profiel` | — |
+| 404 | Pagina niet gevonden | `*` (catch-all) | — |
 
 ### Hoofdflow nieuw potje
 
@@ -119,7 +121,7 @@ De gebruiker geeft het potje een naam. Na aanmaken wordt hij doorgestuurd naar h
 - Aanmaakknop is uitgeschakeld zolang het naamveld leeg is.
 - Na succesvol aanmaken navigeert de app naar `/potje/:id`.
 - Bij netwerk- of databasefout verschijnt een rode foutmelding onder het formulier.
-- Valuta wordt intern op EUR gezet (zie §15 — Uitgestelde functionaliteit).
+- Valuta wordt intern op EUR gezet (zie §16 — Uitgestelde functionaliteit).
 
 ---
 
@@ -201,7 +203,7 @@ Snelkeuze heeft altijd prioriteit boven vrij invoerveld. De twee kunnen niet teg
 
 ### Gedrag na storten
 
-Na succesvolle registratie navigeert de app naar `/potje/:id` met een groene toast-melding: "Storting van [bedrag] geregistreerd."
+Na succesvolle registratie navigeert de app naar `/potje/:id` met een groene toast-melding: "Storting van [bedrag] geregistreerd." De toast verschijnt via `location.state` die `PaginaPotje` uitleest bij aankomst.
 
 ---
 
@@ -255,9 +257,17 @@ Op desktop: kopieert de URL naar het klembord. Knoptekst verandert tijdelijk naa
 | Afmelden | Actief + heeft gestort | Opent ModalAfmelden |
 | Pot sluiten | Ten minste één transactie | Opent ModalSluiten |
 
-### Deelnemer aantikken
+### Deelnemer aantikken → DeelnemerDetailSheet
 
-Tikt een gebruiker op een naam, dan opent een detail-sheet met: naam, status, totaal ingelegd, totaal betaald, verrekening.
+Tikt een gebruiker op een naam, dan opent een bottom-sheet met details van die deelnemer:
+
+- Naam + "Afgemeld"-badge indien van toepassing
+- Twee kaartjes: totaal ingelegd (groen) + totaal betaald (rood)
+- Lijst van stortingen (tijdgestempeld)
+- Lijst van betalingen (tijdgestempeld)
+- Sluitknop (✕) en "Sluiten"-knop onderaan
+
+**Toegankelijkheid:** focus gaat bij openen naar de sluitknop; Tab-trap actief; Escape sluit de sheet.
 
 ### Modals vanuit dit scherm
 
@@ -283,12 +293,15 @@ Alle wijzigingen van andere deelnemers verschijnen automatisch zonder herladen. 
 
 | Situatie | Tekst | Type | Undo |
 |---|---|---|---|
-| Storting geregistreerd | "Storting van [bedrag] geregistreerd." | Groen | Ja (10s) |
+| Storting geregistreerd (via PaginaStorten) | "Storting van [bedrag] geregistreerd." | Groen | Nee |
+| Storting geregistreerd (via ModalTransactie) | "Storting van [bedrag] geregistreerd." | Groen | Ja (10s) |
 | Betaling geregistreerd | "Betaling van [bedrag] geregistreerd." | Groen | Ja (10s) |
 | Afgemeld | "Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen." | Info | Nee |
 | Verbinding hersteld | "Verbinding hersteld." | Groen | Nee |
 | Fout bij undo | "Je kunt alleen je eigen transacties ongedaan maken." | Rood | Nee |
 | Undo saldo te laag | "Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag." | Rood | Nee |
+
+**Toast-timing:** 10 seconden bij undo-actie, 5 seconden bij info-type, 3 seconden bij overige types.
 
 ### Transactie ongedaan maken (undo)
 
@@ -327,7 +340,7 @@ Voorwaarden:
 
 ### Berekenmodel
 
-Zie §13 voor volledige uitleg. Samenvatting: afgemelden betalen volledige inleg (vast), actieven betalen naar rato (inleg × factor). Verrekening nooit lager dan −ingelegd.
+Zie §14 voor volledige uitleg. Samenvatting: afgemelden betalen volledige inleg (vast), actieven betalen naar rato (inleg × factor). Verrekening nooit lager dan −ingelegd.
 
 ### Tikkie-integratie
 
@@ -356,7 +369,11 @@ Overzicht van open potjes voor dit apparaat. Per potje: naam, deelnemers, datum,
 
 **Route:** `/instellingen/gesloten`
 
-Overzicht van gesloten potjes voor dit apparaat. Per potje: naam, sluitdatum, eigen verrekening. Lege staat: "Geen gesloten potjes".
+Overzicht van gesloten potjes voor dit apparaat. Per potje: naam, sluitdatum, eigen verrekening.
+
+**Verrekeningstatus:** positief bedrag toont "te ontvangen", negatief bedrag toont "bij te betalen". Deze labels drukken de toekomstige actie uit — niet een voltooide handeling.
+
+Lege staat: "Geen gesloten potjes".
 
 ---
 
@@ -366,15 +383,38 @@ Overzicht van gesloten potjes voor dit apparaat. Per potje: naam, sluitdatum, ei
 
 Naam instellen (max 30 tekens, lokaal opgeslagen, verwijderbaar).
 Tekstgrootte instellen: Normaal / Groot / Extra groot (live preview).
+
+**Tekstgrootte-kiezer:** radiogroup met roving tabindex — alleen de actieve optie zit in de Tab-volgorde, de andere opties zijn bereikbaar via pijltjestoetsen.
+
 Privacy: geen persoonsgegevens worden verstuurd.
 
 ---
 
-## 13. Dwarsdoorsnijdende functionaliteit
+## 13. Scherm 404 — Pagina niet gevonden
+
+**Route:** `*` (catch-all voor alle onbekende routes)
+**Component:** `PaginaNietGevonden`
+**Doel:** gebruiker informeren over een onbekende URL en terugsturen.
+
+### UI-elementen
+
+- Paginatitel: "Pagina niet gevonden — Digipot"
+- Pictogram: 🔍
+- Koptekst: "Pagina niet gevonden"
+- Uitleg: "Deze pagina bestaat niet. Controleer de link of ga terug naar de startpagina."
+- Knop: "← Terug naar home" (navigeert naar `/`)
+
+### Gedrag
+
+Er is geen terugknop naar de vorige pagina — de catch-all is bedoeld voor ongeldige links. De enige uitweg is de home-knop.
+
+---
+
+## 14. Dwarsdoorsnijdende functionaliteit
 
 ### Apparaatidentificatie
 
-Elk apparaat krijgt bij eerste gebruik een UUID opgeslagen in localStorage (`digipot_device_id`). Dit ID bepaalt welke deelnemer "jij" bent.
+Elk apparaat krijgt bij eerste gebruik een UUID opgeslagen in localStorage (`digipot_device_id`). Dit ID bepaalt welke deelnemer "jij" bent. De UUID wordt gevalideerd bij elke sessie; een ongeldige of gemanipuleerde waarde wordt vervangen door een nieuw UUID.
 
 ### Berekenlogica eindafrekening
 
@@ -394,7 +434,7 @@ Online/offline detectie via browser-events én Supabase WebSocket-status. Rode b
 
 ---
 
-## 14. Validaties en begrenzingen
+## 15. Validaties en begrenzingen
 
 | Gegeven | Minimum | Maximum |
 |---|---|---|
@@ -408,7 +448,7 @@ Databaseconstraints spiegelen alle clientvalidaties. De server is leidend bij co
 
 ---
 
-## 15. Uitgestelde functionaliteit
+## 16. Uitgestelde functionaliteit
 
 ### Multicurrency
 
@@ -418,9 +458,10 @@ Interne ondersteuning voor EUR, USD, GBP, CHF, DKK, NOK, SEK is aanwezig. De val
 
 ---
 
-## 16. Wijzigingslog
+## 17. Wijzigingslog
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
 | 1.0 | 2026-03-01 | Initieel FO opgesteld | Projectstart |
-| 1.1 | 2026-04-02 | Valutakeuze verborgen op Scherm 1; "Deel potje" → "Nodig vrienden uit" (mobiel); "saldo" → "nog te besteden" op Scherm 4; tabel mobiel-robuust (overflow-x, fixed layout, ellipsis, min-width:0); FO en TO opgenomen in repository | UX-verbetering, multicurrency activering uitgesteld, mobiele optimalisatie |
+| 1.1 | 2026-04-02 | Valutakeuze verborgen op Scherm 1; "Deel potje" → "Nodig vrienden uit" (mobiel); "saldo" → "nog te besteden" op Scherm 4; tabel mobiel-robuust; FO en TO opgenomen in repository | UX-verbetering, multicurrency uitgesteld, mobiele optimalisatie |
+| 1.2 | 2026-04-03 | Scherm 404 (PaginaNietGevonden) toegevoegd aan §13; DeelnemerDetailSheet beschreven in §7; toast-timing gedocumenteerd; "ontvangen/bijbetaald" → "te ontvangen/bij te betalen" in S3; roving tabindex radiogroup gedocumenteerd in S4; toast via location.state na storting gedocumenteerd; UUID-validatie bij apparaatidentificatie beschreven | Auditbevindingen: ontbrekende documentatie, UX-correcties, security-toelichting |

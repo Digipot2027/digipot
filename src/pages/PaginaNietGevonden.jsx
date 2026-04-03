@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 /**
@@ -7,6 +8,9 @@ import { useNavigate } from 'react-router-dom'
  */
 function PaginaNietGevonden() {
   const navigate = useNavigate()
+
+  // WCAG-1 / 2.4.2: paginatitel instellen — ontbrak eerder als enige pagina.
+  useEffect(() => { document.title = 'Pagina niet gevonden — Digipot' }, [])
 
   return (
     <div className="pagina">

@@ -113,8 +113,13 @@ function PaginaGeslotenPotjes() {
                           ? `+${formatBedrag(potje.mijnVerrekening, potje.valuta)}`
                           : `-${formatBedrag(Math.abs(potje.mijnVerrekening), potje.valuta)}`}
                       </div>
+                      {/*
+                        UX-5: was 'ontvangen' / 'bijbetaald' — die labels impliceren
+                        dat de vereffening al heeft plaatsgevonden.
+                        Correcte labels zijn 'te ontvangen' / 'bij te betalen'.
+                      */}
                       <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>
-                        {potje.mijnVerrekening >= 0 ? 'ontvangen' : 'bijbetaald'}
+                        {potje.mijnVerrekening >= 0 ? 'te ontvangen' : 'bij te betalen'}
                       </div>
                     </div>
                   )}

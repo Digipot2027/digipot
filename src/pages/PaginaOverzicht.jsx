@@ -36,7 +36,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 <div style={{ fontSize: 22, fontWeight: 700, color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
                   {formatBedrag(saldi.potSaldo, valuta)}
                 </div>
-                {/* UX: "nog te besteden" is concreter dan "saldo" voor niet-financiële gebruikers */}
                 <div style={{ fontSize: 12, color: 'var(--grijs-500)' }}>nog te besteden</div>
               </div>
               <button
@@ -68,7 +67,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
              WCAG 1.3.1: echte <table> met <th scope="col"> zodat screenreaders
              kolomhoofden koppelen aan celwaarden.
              WCAG 1.4.3: kolomhoofden gebruiken grijs-600 (#4b5563, contrast 7.4:1 op wit).
-             Mobiel (punt 3): tabel gebruikt table-layout:fixed + overflow-x:auto zodat
+             Mobiel: tabel gebruikt table-layout:fixed + overflow-x:auto zodat
              lange namen de bedragkolommen niet wegdrukken op smalle schermen (320px). */}
         <div className="kaart">
           <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
@@ -78,20 +77,12 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             Tik op een naam voor details
           </p>
 
-          {/*
-            Mobiel-fix punt 3:
-            - overflow-x: auto  → horizontaal scrollen als inhoud te breed is (320px)
-            - table-layout: fixed + vaste kolombreedtes → bedragkolommen krijgen
-              gegarandeerde ruimte; naam-cel kromt via overflow:hidden + text-overflow:ellipsis.
-            - min-width: 260px  → tabel is altijd minimaal leesbaar breed.
-          */}
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table
               style={{ width: '100%', minWidth: 260, borderCollapse: 'collapse', tableLayout: 'fixed' }}
               aria-label="Deelnemersoverzicht"
             >
               <colgroup>
-                {/* Naam krijgt resterende breedte; de twee bedragkolommen zijn vast */}
                 <col style={{ width: 'auto' }} />
                 <col style={{ width: 72 }} />
                 <col style={{ width: 72 }} />
@@ -99,7 +90,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--grijs-200)' }}>
                   <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left', padding: '4px 6px 8px' }}>Naam</th>
-                  <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>Ingelegd</th>
+                  <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>In de pot</th>
                   <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>Betaald</th>
                 </tr>
               </thead>
@@ -119,8 +110,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           </div>
         </div>
 
-        {/* Actieknoppen — 2×2 grid
-            Mobiel-fix punt 3: min-width: 0 op gridcellen voorkomt overflow op 320px. */}
+        {/* Actieknoppen — 2×2 grid */}
         <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
           {/* Rij 1: Storten + Betalen */}
@@ -176,7 +166,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </button>
           </div>
 
-          {/* Helpteksten onder rij 2 — zichtbaar op mobiel */}
+          {/* Helpteksten onder rij 2 */}
           {ikBenActief && !ikBenGestort && (
             <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
               Eerst storten om je te kunnen afmelden.

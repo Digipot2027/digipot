@@ -9,15 +9,27 @@ import { useDeviceId } from './useDeviceId'
  * Vervangt de gedupliceerde laadData + realtime-abonnementen +
  * online/offline-logica in PaginaPotje en PaginaStorten.
  *
+ * Realtime-abonnementen (vier events):
+ *   potjes     *       — potjestatus, gesloten_op, enz.
+ *   deelnemers INSERT  — nieuwe deelnemer
+ *   deelnemers UPDATE  — bijv. actief → false bij afmelden
+ *   transacties INSERT — nieuwe storting of betaling
+ *   transacties DELETE — undo van eigen transactie (SEC-L2)
+ *
+ * SEC-L2: DELETE-abonnement toegevoegd zodat undo's van andere clients
+ * (of van eigen client via directe API-aanroep) direct zichtbaar zijn
+ * zonder herladen. Zonder dit abonnement bleef een verwijderde transactie
+ * zichtbaar in de lokale state tot aan de volgende refresh.
+ *
  * @param {string} potjeId - UUID van het potje (uit useParams)
  * @returns {{
  *   potje: object|null,
  *   deelnemers: Array,
  *   transacties: Array,
- *   deelnemer: object|null,     — huidig device's deelnemer, of null
- *   setDeelnemer: Function,     — voor consumers die deelnemer bijwerken (bijv. na afmelden)
- *   setDeelnemers: Function,    — voor consumers die deelnemers bijwerken (bijv. na afmelden)
- *   setTransacties: Function,   — voor consumers die transacties bijwerken (bijv. na undo)
+ *   deelnemer: object|null,
+ *   setDeelnemer: Function,
+ *   setDeelnemers: Function,
+ *   setTransacties: Function,
  *   laden: boolean,
  *   fout: string,
  *   online: boolean,
@@ -70,12 +82,14 @@ export function usePotje(potjeId) {
 
     const kanaal = supabase
       .channel(`potje-${potjeId}`)
+
       // Potje-updates (status, gesloten_op, enz.)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'potjes', filter: `id=eq.${potjeId}` },
         payload => setPotje(payload.new)
       )
+
       // Nieuwe deelnemer
       .on(
         'postgres_changes',
@@ -87,6 +101,7 @@ export function usePotje(potjeId) {
             )
           )
       )
+
       // Deelnemer-update (bijv. actief → false bij afmelden)
       .on(
         'postgres_changes',
@@ -96,26 +111,38 @@ export function usePotje(potjeId) {
           setDeelnemer(prev => prev?.id === payload.new.id ? payload.new : prev)
         }
       )
+
       // Nieuwe transactie
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'transacties', filter: `potje_id=eq.${potjeId}` },
         payload => setTransacties(prev => [...prev, payload.new])
       )
+
+      // SEC-L2: Verwijderde transactie (undo).
+      // payload.old bevat alleen het primaire sleutel-veld (id) als RLS actief is.
+      // We filteren op id — meer data is niet nodig voor een DELETE.
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'transacties', filter: `potje_id=eq.${potjeId}` },
+        payload => {
+          const verwijderdId = payload.old?.id
+          if (verwijderdId) {
+            setTransacties(prev => prev.filter(t => t.id !== verwijderdId))
+          }
+        }
+      )
+
       .subscribe(status => setOnline(status === 'SUBSCRIBED'))
 
-    function handleOnline() {
-      setOnline(true)
-    }
-    function handleOffline() {
-      setOnline(false)
-    }
-    window.addEventListener('online', handleOnline)
+    function handleOnline()  { setOnline(true)  }
+    function handleOffline() { setOnline(false) }
+    window.addEventListener('online',  handleOnline)
     window.addEventListener('offline', handleOffline)
 
     return () => {
       supabase.removeChannel(kanaal)
-      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('online',  handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [potjeId, laadData])

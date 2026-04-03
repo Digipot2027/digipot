@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-const PROFIEL_NAAM_KEY = 'digipot_profiel_naam'
-const TEKSTGROOTTE_KEY = 'digipot_tekstgrootte'
-const MAX_NAAM = 30
+import { PROFIEL_NAAM_KEY, TEKSTGROOTTE_KEY, MAX_NAAM } from '../constants'
 
 const TEKSTGROOTTES = [
-  { waarde: 'normaal', label: 'Normaal', voorbeeld: '16px' },
-  { waarde: 'groot', label: 'Groot', voorbeeld: '19px' },
-  { waarde: 'extra-groot', label: 'Extra groot', voorbeeld: '22px' },
+  { waarde: 'normaal', label: 'Normaal' },
+  { waarde: 'groot', label: 'Groot' },
+  { waarde: 'extra-groot', label: 'Extra groot' },
 ]
 
 function PaginaProfiel() {
@@ -23,15 +20,20 @@ function PaginaProfiel() {
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Profiel — Digipot' }, [])
+
   // Bijgehouden als state zodat heeftWijziging correct reageert na opslaan/verwijderen.
-  // State is hier correct: wijziging van opgeslagenNaamState triggert altijd een re-render
-  // die toch al plaatsvindt via setOpgeslagen, dus geen extra renders.
   const [opgeslagenNaamState, setOpgeslagenNaamState] = useState(opgeslagenNaam)
 
-  function handleTekstgrootte(waarde) {
+  // WCAG-7: refs voor roving tabindex — alleen actieve radio in tabvolgorde
+  const radioRefs = useRef([])
+
+  function handleTekstgrootte(waarde, index) {
     setTekstgrootte(waarde)
     localStorage.setItem(TEKSTGROOTTE_KEY, waarde)
     document.documentElement.setAttribute('data-tekstgrootte', waarde)
+    // Focus de nieuw geselecteerde radio zodat de toetsenbordgebruiker niet
+    // de focus kwijtraakt na wijziging via pijltjestoets.
+    radioRefs.current[index]?.focus()
   }
 
   function handleOpslaan(e) {
@@ -122,6 +124,13 @@ function PaginaProfiel() {
         <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)', marginBottom: 16 }}>
           De instelling wordt direct toegepast en onthouden.
         </p>
+
+        {/*
+          WCAG-7 / 4.1.2: roving tabindex patroon voor radiogroup.
+          - Alleen de geselecteerde optie heeft tabIndex={0}; de rest tabIndex={-1}.
+          - Pijltjestoetsen navigeren tussen opties en verplaatsen focus + selectie.
+          - Dit is het correcte ARIA-patroon voor role="radiogroup" (APG).
+        */}
         <div
           role="radiogroup"
           aria-label="Tekstgrootte kiezen"
@@ -132,21 +141,20 @@ function PaginaProfiel() {
             return (
               <button
                 key={waarde}
+                ref={el => { radioRefs.current[index] = el }}
                 role="radio"
                 aria-checked={actief}
-                // WCAG 4.1.2: pijltjestoets-navigatie binnen radiogroup —
-                // rechts/neer = volgende optie, links/omhoog = vorige optie
+                tabIndex={actief ? 0 : -1}
                 onKeyDown={e => {
+                  // WCAG 4.1.2: pijltjestoets-navigatie binnen radiogroup
                   const richtingen = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp']
                   if (!richtingen.includes(e.key)) return
                   e.preventDefault()
                   const stap = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1
                   const volgende = (index + stap + TEKSTGROOTTES.length) % TEKSTGROOTTES.length
-                  handleTekstgrootte(TEKSTGROOTTES[volgende].waarde)
-                  // Focus het volgende radio-element
-                  e.currentTarget.parentElement?.children[volgende]?.focus()
+                  handleTekstgrootte(TEKSTGROOTTES[volgende].waarde, volgende)
                 }}
-                onClick={() => handleTekstgrootte(waarde)}
+                onClick={() => handleTekstgrootte(waarde, index)}
                 style={{
                   flex: 1,
                   padding: '12px 8px',

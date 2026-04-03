@@ -155,17 +155,70 @@ body {
   z-index: 200;
 }
 
-/* K5: toast ondersteunt optioneel een actie-knop */
+/* ── Toast ────────────────────────────────────────────────────────────────────
+   UX-3: Progressiebalk voor undo-toast.
+   .toast--heeft-undo toont een witte balk onderin die in --toast-duur seconden
+   van 100% naar 0% loopt. De duur wordt als CSS custom property ingesteld via
+   inline style zodat de animatie altijd synchroon loopt met de JS-timer.
+
+   Opbouw:
+   - .toast            basiscontainer (position:fixed, flex)
+   - .toast-inhoud     flex-row: tekst + knop (flex: 1 zodat balk eronder komt)
+   - .toast-voortgang  absolute balk onderaan, alleen zichtbaar bij .toast--heeft-undo
+   ─────────────────────────────────────────────────────────────────────────── */
 .toast {
-  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-  background: var(--grijs-900); color: var(--wit); padding: 0.75rem 1rem;
-  border-radius: 8px; font-size: 0.875rem; z-index: 1000;
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--grijs-900);
+  color: var(--wit);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  z-index: 1000;
   animation: fadeIn 0.2s ease;
-  display: flex; align-items: center; gap: 0.75rem;
   max-width: calc(100vw - 2rem);
+  /* overflow:hidden knipt de progressiebalk af op de hoeken van de toast */
+  overflow: hidden;
+  /* flex-direction: column zodat de balk onder de inhoud staat */
+  display: flex;
+  flex-direction: column;
 }
 .toast.fout { background: var(--rood); }
-.toast.ok { background: var(--groen); }
+.toast.ok   { background: var(--groen); }
+
+/* Inhoud-rij: tekst links, knop rechts */
+.toast-inhoud {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+/* UX-3: progressiebalk — standaard verborgen */
+.toast-voortgang {
+  display: none;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.35);
+  /* De ::after-pseudo maakt de lopende balk */
+  position: relative;
+  overflow: hidden;
+}
+.toast-voortgang::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  transform-origin: left;
+  /* Duur wordt als inline style --toast-duur gezet vanuit JS */
+  animation: toastVoortgang var(--toast-duur, 10s) linear forwards;
+}
+
+/* Alleen zichtbaar als toast een undo-actie heeft */
+.toast--heeft-undo .toast-voortgang {
+  display: block;
+}
+
 .toast-knop {
   background: rgba(255,255,255,0.2);
   border: 1px solid rgba(255,255,255,0.35);
@@ -179,7 +232,16 @@ body {
   flex-shrink: 0;
 }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* UX-3: progressiebalk loopt van volledige breedte (scaleX 1) naar 0 */
+@keyframes toastVoortgang {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
 
 .skeleton {
   background: linear-gradient(90deg, var(--grijs-100) 25%, var(--grijs-200) 50%, var(--grijs-100) 75%);

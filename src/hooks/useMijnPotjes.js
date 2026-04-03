@@ -10,17 +10,20 @@ import { DEVICE_ID_KEY, PROFIEL_NAAM_KEY } from '../constants'
  * Oplossing N+1 query probleem:
  *   Oud: 1 (deelnemers) + 1 (potjes) + N×2 (deelnemers+transacties per potje)
  *        = 2 + 2N calls voor N potjes
- *   Nieuw: 1 (deelnemers) + 1 (potjes incl. deelnemers+transacties genest) = 2 calls totaal
- *
- * Supabase ondersteunt geneste selects: .select('*, deelnemers(*), transacties(*)')
- * Dit retourneert potjes met ingebedde arrays — geen extra calls per potje nodig.
+ *   Nieuw: 3 queries totaal ongeacht het aantal potjes.
  *
  * Fix (2026-03-31):
- *   - Profielnaam-filter gebruikt nu aparte .or()-kolommen zonder string-interpolatie
+ *   - Profielnaam-filter gebruikt nu aparte queries zonder string-interpolatie
  *     om Supabase query-injectie te voorkomen (security fix)
  *   - Geneste query gesplitst: eerst potjes ophalen, dan deelnemers+transacties apart
  *     om RLS-conflicten bij geneste selects te vermijden (bugfix foutmelding)
  *   - herlaad() functie toegevoegd zodat de UI een retry-knop kan aanbieden (UX fix)
+ *
+ * Fix (2026-04-03):
+ *   - Profielnaam-filter gewijzigd van .ilike() naar .eq() (SEC-H2).
+ *     ilike accepteert SQL-wildcards (% en _): een profielnaam '%' zou alle
+ *     deelnemers matchen en daarmee potjes van vreemden tonen (informatielekage).
+ *     eq is een exacte case-sensitieve vergelijking zonder wildcardrisico.
  *
  * @param {'open'|'gesloten'} status - Welke potjes te laden
  * @returns {{
@@ -49,16 +52,18 @@ export function useMijnPotjes(status) {
     async function laadPotjes() {
       try {
         // ── Stap 1: zoek potje-IDs voor dit device / deze profielnaam ──────────
-        // Bouw de OR-filter op als twee aparte condities (geen string-interpolatie).
-        // Dit voorkomt dat een profielnaam met komma's of punten de query breekt.
+        // Twee aparte queries gecombineerd client-side om RLS-problemen met .or()
+        // op meerdere kolommen te vermijden.
+        //
+        // SEC-H2: .eq() i.p.v. .ilike() — ilike accepteert SQL-wildcards (% en _)
+        // waardoor een profielnaam zoals '%' alle deelnemers zou matchen.
+        // .eq() is een exacte vergelijking zonder wildcardrisico.
         if (!deviceId && !profielNaam) {
           setPotjes([])
           setLaden(false)
           return
         }
 
-        // Gebruik twee aparte queries en combineer de resultaten client-side
-        // om RLS-problemen met .or() op meerdere kolommen te vermijden.
         const deelnemerSets = await Promise.all([
           deviceId
             ? supabase
@@ -70,7 +75,7 @@ export function useMijnPotjes(status) {
             ? supabase
                 .from('deelnemers')
                 .select('potje_id, naam, id, device_id')
-                .ilike('naam', profielNaam)
+                .eq('naam', profielNaam)          // was: .ilike('naam', profielNaam)
             : Promise.resolve({ data: [], error: null }),
         ])
 
@@ -146,7 +151,7 @@ export function useMijnPotjes(status) {
             const saldi = berekenEindafrekening(potjeDeelnemers, potjeTransacties, potje.gesloten_op)
             const mijnDeelnemer = potjeDeelnemers.find(d =>
               d.device_id === deviceId ||
-              (profielNaam && d.naam.toLowerCase() === profielNaam.toLowerCase())
+              (profielNaam && d.naam === profielNaam)  // was: d.naam.toLowerCase() === profielNaam.toLowerCase()
             )
             const mijnVerrekening = mijnDeelnemer
               ? saldi.deelnemersSaldi.find(s => s.id === mijnDeelnemer.id)?.verrekening ?? null

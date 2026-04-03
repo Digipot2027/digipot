@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 1.1
-**Datum:** 2026-04-02
+**Versie:** 1.3
+**Datum:** 2026-04-03
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -80,7 +80,7 @@ Beide Supabase-variabelen worden gevalideerd bij opstarten in `supabaseClient.js
 ```
 digipot/
 ├── docs/
-│   ├── FO.md                  ← Functioneel Ontwerp (dit document)
+│   ├── FO.md                  ← Functioneel Ontwerp
 │   └── TO.md                  ← Technisch Ontwerp (dit document)
 ├── public/
 ├── src/
@@ -108,6 +108,7 @@ digipot/
 │   │   ├── PaginaEindafrekening.jsx
 │   │   ├── PaginaGeslotenPotjes.jsx
 │   │   ├── PaginaInstellingen.jsx
+│   │   ├── PaginaNietGevonden.jsx
 │   │   ├── PaginaNieuwPotje.jsx
 │   │   ├── PaginaOpenPotjes.jsx
 │   │   ├── PaginaOverzicht.jsx
@@ -139,8 +140,11 @@ digipot/
 │       ├── paginaStorten.regressie.test.js
 │       ├── stap1.regressie.test.js
 │       ├── stap6.regressie.test.js
+│       ├── useDeviceId.regressie.test.js         ← nieuw (SEC-M1)
+│       ├── useMijnPotjes.eq.regressie.test.js    ← nieuw (SEC-H2)
 │       ├── useMijnPotjes.herlaad.test.js
 │       ├── useMijnPotjes.regressie.test.js
+│       ├── usePotje.delete.regressie.test.js     ← nieuw (SEC-L2)
 │       ├── usePotje.regressie.test.js
 │       ├── usePotjeActies.regressie.test.js
 │       ├── valideer.test.js
@@ -168,6 +172,7 @@ React Router 7, `BrowserRouter`, client-side routing.
 | `/instellingen/profiel` | `PaginaProfiel` | Profiel |
 | `/instellingen/open` | `PaginaOpenPotjes` | Open potjes |
 | `/instellingen/gesloten` | `PaginaGeslotenPotjes` | Gesloten potjes |
+| `*` | `PaginaNietGevonden` | Catch-all voor onbekende routes |
 
 `PaginaEindafrekening` is geen eigen route. Het wordt inline gerenderd door `PaginaPotje` wanneer `potje.status === 'gesloten'`.
 
@@ -234,14 +239,17 @@ Potjes ouder dan 24 uur zonder transacties worden automatisch gesloten. Potjes o
 
 ## 7. Realtime synchronisatie
 
-`usePotje` opent één Supabase-kanaal met drie Postgres Changes-abonnementen per potje:
+`usePotje` opent één Supabase-kanaal met **vijf** Postgres Changes-abonnementen per potje:
 
 | Tabel | Event | Actie |
 |---|---|---|
 | `potjes` | `*` | `setPotje(payload.new)` |
 | `deelnemers` | `INSERT` | Deelnemer toevoegen (gesorteerd op `aangemaakt_op`) |
 | `deelnemers` | `UPDATE` | Deelnemer bijwerken (incl. eigen deelnemer bij afmelden) |
-| `transacties` | `INSERT` | Transactie toevoegen |
+| `transacties` | `INSERT` | Transactie toevoegen aan state |
+| `transacties` | `DELETE` | Transactie verwijderen uit state (SEC-L2 — undo zichtbaar zonder refresh) |
+
+**SEC-L2 toelichting:** Bij een DELETE-event geeft Supabase bij actieve RLS alleen `payload.old.id` terug (het primaire sleutelveld). De reducer filtert puur op dat id: `prev.filter(t => t.id !== verwijderdId)`. Ontbrekend of null id wordt defensief afgevangen (lijst ongewijzigd).
 
 Online/offline wordt bijgehouden via:
 - `window.addEventListener('online' / 'offline')`
@@ -265,6 +273,7 @@ Deelknop die zich aanpast aan platform:
 
 Tabelrij voor één deelnemer in het Overzichtscherm.
 - `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space) voor toetsenbordtoegang
+- Space-handler roept `e.preventDefault()` aan om paginascroll te voorkomen (WCAG 2.1.1)
 - Naam-cel: `overflow: hidden`, `text-overflow: ellipsis`, `white-space: nowrap` zodat lange namen bedragkolommen niet wegdrukken
 - Badge en pijltje: `flex-shrink: 0` zodat die nooit verdwijnen
 - Bedragcellen: `white-space: nowrap`
@@ -272,7 +281,11 @@ Tabelrij voor één deelnemer in het Overzichtscherm.
 
 ### `DeelnemerDetailSheet`
 
-Bottom-sheet met details van één deelnemer (naam, ingelegd, betaald, verrekening).
+Bottom-sheet met details van één deelnemer (naam, ingelegd, betaald, alle transacties gesplitst per type).
+- `role="dialog"`, `aria-modal="true"`, `aria-labelledby="detail-titel"`
+- Tab-trap via `useFocusTrap`
+- Initiële focus op sluitknop bij openen (WCAG 2.4.3)
+- Sluiten via: sluitknop ✕, "Sluiten"-knop onderaan, klik op backdrop, Escape-toets
 
 ### `ErrorBoundary`
 
@@ -319,19 +332,28 @@ Centrale pagina voor `/potje/:id`. Beheert:
 - Toast-state (inclusief undo-timer via `useRef`)
 - Modal-state (`'betaling'` | `'sluiten'` | `null`)
 - Conditieel renderen: Deelnemer-modal → Eindafrekening → Overzicht
+- `location.state.toast` uitlezen bij aankomst van `PaginaStorten` (eenmalig, daarna state gewist)
+
+**Toast-structuur (UX-3):** de toast gebruikt `.toast-inhoud` (flex-rij met tekst + knop) en `.toast-voortgang` (progressiebalk, alleen bij undo-toast). De duur wordt als CSS custom property `--toast-duur` ingesteld zodat de CSS-animatie synchroon loopt met de JS-timer. De progressiebalk is `aria-hidden="true"` — de tijdsinformatie is niet functioneel voor screenreaders.
+
+**Toast-duren:**
+- Undo-toast: 10 000 ms (progressiebalk zichtbaar)
+- Info-toast: 5 000 ms
+- Overige toasts: 3 000 ms
 
 ### `PaginaOverzicht`
 
 Presentatiecomponent zonder eigen data-ophaal. Ontvangt alles via props van `PaginaPotje`.
+Eigen lokale state: `gekozenDeelnemer` (voor detail-sheet) en `afmeldenModaal` (boolean voor ModalAfmelden).
 Tabel in `overflowX: auto`-wrapper met `table-layout: fixed` en vaste kolombreedtes (72px per bedragkolom). `min-width: 0` op alle gridknoppen.
 
 ### `PaginaStorten`
 
-Eigen data-ophaal via `usePotje`. Bevat de snelkeuze-logica en vrij invoerveld als twee exclusieve modi. Bedrag-prioriteit: snelkeuze > vrij invoer.
+Eigen data-ophaal via `usePotje`. Bevat de snelkeuze-logica en vrij invoerveld als twee exclusieve modi. Bedrag-prioriteit: snelkeuze > vrij invoer. Navigeert na succesvolle storting naar `/potje/:id` met `location.state.toast` voor de bevestigingstoast.
 
 ### `PaginaEindafrekening`
 
-Berekent vereffening via `berekenEindafrekening()` en lokale `berekenVereffening()` (greedy algoritme). Uitklapbare rijen per deelnemer. Tikkie deep link.
+Berekent eindafrekening via `berekenEindafrekening()` en vereffening via `berekenVereffening()` — beide geëxporteerd uit `berekenSaldi.js`. Uitklapbare rijen per deelnemer. Tikkie deep link.
 
 ### `PaginaInstellingen`
 
@@ -343,7 +365,11 @@ Beide via `useMijnPotjes(status)`. Lege staat + foutstate + retry-knop.
 
 ### `PaginaProfiel`
 
-Naam en tekstgrootte. Tekstgrootte wordt direct toegepast via `document.documentElement.setAttribute('data-tekstgrootte', waarde)`.
+Naam en tekstgrootte. Tekstgrootte wordt direct toegepast via `document.documentElement.setAttribute('data-tekstgrootte', waarde)`. Importeert `PROFIEL_NAAM_KEY`, `TEKSTGROOTTE_KEY` en `MAX_NAAM` uit `constants.js`.
+
+### `PaginaNietGevonden`
+
+Catch-all voor onbekende routes (`*`). Stelt `document.title` in op "Pagina niet gevonden — Digipot" (WCAG 2.4.2). Biedt één uitweg: knop "← Terug naar home".
 
 ---
 
@@ -351,7 +377,7 @@ Naam en tekstgrootte. Tekstgrootte wordt direct toegepast via `document.document
 
 ### `useDeviceId`
 
-Leest `digipot_device_id` uit localStorage. Als niet aanwezig: genereert UUID via `crypto.randomUUID()` en schrijft die weg. Retourneert de ID.
+Leest `digipot_device_id` uit localStorage. Valideert de waarde tegen het UUID v4-patroon (`/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i`). Bij afwezigheid of ongeldige waarde: genereert `crypto.randomUUID()`, slaat op, retourneert. Voorkomt dat een gemanipuleerde waarde (bijv. via XSS of browserextensie) wordt gebruikt als device-identiteit. Retourneert altijd een geldige UUID-string.
 
 ### `useFocusTrap`
 
@@ -359,7 +385,7 @@ Gedeelde WCAG-hook. Trekt Tab-focus binnen een containerRef. Roept `onEscape` aa
 
 ### `usePotje`
 
-Laadt potje, deelnemers en transacties parallel via `Promise.all`. Opent drie Supabase Realtime-abonnementen. Bijhoudt online/offline-status. Retourneert ook state-setters (`setDeelnemer`, `setDeelnemers`, `setTransacties`) zodat consumers lokale updates kunnen doorvoeren zonder refetch.
+Laadt potje, deelnemers en transacties parallel via `Promise.all`. Opent **vijf** Supabase Realtime-abonnementen (zie §7). Bijhoudt online/offline-status. Retourneert ook state-setters (`setDeelnemer`, `setDeelnemers`, `setTransacties`) zodat consumers lokale updates kunnen doorvoeren zonder refetch.
 
 ### `usePotjeActies`
 
@@ -382,7 +408,7 @@ Pure async functies, geen eigen state, geen JSX. Direct unit-testbaar. Acties:
 Laadt open of gesloten potjes voor het huidige device/profielnaam. Oplossing voor N+1 query probleem: 3 queries totaal ongeacht het aantal potjes.
 
 Strategie:
-1. Zoek potje-IDs via twee aparte deelnemer-queries (device_id + naam), gecombineerd client-side
+1. Zoek potje-IDs via twee aparte deelnemer-queries (device_id + `.eq('naam')` — **niet** ilike), gecombineerd client-side
 2. Haal potjes op voor die IDs
 3. Haal deelnemers + transacties op in twee parallelle queries
 4. Verrijk potjes puur client-side (geen extra DB-calls)
@@ -400,6 +426,10 @@ Berekent lopende saldi tijdens een actief potje. Retourneert: `potTotaal`, `potU
 ### `berekenEindafrekening(deelnemers, transacties, sluitTijdstip)`
 
 Berekent definitieve eindafrekening op basis van actief/afgemeld-status op het sluitmoment. Zie §14 voor het volledige rekenmodel.
+
+### `berekenVereffening(deelnemersSaldi)`
+
+Berekent minimale vereffening via greedy algoritme (grootste debiteur aan grootste crediteur). Geëxporteerd uit `berekenSaldi.js`. Gebruikt door `PaginaEindafrekening` via directe import.
 
 ### `formatBedrag(bedrag, valuta?, locale?)`
 
@@ -450,9 +480,10 @@ State-setters worden als props doorgegeven van `usePotje` naar `usePotjeActies` 
 Geen authenticatie. Identificatie werkt via `digipot_device_id` in localStorage:
 
 1. `useDeviceId` leest de sleutel bij elke paginaweergave.
-2. Als niet aanwezig: genereert `crypto.randomUUID()`, slaat op, retourneert.
-3. Bij deelnemen: UUID wordt opgeslagen als `deelnemers.device_id` in de database.
-4. Bij terugkeer: `deelnemers.find(d => d.device_id === deviceId)` identificeert de gebruiker.
+2. Valideert de waarde tegen UUID v4-patroon (`/^[0-9a-f]{8}-...-4...-[89ab]...-...$/i`).
+3. Als niet aanwezig of ongeldig: genereert `crypto.randomUUID()`, slaat op, retourneert.
+4. Bij deelnemen: UUID wordt opgeslagen als `deelnemers.device_id` in de database.
+5. Bij terugkeer: `deelnemers.find(d => d.device_id === deviceId)` identificeert de gebruiker.
 
 **Beperkingen:**
 - Wissen van localStorage verbreekt de koppeling (gebruiker wordt als nieuw behandeld).
@@ -506,7 +537,7 @@ Greedy pairing: grootste debiteur aan grootste crediteur. Maximaal n−1 transac
 Een fout is pas afgehandeld wanneer:
 1. De oorzaak is vastgesteld
 2. De code is hersteld
-3. Een unit test is toegevoegd die herhalng voorkomt
+3. Een unit test is toegevoegd die herhaling voorkomt
 
 ### Implementatie
 
@@ -547,7 +578,7 @@ Alle invoer wordt gevalideerd op de client (zie `valideer.js`) én gecontroleerd
 
 ### Supabase-injectie
 
-`useMijnPotjes` gebruikt geen string-interpolatie in queries. Device_id en profielnaam worden doorgegeven als geparametriseerde waarden.
+`useMijnPotjes` gebruikt geen string-interpolatie in queries. Device_id en profielnaam worden doorgegeven als geparametriseerde waarden via `.eq()` — nooit via `.ilike()` of string-concatenatie.
 
 ### API-sleutels
 
@@ -556,6 +587,10 @@ Alle invoer wordt gevalideerd op de client (zie `valideer.js`) én gecontroleerd
 ### Sentry
 
 `sendDefaultPii: false` — geen persoonlijk identificeerbare informatie naar Sentry.
+
+### Device ID validatie
+
+`useDeviceId` valideert de UUID uit localStorage bij elke sessie. Een ongeldige waarde (bijv. gemanipuleerd door een kwaadaardige browserextensie) wordt genegeerd en vervangen door een nieuw UUID.
 
 ---
 
@@ -566,12 +601,19 @@ Alle invoer wordt gevalideerd op de client (zie `valideer.js`) én gecontroleerd
 | 1.3.1 Info and Relationships | Semantische `<table>` met `<th scope="col">` |
 | 1.4.3 Contrast (Minimum) | CSS-variabelen gedocumenteerd met contrastwaarden (min 4,5:1 voor tekst) |
 | 1.4.4 Resize Text | `font-size` op `:root` + `rem` overal; drie tekstgrootten (16/19/22px) |
-| 2.1.1 Keyboard | Alle interactieve elementen bereikbaar via Tab en Enter/Space |
-| 2.4.2 Page Titled | Unieke `document.title` per scherm via `useEffect` |
-| 2.4.3 Focus Order | Tab-volgorde volgt visuele volgorde; modals gebruiken `useFocusTrap` |
+| 2.1.1 Keyboard | Alle interactieve elementen bereikbaar via Tab en Enter/Space; Space roept `e.preventDefault()` aan in `DeelnemerRij` om paginascroll te voorkomen |
+| 2.4.2 Page Titled | Unieke `document.title` per scherm via `useEffect`, incl. `PaginaNietGevonden` |
+| 2.4.3 Focus Order | Tab-volgorde volgt visuele volgorde; modals + sheets gebruiken `useFocusTrap` + initiële focusset |
 | 2.4.7 Focus Visible | `:focus-visible` met 3px blauwe outline op alle knoppen en tabelrijen |
-| 4.1.2 Name, Role, Value | `aria-label`, `aria-pressed`, `aria-checked`, `aria-expanded`, `role` op alle interactieve elementen |
+| 4.1.2 Name, Role, Value | `aria-label`, `aria-pressed`, `aria-checked`, `aria-expanded`, `role` op alle interactieve elementen; roving tabindex op radiogroup in `PaginaProfiel` |
 | 4.1.3 Status Messages | `role="status"`, `aria-live="polite"`, `aria-atomic="true"` op toasts |
+
+### Radiogroup (PaginaProfiel)
+
+Tekstgrootte-kiezer implementeert roving tabindex:
+- Alleen de geselecteerde optie heeft `tabIndex={0}`; de overige hebben `tabIndex={-1}`
+- Pijltjestoetsen (`ArrowRight`/`ArrowDown` = volgende, `ArrowLeft`/`ArrowUp` = vorige) wisselen selectie én verplaatsen focus
+- `useRef`-array bijhoudt DOM-referenties van alle radio-elementen voor programmatische focus
 
 ### Mobiel
 
@@ -616,7 +658,10 @@ Business logic en pure functies worden getest als geëxtraheerde functies — ge
 | `paginaStorten.gesloten.regressie.test.js` | Regressie | Gesloten potje-scenario |
 | `filterLogica.regressie.test.js` | Regressie | Filter-opbouw useMijnPotjes |
 | `useMijnPotjes.regressie.test.js` + `herlaad.test.js` | Regressie | Potje-verrijking, retry |
-| `usePotje.regressie.test.js` | Regressie | Data-ophaal, realtime |
+| `useMijnPotjes.eq.regressie.test.js` | Regressie | SEC-H2: eq vs ilike filtering (EQ-01 t/m EQ-09) |
+| `useDeviceId.regressie.test.js` | Regressie | SEC-M1: UUID v4-validatie (UID-01 t/m UID-09) |
+| `usePotje.regressie.test.js` | Regressie | Data-ophaal, realtime INSERT-reducers |
+| `usePotje.delete.regressie.test.js` | Regressie | SEC-L2: DELETE-reducer (TD-01 t/m TD-08) |
 | `usePotjeActies.regressie.test.js` | Regressie | Alle vijf acties |
 | `deelnemerRij.regressie.test.js` | Regressie | Render, klasse, afgemeld |
 | `errorBoundary.regressie.test.js` | Regressie | Fallback UI, Sentry-aanroep |
@@ -682,4 +727,6 @@ De multicurrency-infrastructuur is volledig aanwezig en functioneel. De UI-keuze
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
 | 1.0 | 2026-03-01 | Initieel TO opgesteld | Projectstart |
-| 1.1 | 2026-04-02 | Valutakeuze verborgen in `PaginaNieuwPotje` (multicurrency uitgesteld); DeelKnop tekst "Nodig vrienden uit" (mobiel); label "nog te besteden" in PaginaOverzicht; tabel mobiel-robuust: `overflowX: auto`, `table-layout: fixed`, `colgroup`, ellipsis op namen, `min-width: 0` op gridknoppen; `DeelnemerRij` aangepast voor ellipsis + flexShrink; FO en TO opgenomen in `docs/` in repository | UX-verbetering, multicurrency activering uitgesteld, mobiele optimalisatie |
+| 1.1 | 2026-04-02 | Valutakeuze verborgen in `PaginaNieuwPotje` (multicurrency uitgesteld); DeelKnop tekst "Nodig vrienden uit" (mobiel); label "nog te besteden" in PaginaOverzicht; tabel mobiel-robuust; FO en TO opgenomen in repository | UX-verbetering, multicurrency uitgesteld, mobiele optimalisatie |
+| 1.2 | 2026-04-03 | `PaginaNietGevonden` toegevoegd aan routering; `berekenVereffening` gecorrigeerd; `PaginaOverzicht` state gedocumenteerd; `useDeviceId` UUID-validatie (SEC-M1); `useMijnPotjes` `.ilike()` → `.eq()` (SEC-H2); `DeelnemerRij` Space+preventDefault (WCAG-3); `DeelnemerDetailSheet` initiële focus (WCAG-6); radiogroup roving tabindex `PaginaProfiel` (WCAG-7); location.state-toast gedocumenteerd; beveiligingssectie uitgebreid; WCAG-tabel bijgewerkt | Auditbevindingen 2026-04-03 verwerkt |
+| 1.3 | 2026-04-03 | `usePotje`: vijfde abonnement toegevoegd voor transacties DELETE (SEC-L2); §7 tabel bijgewerkt + toelichting RLS payload-beperking; toast-structuur uitgebreid met progressiebalk (UX-3): `.toast-inhoud`, `.toast-voortgang`, `--toast-duur` CSS custom property, `@keyframes toastVoortgang`; `TOAST_DUUR_*` constanten in `PaginaPotje`; drie nieuwe testbestanden: `useDeviceId.regressie.test.js` (UID-01…09), `useMijnPotjes.eq.regressie.test.js` (EQ-01…09), `usePotje.delete.regressie.test.js` (TD-01…08); §3 projectstructuur en §18 dekkingtabel bijgewerkt | Resterende auditpunten SEC-L2, UX-3 en testdekking nieuw geïmplementeerde code |

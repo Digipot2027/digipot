@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { usePotje } from '../hooks/usePotje'
 import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
@@ -10,9 +10,15 @@ import ModalSluiten from '../components/ModalSluiten.jsx'
 import PaginaEindafrekening from './PaginaEindafrekening.jsx'
 import PaginaOverzicht from './PaginaOverzicht.jsx'
 
+// Toast-duur in ms — synchroon met de CSS-animatieduur via --toast-duur
+const TOAST_DUUR_UNDO  = 10000
+const TOAST_DUUR_INFO  = 5000
+const TOAST_DUUR_KORT  = 3000
+
 function PaginaPotje() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const {
     potje,
@@ -37,9 +43,23 @@ function PaginaPotje() {
   // useCallback zodat toonToast stabiel is als dependency in useEffect hieronder.
   const toonToast = useCallback((bericht, type = 'info', actie = null) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-    setToast({ bericht, type, actie })
-    const duur = actie ? 10000 : type === 'info' ? 5000 : 3000
+    const duur = actie ? TOAST_DUUR_UNDO : type === 'info' ? TOAST_DUUR_INFO : TOAST_DUUR_KORT
+    setToast({ bericht, type, actie, duur })
     toastTimerRef.current = setTimeout(() => setToast(null), duur)
+  }, [])
+
+  // UX-2 / Bug: toast tonen die PaginaStorten via location.state meegaf na storting.
+  // navigate() met state wordt eenmalig gelezen en daarna gewist (replace: true)
+  // zodat de toast niet opnieuw verschijnt bij terug-navigatie.
+  useEffect(() => {
+    if (location.state?.toast) {
+      const { bericht, type } = location.state.toast
+      toonToast(bericht, type)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // Bewust geen toonToast/navigate in de deps: deze effect mag alleen
+    // eenmalig lopen bij mount (of bij nieuw state-object via navigatie).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Verbinding hersteld → toast tonen.
@@ -178,19 +198,32 @@ function PaginaPotje() {
       )}
 
       {toast && (
-        // WCAG 4.1.3: role="status" + aria-live="polite" + aria-atomic="true"
+        /*
+          UX-3: toast heeft twee sub-elementen:
+            .toast-inhoud     — tekst + undo-knop (flex-row)
+            .toast-voortgang  — progressiebalk, alleen zichtbaar bij .toast--heeft-undo
+          --toast-duur als CSS custom property zodat de animatie synchroon loopt
+          met de JS setTimeout-duur.
+
+          WCAG 4.1.3: role="status" + aria-live="polite" + aria-atomic="true"
+        */
         <div
-          className={`toast ${toast.type}`}
+          className={`toast ${toast.type}${toast.actie ? ' toast--heeft-undo' : ''}`}
+          style={toast.actie ? { '--toast-duur': `${toast.duur}ms` } : undefined}
           role="status"
           aria-live="polite"
           aria-atomic="true"
         >
-          <span>{toast.bericht}</span>
-          {toast.actie && (
-            <button className="toast-knop" onClick={toast.actie.handler}>
-              {toast.actie.label}
-            </button>
-          )}
+          <div className="toast-inhoud">
+            <span>{toast.bericht}</span>
+            {toast.actie && (
+              <button className="toast-knop" onClick={toast.actie.handler}>
+                {toast.actie.label}
+              </button>
+            )}
+          </div>
+          {/* Progressiebalk — aria-hidden want de timer is niet informatief voor screenreaders */}
+          <div className="toast-voortgang" aria-hidden="true" />
         </div>
       )}
     </>

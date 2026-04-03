@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { formatBedrag } from '../utils/formatBedrag'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
@@ -19,6 +19,11 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
 
   // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
   useFocusTrap(panelRef, onSluiten)
+
+  // WCAG-6 / 2.4.3: initiële focus op de sluitknop bij openen.
+  useEffect(() => {
+    panelRef.current?.querySelector('button')?.focus()
+  }, [])
 
   const mijnTransacties = transacties
     .filter(t => t.deelnemer_id === deelnemer.id)
@@ -57,9 +62,8 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
             {isAfgemeld && <span className="badge badge-afgemeld">Afgemeld</span>}
           </div>
           {/*
-            WCAG punt 20: sluitknop had padding: 4 → touch target te klein op iOS (min 44px).
-            Vervangen door min-width + min-height: 44px met negatieve margin zodat de
-            visuele positie gelijk blijft maar het klikgebied voldoet aan Apple HIG.
+            WCAG 2.5.5: sluitknop min-width/min-height 44px voor touch target.
+            WCAG-6: ontvangt initiële focus bij openen (zie useEffect boven).
           */}
           <button
             onClick={onSluiten}
@@ -68,7 +72,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
               cursor: 'pointer', color: 'var(--grijs-400)',
               minWidth: 44, minHeight: 44,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginRight: -10, // compenseert optisch voor extra breedte
+              marginRight: -10,
             }}
             aria-label="Sluiten"
           >
@@ -80,7 +84,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
           <div style={{ background: 'var(--groen-licht)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 11, color: 'var(--groen)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-              Totaal ingelegd
+              In de pot gestort
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--groen)' }}>
               {formatBedrag(totaalGestort)}
@@ -88,7 +92,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
           </div>
           <div style={{ background: 'var(--rood-licht)', borderRadius: 10, padding: '14px 16px' }}>
             <div style={{ fontSize: 11, color: 'var(--rood)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-              Totaal betaald
+              Betaald aan horeca
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--rood)' }}>
               {formatBedrag(totaalBetaald)}
@@ -96,11 +100,11 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
           </div>
         </div>
 
-        {/* Inleg uitgesplitst */}
+        {/* Stortingen uitgesplitst */}
         {stortingen.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--grijs-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-              Inleg
+              In de pot gestort
             </h3>
             {stortingen.map(t => (
               <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--grijs-100)' }}>
@@ -118,7 +122,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
         {betalingen.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--grijs-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-              Betalingen
+              Betalingen aan horeca
             </h3>
             {betalingen.map(t => (
               <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--grijs-100)' }}>
