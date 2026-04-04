@@ -79,24 +79,44 @@ export function usePotjeActies({
       .single()
     if (error) throw error
 
+    // Snapshot de huidige deelnemer op het moment van de transactie.
+    // handleUndo ontvangt het volledige transactie-object + de deelnemer-snapshot
+    // zodat de eigenaarschaps-check nooit afhankelijk is van een verouderde closure.
+    const deelnemerSnapshot = deelnemer
+
     setModaal(null)
     toonToast(
       type === 'storting'
         ? `Storting van ${formatBedrag(bedrag, valuta)} geregistreerd.`
         : `Betaling van ${formatBedrag(bedrag, valuta)} geregistreerd.`,
       'ok',
-      { label: 'Ongedaan', handler: () => handleUndo(data.id) }
+      // Geef het volledige transactie-object mee (niet alleen data.id) zodat
+      // handleUndo niet hoeft te zoeken in de mogelijk verouderde transacties-closure.
+      // Geef ook de deelnemerSnapshot mee om de stale-closure bug te voorkomen
+      // waarbij deelnemer nog null was op het moment dat handleTransactie werd gemaakt.
+      { label: 'Ongedaan', handler: () => handleUndo(data, deelnemerSnapshot) }
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [potjeId, deelnemer, deelnemers, transacties, valuta, setModaal, toonToast])
 
   // ── handleUndo ───────────────────────────────────────────────────────────────
+  //
+  // Accepteert het volledige transactie-object zodat eigenaarschaps-check
+  // niet afhankelijk is van de `transacties`-closure.
+  //
+  // Bug (opgelost): handleTransactie gaf data.id door aan handleUndo. Op het
+  // moment van klikken had de realtime-listener de array soms nog niet bijgewerkt,
+  // waardoor transacties.find() undefined retourneerde → foutmelding
+  // "alleen eigen transacties", ook bij de enige gebruiker.
 
-  const handleUndo = useCallback(async (transactieId) => {
-    const transactie = transacties.find(t => t.id === transactieId)
+  const handleUndo = useCallback(async (transactie, deelnemerOverride) => {
+    // Gebruik de meegegeven deelnemer-snapshot (uit handleTransactie) als die beschikbaar
+    // is. Dit voorkomt de stale-closure bug waarbij `deelnemer` uit de useCallback-closure
+    // nog de oude (null) waarde heeft op het moment dat de toast-knop wordt getoond.
+    const actiefDeelnemer = deelnemerOverride ?? deelnemer
 
-    // Veiligheidscheck 1: transactie moet van de huidige deelnemer zijn
-    if (!transactie || transactie.deelnemer_id !== deelnemer?.id) {
+    // Veiligheidscheck 1: eigenaarschap op basis van meegegeven object
+    if (!transactie || transactie.deelnemer_id !== actiefDeelnemer?.id) {
       toonToast('Je kunt alleen je eigen transacties ongedaan maken.', 'fout')
       return
     }
@@ -116,12 +136,12 @@ export function usePotjeActies({
     const { error } = await supabase
       .from('transacties')
       .delete()
-      .eq('id', transactieId)
-      .eq('deelnemer_id', deelnemer.id) // expliciete ownership-check op DB-niveau
+      .eq('id', transactie.id)
+      .eq('deelnemer_id', actiefDeelnemer.id) // expliciete ownership-check op DB-niveau
     if (error) {
       toonToast(logFout(error, { component: 'usePotjeActies', actie: 'undo' }), 'fout')
     } else {
-      setTransacties(prev => prev.filter(t => t.id !== transactieId))
+      setTransacties(prev => prev.filter(t => t.id !== transactie.id))
       toonToast('Transactie ongedaan gemaakt.', 'ok')
     }
   }, [transacties, deelnemers, deelnemer, toonToast, setTransacties])

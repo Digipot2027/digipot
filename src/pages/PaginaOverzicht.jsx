@@ -110,10 +110,10 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           </div>
         </div>
 
-        {/* Actieknoppen — 2×2 grid */}
+        {/* Actieknoppen — hiërarchisch: primaire acties boven, beheer gescheiden */}
         <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Rij 1: Storten + Betalen */}
+          {/* Rij 1: In pot storten + Betaling registreren — gelijke breedte, primaire laag */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button
               className="knop knop-primair"
@@ -121,7 +121,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               onClick={onStorten}
               disabled={!ikBenActief}
             >
-              💰 Storten
+              💰 In pot storten
             </button>
             <button
               className="knop knop-secundair"
@@ -129,7 +129,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               onClick={onBetalen}
               disabled={!ikBenActief || saldi.potSaldo === 0}
             >
-              🍺 Betaald
+              🍺 Betaling registreren
             </button>
           </div>
 
@@ -146,37 +146,44 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </p>
           )}
 
-          {/* Rij 2: Afmelden + Potje sluiten */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, borderTop: '1px solid var(--grijs-200)', paddingTop: 10 }}>
-            <button
-              className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
-              style={{ minWidth: 0 }}
-              onClick={() => ikBenActief && setAfmeldenModaal(true)}
-              disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
-            >
-              {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Afmelden' : '✅ Aangemeld'}
-            </button>
-            <button
-              className="knop knop-gevaar"
-              style={{ opacity: heeftTransacties ? 0.7 : 0.35, minWidth: 0 }}
-              onClick={onSluiten}
-              disabled={!heeftTransacties}
-            >
-              🔒 Pot sluiten
-            </button>
-          </div>
+          {/* Scheiding beheer — visueel onderscheid van dagelijkse acties */}
+          <div style={{ borderTop: '1px solid var(--grijs-200)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--grijs-400)', marginBottom: 0 }}>
+              Beheer
+            </p>
 
-          {/* Helpteksten onder rij 2 */}
-          {ikBenActief && !ikBenGestort && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
-              Eerst storten om je te kunnen afmelden.
-            </p>
-          )}
-          {!heeftTransacties && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'right', marginTop: -4 }}>
-              Pot sluiten kan pas als er transacties zijn.
-            </p>
-          )}
+            {/* Rij 2: Jezelf afmelden + Pot afsluiten — ghost-stijl, kleinere visuele impact */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button
+                className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
+                style={{ minWidth: 0, fontSize: '0.85rem' }}
+                onClick={() => ikBenActief && setAfmeldenModaal(true)}
+                disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
+              >
+                {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Jezelf afmelden' : '✅ Afgemeld'}
+              </button>
+              <button
+                className="knop knop-gevaar"
+                style={{ opacity: heeftTransacties ? 0.7 : 0.35, minWidth: 0, fontSize: '0.85rem' }}
+                onClick={onSluiten}
+                disabled={!heeftTransacties}
+              >
+                🔒 Pot afsluiten
+              </button>
+            </div>
+
+            {/* Helpteksten onder beheer */}
+            {ikBenActief && !ikBenGestort && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
+                Eerst storten om je te kunnen afmelden.
+              </p>
+            )}
+            {!heeftTransacties && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'right', marginTop: -4 }}>
+                Afsluiten kan pas als er transacties zijn.
+              </p>
+            )}
+          </div>
 
         </div>
 

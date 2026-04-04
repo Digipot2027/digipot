@@ -1,8 +1,8 @@
 /**
  * handleUndo — regressietests voor het ongedaan maken van transacties
  *
- * De handleUndo-functie staat in PaginaPotje.jsx en bevat business logic
- * met security-impact. Deze tests dekken alle vier codepaden als pure
+ * De handleUndo-functie staat in usePotjeActies.js en bevat business logic
+ * met security-impact. Deze tests dekken alle codepaden als pure
  * logica-extractie — geen Supabase-mock, geen component mount nodig.
  *
  * Gedekte regressierisico's:
@@ -13,14 +13,25 @@
  *   UD-5  Undo van betaling → altijd toegestaan (geen saldo-check)
  *   UD-6  Undo van onbekende transactie (id bestaat niet) → geblokkeerd
  *   UD-7  Undo terwijl deelnemer null is → geblokkeerd
+ *   UD-8  Grensgeval saldo exact gelijk aan stortingsbedrag
+ *   UD-9  Stale-closure bug: deelnemerOverride prevaleert boven closure-deelnemer
  *
  * Teststrategie:
  *   De beslissingslogica uit handleUndo wordt geëxtraheerd als pure functie.
  *   Als de component verandert, moet deze functie ook worden bijgewerkt.
  *
- * Broncode (PaginaPotje.jsx — handleUndo):
- *   1. transactie = transacties.find(t => t.id === transactieId)
- *   2. if (!transactie || transactie.deelnemer_id !== deelnemer?.id) → blokkeer
+ * Signatuur (usePotjeActies.js — handleUndo):
+ *   handleUndo(transactie, deelnemerOverride?)
+ *
+ *   - transactie:         het volledige transactie-object (uit Supabase INSERT response)
+ *   - deelnemerOverride:  optioneel — snapshot van `deelnemer` op het moment van de
+ *                         transactie, doorgegeven vanuit handleTransactie om de
+ *                         stale-closure bug te omzeilen waarbij de useCallback-closure
+ *                         nog de oude (null) deelnemer vasthoudt.
+ *
+ * Beslissingslogica:
+ *   1. actiefDeelnemer = deelnemerOverride ?? deelnemer (closure)
+ *   2. if (!transactie || transactie.deelnemer_id !== actiefDeelnemer?.id) → blokkeer
  *   3. if (transactie.type === 'storting' && potsaldo < bedrag) → blokkeer
  *   4. anders → verwijder toegestaan
  */
@@ -28,14 +39,20 @@
 import { describe, it, expect } from 'vitest'
 import { berekenSaldi } from '../utils/berekenSaldi'
 
-// ─── Extractie van de undo-beslissingslogica uit PaginaPotje ─────────────────
+// ─── Extractie van de undo-beslissingslogica uit usePotjeActies ──────────────
 // Retourneert: { toegestaan: boolean, reden: string | null }
+//
+// Parameters spiegelen de productie-implementatie:
+//   transactie         — het volledige transactie-object
+//   deelnemer          — de deelnemer uit de useCallback-closure (kan stale/null zijn)
+//   deelnemerOverride  — snapshot meegegeven vanuit handleTransactie (optioneel)
+//   transacties        — huidig transactie-array (voor saldo-check)
 
-function bepaalUndoToegestaan({ transactieId, transacties, deelnemer }) {
-  const transactie = transacties.find(t => t.id === transactieId)
+function bepaalUndoToegestaan({ transactie, transacties, deelnemer, deelnemerOverride }) {
+  const actiefDeelnemer = deelnemerOverride ?? deelnemer
 
-  // Check 1: transactie moet bestaan én van de huidige deelnemer zijn
-  if (!transactie || transactie.deelnemer_id !== deelnemer?.id) {
+  // Check 1: transactie moet bestaan én van de actieve deelnemer zijn
+  if (!transactie || transactie.deelnemer_id !== actiefDeelnemer?.id) {
     return {
       toegestaan: false,
       reden: 'Je kunt alleen je eigen transacties ongedaan maken.',
@@ -44,8 +61,8 @@ function bepaalUndoToegestaan({ transactieId, transacties, deelnemer }) {
 
   // Check 2: storting terugdraaien alleen als potsaldo het toelaat
   if (transactie.type === 'storting') {
-    const deelnemers = [{ id: deelnemer.id, naam: deelnemer.naam, aangemaakt_op: new Date(2026, 0, 1).toISOString(), actief: true, afgemeld_op: null }]
-    const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
+    const deelnemersVoorSaldo = [{ id: actiefDeelnemer.id, naam: actiefDeelnemer.naam, aangemaakt_op: new Date(2026, 0, 1).toISOString(), actief: true, afgemeld_op: null }]
+    const huidigSaldo = berekenSaldi(deelnemersVoorSaldo, transacties).potSaldo
     if (huidigSaldo < Number(transactie.bedrag)) {
       return {
         toegestaan: false,
@@ -76,7 +93,7 @@ describe('handleUndo — UD-1: undo van eigen transactie is toegestaan', () => {
   it('eigen storting zonder betalingen → toegestaan', () => {
     const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -89,7 +106,7 @@ describe('handleUndo — UD-1: undo van eigen transactie is toegestaan', () => {
       maakBetaling('tx-2', deelnemerA.id, 30),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-2',
+      transactie: maakBetaling('tx-2', deelnemerA.id, 30),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -103,7 +120,7 @@ describe('handleUndo — UD-2: undo van andermans transactie is geblokkeerd', ()
   it('transactie van deelnemer B, ingelogd als A → geblokkeerd', () => {
     const transacties = [maakStorting('tx-1', deelnemerB.id, 20)]
     const { toegestaan, reden } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerB.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -117,7 +134,7 @@ describe('handleUndo — UD-2: undo van andermans transactie is geblokkeerd', ()
       maakBetaling('tx-2', deelnemerB.id, 30),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-2',
+      transactie: maakBetaling('tx-2', deelnemerB.id, 30),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -134,7 +151,7 @@ describe('handleUndo — UD-3: undo storting geblokkeerd bij te laag saldo', () 
       maakBetaling('tx-2', deelnemerA.id, 10),
     ]
     const { toegestaan, reden } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -148,7 +165,7 @@ describe('handleUndo — UD-3: undo storting geblokkeerd bij te laag saldo', () 
       maakBetaling('tx-2', deelnemerA.id, 20),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -161,7 +178,7 @@ describe('handleUndo — UD-3: undo storting geblokkeerd bij te laag saldo', () 
       maakBetaling('tx-2', deelnemerA.id, 30),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 50),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -175,7 +192,7 @@ describe('handleUndo — UD-4: undo storting toegestaan bij voldoende saldo', ()
   it('storting €20, geen betalingen → saldo €20 >= €20 → toegestaan', () => {
     const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -189,7 +206,7 @@ describe('handleUndo — UD-4: undo storting toegestaan bij voldoende saldo', ()
     ]
     // Saldo = 50, storting tx-2 = 30, saldo >= bedrag → toegestaan
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-2',
+      transactie: maakStorting('tx-2', deelnemerA.id, 30),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -203,7 +220,7 @@ describe('handleUndo — UD-4: undo storting toegestaan bij voldoende saldo', ()
       maakBetaling('tx-2', deelnemerA.id, 10),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 50),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -221,7 +238,7 @@ describe('handleUndo — UD-5: undo van betaling altijd toegestaan (geen saldo-c
       maakBetaling('tx-2', deelnemerA.id, 20),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-2',
+      transactie: maakBetaling('tx-2', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -234,7 +251,7 @@ describe('handleUndo — UD-5: undo van betaling altijd toegestaan (geen saldo-c
       maakBetaling('tx-2', deelnemerA.id, 999),
     ]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-2',
+      transactie: maakBetaling('tx-2', deelnemerA.id, 999),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -244,21 +261,20 @@ describe('handleUndo — UD-5: undo van betaling altijd toegestaan (geen saldo-c
 
 // ─── UD-6: Undo van onbekend transactie-id → geblokkeerd ─────────────────────
 
-describe('handleUndo — UD-6: onbekend transactie-id is geblokkeerd', () => {
-  it('transactie-id bestaat niet in lijst → geblokkeerd', () => {
-    const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
+describe('handleUndo — UD-6: null/undefined transactie-object is geblokkeerd', () => {
+  it('transactie is null → geblokkeerd', () => {
     const { toegestaan, reden } = bepaalUndoToegestaan({
-      transactieId: 'BESTAAT-NIET',
-      transacties,
+      transactie: null,
+      transacties: [maakStorting('tx-1', deelnemerA.id, 20)],
       deelnemer: deelnemerA,
     })
     expect(toegestaan).toBe(false)
     expect(reden).toMatch(/eigen transacties/)
   })
 
-  it('lege transactielijst → altijd geblokkeerd', () => {
+  it('transactie is undefined → geblokkeerd', () => {
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: undefined,
       transacties: [],
       deelnemer: deelnemerA,
     })
@@ -270,20 +286,18 @@ describe('handleUndo — UD-6: onbekend transactie-id is geblokkeerd', () => {
 
 describe('handleUndo — UD-7: geen actieve deelnemer → altijd geblokkeerd', () => {
   it('deelnemer is null → geblokkeerd zonder crash', () => {
-    const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
-      transacties,
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
+      transacties: [maakStorting('tx-1', deelnemerA.id, 20)],
       deelnemer: null,
     })
     expect(toegestaan).toBe(false)
   })
 
   it('deelnemer is undefined → geblokkeerd zonder crash', () => {
-    const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
-      transacties,
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
+      transacties: [maakStorting('tx-1', deelnemerA.id, 20)],
       deelnemer: undefined,
     })
     expect(toegestaan).toBe(false)
@@ -297,7 +311,7 @@ describe('handleUndo — UD-8: grensgeval saldo exact gelijk aan stortingsbedrag
     // Saldo = 20, storting = 20, geen betalingen → saldo >= bedrag → toegestaan
     const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
@@ -312,10 +326,52 @@ describe('handleUndo — UD-8: grensgeval saldo exact gelijk aan stortingsbedrag
     ]
     // Saldo = 19.99, bedrag storting = 20, 19.99 < 20 → geblokkeerd
     const { toegestaan } = bepaalUndoToegestaan({
-      transactieId: 'tx-1',
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
       transacties,
       deelnemer: deelnemerA,
     })
     expect(toegestaan).toBe(false)
+  })
+})
+
+// ─── UD-9: Stale-closure bug — deelnemerOverride prevaleert ──────────────────
+// Reproduceert de bug uit de schermafbeelding: deelnemer in closure is null
+// (race condition bij laden), maar deelnemerOverride is de correcte snapshot.
+
+describe('handleUndo — UD-9: stale-closure bug — deelnemerOverride prevaleert', () => {
+  it('closure-deelnemer null, override correct → toegestaan', () => {
+    // Simuleert: handleTransactie gecreëerd vóór deelnemer geladen was (null),
+    // maar de snapshot (deelnemerOverride) is correct meegegeven.
+    const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
+    const { toegestaan } = bepaalUndoToegestaan({
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
+      transacties,
+      deelnemer: null,               // stale closure → null
+      deelnemerOverride: deelnemerA, // snapshot → correct
+    })
+    expect(toegestaan).toBe(true)
+  })
+
+  it('closure-deelnemer null, override ook null → geblokkeerd', () => {
+    const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
+    const { toegestaan } = bepaalUndoToegestaan({
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
+      transacties,
+      deelnemer: null,
+      deelnemerOverride: null,
+    })
+    expect(toegestaan).toBe(false)
+  })
+
+  it('closure-deelnemer verkeerd (oud), override correct → toegestaan', () => {
+    // Simuleert een deelnemer die tussentijds ververst is in de state
+    const transacties = [maakStorting('tx-1', deelnemerA.id, 20)]
+    const { toegestaan } = bepaalUndoToegestaan({
+      transactie: maakStorting('tx-1', deelnemerA.id, 20),
+      transacties,
+      deelnemer: deelnemerB,         // stale: verkeerde deelnemer in closure
+      deelnemerOverride: deelnemerA, // snapshot: correct
+    })
+    expect(toegestaan).toBe(true)
   })
 })
