@@ -676,7 +676,7 @@ Drie functies (`controleer_potsaldo`, `lifecycle_sluit_verlopen_potjes`, `lifecy
 
 ### CI/CD supply-chain (SEC-A9)
 
-De GitHub Actions workflow gebruikt `cloudflare/wrangler-action@v3` zonder SHA-pin. Commentaar toegevoegd in `ci.yml` met aanbeveling om te pinnen op een specifieke commit-SHA.
+De GitHub Actions workflow gebruikt `cloudflare/wrangler-action@v3` zonder SHA-pin. Commentaar toegevoegd in `ci.yml` met aanbeveling om te pinnen op een specifieke commit-SHA. `actions/checkout` en `actions/setup-node` zijn bijgewerkt van v4 naar v5, zodat de actions intern op Node.js 24 draaien en de deprecation-waarschuwingen verdwijnen.
 
 ### potjes_naam_check aangescherpt naar 30 tekens (SEC-A3)
 
