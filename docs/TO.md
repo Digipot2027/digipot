@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 1.3
-**Datum:** 2026-04-03
+**Versie:** 2.0
+**Datum:** 2026-04-07
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -43,6 +43,13 @@ Browser (React SPA)
     ├── Supabase REST API  (CRUD via postgrest)
     ├── Supabase Realtime  (WebSocket — Postgres Changes)
     └── Sentry             (foutlogging, alleen productie)
+
+pg_cron (in Supabase DB)
+    │  (3 geplande jobs + 2 legacy directe DB-jobs)
+    └── net.http_post → Supabase Edge Functions (met x-cron-secret, SEC-CRON)
+            ├── lifecycle-sluiten   → lifecycle_sluit_verlopen_potjes()
+            ├── lifecycle-verwijderen → lifecycle_verwijder_oude_potjes()
+            └── lifecycle-keepalive → GET /potjes?limit=1 (ping)
 ```
 
 ---
@@ -79,6 +86,14 @@ Beide Supabase-variabelen worden gevalideerd bij opstarten in `supabaseClient.js
 
 ```
 digipot/
+├── workers/
+│   └── lifecycle-cron/          ← Cloudflare Worker (lifecycle cron)
+│       ├── src/
+│       │   └── index.js         ← Worker broncode
+│       ├── wrangler.toml        ← Cloudflare config + cron triggers
+│       ├── package.json
+│       ├── .gitignore
+│       └── .dev.vars.example    ← Voorbeeld voor lokaal testen
 ├── docs/
 │   ├── FO.md                  ← Functioneel Ontwerp
 │   └── TO.md                  ← Technisch Ontwerp (dit document)
@@ -137,14 +152,15 @@ digipot/
 │       ├── logFout.test.js
 │       ├── paginaEindafrekening.regressie.test.js
 │       ├── paginaStorten.gesloten.regressie.test.js
+│       ├── paginaStorten.insertFout.regressie.test.js  ← nieuw (SEC-H1)
 │       ├── paginaStorten.regressie.test.js
 │       ├── stap1.regressie.test.js
 │       ├── stap6.regressie.test.js
-│       ├── useDeviceId.regressie.test.js         ← nieuw (SEC-M1)
-│       ├── useMijnPotjes.eq.regressie.test.js    ← nieuw (SEC-H2)
+│       ├── useDeviceId.regressie.test.js
+│       ├── useMijnPotjes.eq.regressie.test.js
 │       ├── useMijnPotjes.herlaad.test.js
 │       ├── useMijnPotjes.regressie.test.js
-│       ├── usePotje.delete.regressie.test.js     ← nieuw (SEC-L2)
+│       ├── usePotje.delete.regressie.test.js
 │       ├── usePotje.regressie.test.js
 │       ├── usePotjeActies.regressie.test.js
 │       ├── valideer.test.js
@@ -231,9 +247,47 @@ Een databasetrigger blokkeert elke betaling waarbij `SUM(betalingen) > SUM(stort
 
 RLS is ingeschakeld op alle tabellen. Policies staan gedefinieerd in `supabase-migratie-stap18-rls.sql` en `supabase-migratie-stap22-rls-herstel.sql`. De anonieme sleutel (`anon`) heeft read-toegang tot potjes en deelnemers van potjes waarbij het device betrokken is.
 
+### Tabel: `push_subscriptions`
+
+| Kolom | Type | Constraint |
+|---|---|---|
+| `id` | uuid | PK, default `gen_random_uuid()` |
+| `deelnemer_id` | uuid | NOT NULL, FK → deelnemers.id, UNIQUE |
+| `potje_id` | uuid | NOT NULL, FK → potjes.id |
+| `endpoint` | text | NOT NULL |
+| `p256dh` | text | NOT NULL |
+| `auth` | text | NOT NULL |
+| `aangemaakt_op` | timestamptz | DEFAULT now() |
+
+RLS is ingeschakeld. Vier policies (SELECT / INSERT / UPDATE / DELETE) beperken toegang tot de eigen deelnemer via `x-device-id` header — consistent met de policies op `deelnemers` en `transacties`. Policies zijn toegevoegd via migration `push_subscriptions_rls_policies` (2026-04-04).
+
 ### Levenscyclus
 
-Potjes ouder dan 24 uur zonder transacties worden automatisch gesloten. Potjes ouder dan 7 dagen worden verwijderd. Dit is geïmplementeerd via een geplande Supabase-job (zie `supabase-migratie-stap19-lifecycle.sql`).
+Potjes ouder dan 24 uur worden automatisch gesloten. Potjes ouder dan 7 dagen worden verwijderd. De databaselogica zit in `lifecycle_sluit_verlopen_potjes` en `lifecycle_verwijder_oude_potjes` (zie `supabase-migratie-stap19-lifecycle.sql`). De aanroep loopt via Supabase Edge Functions + pg_cron (zie §23). Authenticatie via `x-cron-secret` header (SEC-CRON).
+
+### RLS — `potjes_update_sluiten` (SEC-PRIO2)
+
+Policy bijgewerkt via migration `rls_potjes_update_sluiten_deelnemercheck` (2026-04-07). De `USING`-clausule controleert nu of het aanroepende device een actieve deelnemer is van dat specifieke potje — niet alleen of het potje `open` is. Dit sluit directe REST-aanroepen van buitenstaanders die elk open potje konden sluiten.
+
+### RLS — `transacties_delete` (SEC-PRIO3)
+
+Policy bijgewerkt via migration `rls_transacties_delete_open_potje_check` (2026-04-07). Naast de bestaande eigenaarschapscheck (device_id via deelnemers) is nu ook een check toegevoegd dat het bijbehorende potje de status `open` heeft. Dit voorkomt saldo-manipulatie door stortingen te verwijderen vlak voor of na sluiting.
+
+### RLS — `deelnemers_insert` open-potje-check (SEC-A4)
+
+Policy bijgewerkt via migration `rls_deelnemers_insert_open_potje_check` (2026-04-07). Voorkomt dat een deelnemer wordt toegevoegd aan een gesloten potje via directe REST-aanroep.
+
+### RLS — `transacties_insert` open-potje-check (SEC-A5)
+
+Policy bijgewerkt via migration `rls_transacties_insert_open_potje_check` (2026-04-07). Voegt een open-potje-check toe naast de bestaande actief-deelnemer-check.
+
+### RLS — `potjes_insert` status-check (SEC-A7)
+
+Policy bijgewerkt via migration `rls_potjes_insert_status_check` (2026-04-07). Forceert `status = 'open'` bij aanmaken van een potje.
+
+### Trigger — max deelnemers per potje (SEC-A2)
+
+Trigger `check_max_deelnemers_voor_insert` + functie `controleer_max_deelnemers` toegevoegd via migration `max_deelnemers_per_potje_trigger` (2026-04-07). Blokkeert een INSERT wanneer een potje al 20 deelnemers heeft. Gooit `MAX_DEELNEMERS`-exceptie die door `vertaalFout.js` wordt vertaald.
 
 ---
 
@@ -351,9 +405,13 @@ Tabel in `overflowX: auto`-wrapper met `table-layout: fixed` en vaste kolombreed
 
 Eigen data-ophaal via `usePotje`. Bevat de snelkeuze-logica en vrij invoerveld als twee exclusieve modi. Bedrag-prioriteit: snelkeuze > vrij invoer. Navigeert na succesvolle storting naar `/potje/:id` met `location.state.toast` voor de bevestigingstoast.
 
+**SEC-H1 (fix 2026-04-04):** `handleStorten` destruktureerde de Supabase INSERT-returnwaarde niet. Database-fouten (RLS, netwerk, constraint) werden stil genegeerd en de app navigeerde altijd door met een valse succesmelding. Fix: `const { error } = await supabase.from('transacties').insert(...)` — als `error` truthy is, wordt hij gegooid en afgehandeld in het `catch`-blok. `.select()` en `.single()` zijn verwijderd: de returnwaarde is niet nodig, en `.single()` maskeert 0-rij-resultaten als fout in plaats van ze zichtbaar te maken.
+
 ### `PaginaEindafrekening`
 
 Berekent eindafrekening via `berekenEindafrekening()` en vereffening via `berekenVereffening()` — beide geëxporteerd uit `berekenSaldi.js`. Uitklapbare rijen per deelnemer. Tikkie deep link.
+
+**SEC-S4 (fix 2026-04-04):** `openTikkie()` roept de fallback aan via `window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')`. Zonder het derde argument kon de geopende tab via `window.opener` de originele tab overnemen (tab-napping). `noopener` verbreekt de opener-referentie; `noreferrer` voorkomt dat de Referer-header wordt meegestuurd.
 
 ### `PaginaInstellingen`
 
@@ -592,6 +650,42 @@ Alle invoer wordt gevalideerd op de client (zie `valideer.js`) én gecontroleerd
 
 `useDeviceId` valideert de UUID uit localStorage bij elke sessie. Een ongeldige waarde (bijv. gemanipuleerd door een kwaadaardige browserextensie) wordt genegeerd en vervangen door een nieuw UUID.
 
+### INSERT error-check (SEC-H1)
+
+`PaginaStorten.handleStorten()` destruktureerde de Supabase INSERT-returnwaarde niet, waardoor database-fouten stil werden genegeerd. Fix: `const { error } = await supabase.from('transacties').insert(...)` gevolgd door `if (error) throw error`. De app navigeert alleen bij een bevestigde succesvolle schrijfoperatie.
+
+### Push Subscriptions toegang (SEC-C1)
+
+`push_subscriptions` had RLS ingeschakeld zonder enige policy — dit resulteerde in een volledige blokkade van alle queries (PostgreSQL-standaard: geen policy = geen toegang). Vier policies zijn toegevoegd die toegang beperken tot de eigen deelnemer via `x-device-id` header.
+
+### search_path hijacking (SEC-W1)
+
+Drie functies (`controleer_potsaldo`, `lifecycle_sluit_verlopen_potjes`, `lifecycle_verwijder_oude_potjes`) hadden een veranderlijke `search_path`. Opgelost via migration `fix_function_search_path`: `ALTER FUNCTION ... SET search_path = public`.
+
+### Tab-napping via externe links (SEC-S4)
+
+`PaginaEindafrekening.openTikkie()` opent de Tikkie-fallback met `window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')`. Zonder `noopener` kon de geopende tab via `window.opener` de originele tab overnemen.
+
+### Lifecycle-functies — EXECUTE-rechten ingetrokken (SEC-A1)
+
+`lifecycle_sluit_verlopen_potjes` en `lifecycle_verwijder_oude_potjes` zijn `SECURITY DEFINER`. EXECUTE-rechten voor `anon` en `PUBLIC` zijn ingetrokken via migration `revoke_anon_execute_lifecycle_functies` (2026-04-07). De functies zijn nu alleen aanroepbaar door de pg_cron scheduler (superuser) en via de Edge Functions (service_role). Directe REST/RPC-aanroep door `anon` geeft HTTP 403.
+
+### Foutvertaling — te brede `auth`-matcher (SEC-A8)
+
+`vertaalFout.js` matchte op de string `'auth'`, wat ook niet-JWT berichten kon raken. Vervangen door specifieke JWT-foutstrings: `'JWT'`, `'Invalid JWT'`, `'JWTExpired'`, `'not authenticated'`.
+
+### CI/CD supply-chain (SEC-A9)
+
+De GitHub Actions workflow gebruikt `cloudflare/wrangler-action@v3` zonder SHA-pin. Commentaar toegevoegd in `ci.yml` met aanbeveling om te pinnen op een specifieke commit-SHA.
+
+### potjes_naam_check aangescherpt naar 30 tekens (SEC-A3)
+
+De database constraint stond op 50 tekens terwijl code, FO en TO 30 beschrijven. Twee smoke-testpotjes met namen van 31–33 tekens zijn bijgeknipt via migration `potjes_naam_bijknippen_en_aanscherpen` (2026-04-07). Daarna is de constraint aangepast naar `char_length(naam) <= 30`, consistent met de rest van het systeem.
+
+### Edge Function authenticatie (SEC-CRON)
+
+Alle drie lifecycle Edge Functions (`lifecycle-sluiten`, `lifecycle-verwijderen`, `lifecycle-keepalive`) valideren een `x-cron-secret` header tegen de `CRON_SECRET` Function Secret. Aanroepen zonder correct secret worden geblokkeerd met HTTP 401. Een lege `CRON_SECRET` blokkeert alle aanroepen met HTTP 500 als failsafe. De pg_cron jobs sturen het secret mee in elke aanroep. Gevalideerd live: juist secret → 200, geen secret → 401.
+
 ---
 
 ## 17. Toegankelijkheid (WCAG 2.1/2.2 AA)
@@ -656,6 +750,7 @@ Business logic en pure functies worden getest als geëxtraheerde functies — ge
 | `handleUndo.regressie.test.js` | Regressie | UD-1 t/m UD-8: eigenaarschap, saldo-check, grenzen |
 | `paginaStorten.regressie.test.js` | Regressie | Prioriteitslogica bedrag, grenscondities |
 | `paginaStorten.gesloten.regressie.test.js` | Regressie | Gesloten potje-scenario |
+| `paginaStorten.insertFout.regressie.test.js` | Regressie | SEC-H1: INSERT error-check (SH-1 t/m SH-8) |
 | `filterLogica.regressie.test.js` | Regressie | Filter-opbouw useMijnPotjes |
 | `useMijnPotjes.regressie.test.js` + `herlaad.test.js` | Regressie | Potje-verrijking, retry |
 | `useMijnPotjes.eq.regressie.test.js` | Regressie | SEC-H2: eq vs ilike filtering (EQ-01 t/m EQ-09) |
@@ -722,6 +817,134 @@ De multicurrency-infrastructuur is volledig aanwezig en functioneel. De UI-keuze
 
 ---
 
+## 22. Cloudflare Worker — Lifecycle Cron
+
+> **Status:** vervangen door Supabase Edge Functions + pg_cron (zie §23). De Worker-code staat lokaal in `workers/lifecycle-cron/` maar is nooit gedeployed naar Cloudflare.
+
+### Locatie
+
+`workers/lifecycle-cron/`
+
+### Doel
+
+De Supabase-databasefuncties `lifecycle_sluit_verlopen_potjes` en `lifecycle_verwijder_oude_potjes` bevatten de logica maar hadden geen aanroeper. Deze Worker levert de ontbrekende scheduler.
+
+### Cron schema
+
+| Cron-expressie | Tijdstip (UTC) | Taak |
+|---|---|---|
+| `0 * * * *` | Elk uur op minuut 0 | `lifecycle_sluit_verlopen_potjes` — sluit potjes ouder dan 24 uur |
+| `0 3 * * *` | Elke nacht om 03:00 | `lifecycle_verwijder_oude_potjes` — verwijdert potjes ouder dan 7 dagen |
+| `0 0 */5 * *` | Elke 5 dagen om 00:00 | Keep-alive ping — voorkomt Supabase Free-plan pauze |
+
+### Authenticatie
+
+| Secret | Key | Gebruik |
+|---|---|---|
+| `SUPABASE_URL` | — | Basis-URL voor alle API-aanroepen |
+| `SUPABASE_ANON_KEY` | Publiek (anon) | Keep-alive ping — alleen lezen, geen RLS-bypass |
+| `SUPABASE_SERVICE_KEY` | Privé (service_role) | Lifecycle-functies — `SECURITY DEFINER`, elevated privileges |
+
+Alle drie worden opgeslagen als Cloudflare Worker Secret, nooit in code of wrangler.toml.
+
+### Bestanden
+
+| Bestand | Doel |
+|---|---|
+| `src/index.js` | Worker broncode — `scheduled` + `fetch` handler |
+| `wrangler.toml` | Cloudflare config, Worker naam, twee cron triggers |
+| `package.json` | Dev-dependency wrangler, testscripts |
+| `.gitignore` | Sluit `node_modules/`, `.wrangler/`, `.dev.vars` uit |
+| `.dev.vars.example` | Voorbeeld voor lokale secrets (nooit committen) |
+
+### Lokaal testen
+
+```bash
+cd workers/lifecycle-cron
+cp .dev.vars.example .dev.vars
+# Vul SUPABASE_SERVICE_KEY in .dev.vars
+npm install
+npm run dev
+# In tweede terminal:
+npm run test-scheduled-sluiten
+npm run test-scheduled-verwijderen
+```
+
+### Deployen
+
+```bash
+cd workers/lifecycle-cron
+npm install
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+wrangler secret put SUPABASE_SERVICE_KEY
+npm run deploy
+```
+
+### Security
+
+- `service_role` en `anon` sleutels alleen via Cloudflare Secrets, nooit in code of git
+- HTTP `fetch` handler geeft altijd 404 in productie — geen publieke endpoints
+- `valideerServiceOmgeving()` gooit expliciete fout bij ontbrekende secrets voor lifecycle-taken
+- Keep-alive mislukkingen worden gelogd maar gooien geen `Error` — een mislukte ping mag de lifecycle-runs niet blokkeren
+- Foutende lifecycle-runs gooien wél een `Error` — Cloudflare markeert dit als gefaald in het Cron Events dashboard
+
+---
+
+## 23. Supabase Edge Functions — Lifecycle
+
+### Waarom Edge Functions in plaats van Cloudflare Worker
+
+De Cloudflare Worker vereist een API token en lokale Wrangler-deploy. De Supabase Edge Functions + pg_cron aanpak is volledig beheerd binnen de bestaande Supabase-infrastructuur — geen extra accounts of tokens nodig.
+
+### Edge Functions (Deno, TypeScript)
+
+| Naam | URL | Taak |
+|---|---|---|
+| `lifecycle-sluiten` | `/functions/v1/lifecycle-sluiten` | Roept `lifecycle_sluit_verlopen_potjes` aan |
+| `lifecycle-verwijderen` | `/functions/v1/lifecycle-verwijderen` | Roept `lifecycle_verwijder_oude_potjes` aan |
+| `lifecycle-keepalive` | `/functions/v1/lifecycle-keepalive` | Keep-alive ping via anon key |
+
+Alle drie: `verify_jwt: false` — aanroep verloopt via `Authorization: Bearer <service_role>` in de cron job zelf. De functies accepteren alleen POST.
+
+### Cron schema (pg_cron)
+
+| Jobnaam | Schema | Taak |
+|---|---|---|
+| `digipot-lifecycle-sluiten` | `0 * * * *` — elk uur (UTC) | Verlopen potjes sluiten |
+| `digipot-lifecycle-verwijderen` | `0 3 * * *` — 03:00 UTC | Oude potjes verwijderen |
+| `digipot-lifecycle-keepalive` | `0 0 */5 * *` — elke 5 dagen | Keep-alive ping |
+| `digipot-sluit-verlopen-potjes` | `*/15 * * * *` — elke 15 min | Legacy: directe DB-aanroep (backup) |
+| `digipot-verwijder-oude-potjes` | `0 3 * * *` — 03:00 UTC | Legacy: directe DB-aanroep (backup) |
+
+De legacy jobs zijn bewust actief gehouden als vangnet naast de Edge Function jobs.
+
+### Migrations
+
+| Migration | Inhoud |
+|---|---|
+| `lifecycle_cron_schedules` | Eerste aanmaak (met fout schema) |
+| `lifecycle_cron_fix_net_schema` | Herstel naar `net.http_post` (correct schema) |
+
+### Systeemoverzicht (bijgewerkt)
+
+```
+Browser (React SPA)
+    │
+    ├── Supabase REST API  (CRUD via postgrest)
+    ├── Supabase Realtime  (WebSocket)
+    └── Sentry             (foutlogging)
+
+pg_cron (in Supabase DB)
+    │  (3 geplande jobs + 2 legacy)
+    └── net.http_post → Supabase Edge Functions
+            ├── lifecycle-sluiten   → lifecycle_sluit_verlopen_potjes()
+            ├── lifecycle-verwijderen → lifecycle_verwijder_oude_potjes()
+            └── lifecycle-keepalive → GET /potjes?limit=1 (ping)
+```
+
+---
+
 ## 21. Wijzigingslog
 
 | Versie | Datum | Wijziging | Reden |
@@ -730,3 +953,10 @@ De multicurrency-infrastructuur is volledig aanwezig en functioneel. De UI-keuze
 | 1.1 | 2026-04-02 | Valutakeuze verborgen in `PaginaNieuwPotje` (multicurrency uitgesteld); DeelKnop tekst "Nodig vrienden uit" (mobiel); label "nog te besteden" in PaginaOverzicht; tabel mobiel-robuust; FO en TO opgenomen in repository | UX-verbetering, multicurrency uitgesteld, mobiele optimalisatie |
 | 1.2 | 2026-04-03 | `PaginaNietGevonden` toegevoegd aan routering; `berekenVereffening` gecorrigeerd; `PaginaOverzicht` state gedocumenteerd; `useDeviceId` UUID-validatie (SEC-M1); `useMijnPotjes` `.ilike()` → `.eq()` (SEC-H2); `DeelnemerRij` Space+preventDefault (WCAG-3); `DeelnemerDetailSheet` initiële focus (WCAG-6); radiogroup roving tabindex `PaginaProfiel` (WCAG-7); location.state-toast gedocumenteerd; beveiligingssectie uitgebreid; WCAG-tabel bijgewerkt | Auditbevindingen 2026-04-03 verwerkt |
 | 1.3 | 2026-04-03 | `usePotje`: vijfde abonnement toegevoegd voor transacties DELETE (SEC-L2); §7 tabel bijgewerkt + toelichting RLS payload-beperking; toast-structuur uitgebreid met progressiebalk (UX-3): `.toast-inhoud`, `.toast-voortgang`, `--toast-duur` CSS custom property, `@keyframes toastVoortgang`; `TOAST_DUUR_*` constanten in `PaginaPotje`; drie nieuwe testbestanden: `useDeviceId.regressie.test.js` (UID-01…09), `useMijnPotjes.eq.regressie.test.js` (EQ-01…09), `usePotje.delete.regressie.test.js` (TD-01…08); §3 projectstructuur en §18 dekkingtabel bijgewerkt | Resterende auditpunten SEC-L2, UX-3 en testdekking nieuw geïmplementeerde code |
+| 1.4 | 2026-04-04 | `PaginaStorten.handleStorten`: INSERT error-check toegevoegd (SEC-H1); `PaginaEindafrekening.openTikkie`: noopener,noreferrer (SEC-S4); nieuw testbestand `paginaStorten.insertFout.regressie.test.js` (SH-1 t/m SH-8) | Auditbevindingen 2026-04-04: stille INSERT-mislukking en tab-napping opgelost |
+| 1.5 | 2026-04-04 | §6 uitgebreid: `push_subscriptions`-tabel + vier RLS-policies gedocumenteerd (SEC-C1); §16 uitgebreid: SEC-C1 en SEC-W1 toegevoegd; `search_path` fixes drie functies gedocumenteerd (SEC-W1) | Security-audit: push_subscriptions volledig geblokkeerd door ontbrekende RLS-policies; search_path hijacking risico gesloten |
+| 1.6 | 2026-04-04 | §1 systeemoverzicht uitgebreid met Cloudflare Worker; §3 projectstructuur bijgewerkt met `workers/lifecycle-cron/`; §6 levenscyclus bijgewerkt; §22 nieuw: volledige documentatie Cloudflare Worker lifecycle-cron | Lifecycle-functies bestonden in DB maar hadden geen aanroeper — Cloudflare Worker met Cron Trigger opgelost dit |
+| 1.7 | 2026-04-04 | §22 bijgewerkt: derde cron trigger keep-alive toegevoegd; authenticatietabel uitgebreid | Supabase Free plan pauzeert na ~7 dagen inactiviteit |
+| 1.8 | 2026-04-07 | §22 gemarkeerd als vervallen; §23 nieuw: drie Supabase Edge Functions gedeployed (`lifecycle-sluiten`, `lifecycle-verwijderen`, `lifecycle-keepalive`); pg_cron jobs aangemaakt via migrations `lifecycle_cron_schedules` en `lifecycle_cron_fix_net_schema`; systeemoverzicht §1 bijgewerkt | Cloudflare Worker vereiste lokale deploy — vervangen door volledig beheerde Supabase Edge Functions + pg_cron oplossing; live getest: HTTP 200 ok |
+| 1.9 | 2026-04-07 | §1 systeemoverzicht bijgewerkt naar pg_cron + Edge Functions; §6 levenscyclus bijgewerkt (SEC-PRIO2, SEC-PRIO3 toegevoegd); §16 SEC-CRON toegevoegd: x-cron-secret validatie op alle drie Edge Functions; §21 bijgewerkt | Auditbevindingen 2026-04-07: RLS-policies versterkt, Edge Functions beveiligd met CRON_SECRET |
+| 2.0 | 2026-04-07 | Volledige security audit uitgevoerd (alle lagen); §16 uitgebreid met SEC-A1 t/m SEC-A9; fixes live: REVOKE anon EXECUTE op lifecycle-functies (SEC-A1), trigger max-deelnemers (SEC-A2), potjes_naam_check 50→30 geblokkeerd door bestaande data (SEC-A3 open), RLS open-potje-checks op deelnemers_insert (SEC-A4) + transacties_insert (SEC-A5) + potjes_insert (SEC-A7), vertaalFout.js te brede auth-matcher (SEC-A8), CI/CD commentaar supply-chain (SEC-A9); §6 bijgewerkt met nieuwe policies en trigger | Security audit 2026-04-07 |

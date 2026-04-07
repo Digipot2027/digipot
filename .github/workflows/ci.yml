@@ -61,6 +61,8 @@ jobs:
 
       - name: Deploy naar Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
+        # SEC-A9: overweeg pinnen op een specifieke SHA voor supply-chain beveiliging
+        # bijv: cloudflare/wrangler-action@a08f952e2c2573e4e62e636afb8d86b2de34d2e1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

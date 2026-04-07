@@ -6,13 +6,19 @@ import { formatBedrag } from '../utils/formatBedrag'
 /**
  * Opent de Tikkie-app via deep link.
  * Fallback naar tikkie.me als de app niet geïnstalleerd is.
+ *
+ * SEC-FIX (2026-04-04): window.open krijgt 'noopener,noreferrer' als derde
+ * argument. Zonder dit konden kwaadaardige pagina's via window.opener
+ * de originele tab overnemen (tab-napping). noopener verbreekt de
+ * opener-referentie; noreferrer voorkomt dat het Referer-header wordt
+ * meegestuurd.
  */
 function openTikkie() {
   const start = Date.now()
   window.location.href = 'tikkie://'
   setTimeout(() => {
     if (Date.now() - start < 2000) {
-      window.open('https://tikkie.me', '_blank')
+      window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')
     }
   }, 1500)
 }

@@ -5,6 +5,8 @@
  *   - PostgreSQL-foutcode 42703 (column does not exist)
  *   - PostgreSQL-foutcode 42P01 (relation does not exist)
  *   - Supabase REST API-foutcodes (PGRST, 406, 400)
+ *   - SEC-A2: MAX_DEELNEMERS trigger-exceptie (2026-04-07)
+ *   - SEC-A8: JWT-matcher te breed gerepareerd (2026-04-07)
  *
  * Gedekte cases:
  *   VF-N-01  42703 → databasefout kolom ontbreekt
@@ -19,6 +21,15 @@
  *   VF-N-10  volgorde: 42703 gaat vóór fallback
  *   VF-N-11  volgorde: 42P01 gaat vóór fallback
  *   VF-N-12  bestaande codes werken nog steeds (geen regressie)
+ *   VF-MD-01 MAX_DEELNEMERS → correcte gebruikersmelding (SEC-A2)
+ *   VF-MD-02 MAX_DEELNEMERS gaat vóór fallback
+ *   VF-MD-03 MAX_DEELNEMERS volgorde
+ *   VF-JWT-01 "JWT expired" → sessie-melding
+ *   VF-JWT-02 "Invalid JWT" → sessie-melding
+ *   VF-JWT-03 "JWTExpired" → sessie-melding
+ *   VF-JWT-04 "not authenticated" → sessie-melding
+ *   VF-JWT-05 "unauthorized action" mag GEEN sessie-melding geven (SEC-A8 false positive fix)
+ *   VF-JWT-06 "authentication" als woord mag GEEN sessie-melding geven
  */
 
 import { describe, it, expect } from 'vitest'
@@ -140,5 +151,57 @@ describe('vertaalFout — VF-N-12: geen regressie op bestaande codes', () => {
 
   it('onbekende fout geeft nog steeds fallback', () => {
     expect(vertaalFout(new Error('totaal onbekend'))).toBe('Er is iets misgegaan. Probeer het opnieuw.')
+  })
+})
+
+// ── SEC-A2: MAX_DEELNEMERS trigger-fout ──────────────────────────────────────
+
+describe('vertaalFout — SEC-A2: MAX_DEELNEMERS trigger', () => {
+  it('VF-MD-01: MAX_DEELNEMERS geeft correcte gebruikersmelding', () => {
+    const fout = new Error('MAX_DEELNEMERS: dit potje heeft het maximum van 20 deelnemers bereikt')
+    expect(vertaalFout(fout)).toBe('Dit potje heeft het maximum van 20 deelnemers bereikt.')
+  })
+
+  it('VF-MD-02: MAX_DEELNEMERS gaat vóór de fallback-melding', () => {
+    const fout = new Error('MAX_DEELNEMERS')
+    expect(vertaalFout(fout)).not.toBe('Er is iets misgegaan. Probeer het opnieuw.')
+  })
+
+  it('VF-MD-03: MAX_DEELNEMERS gaat vóór duplicate-key-melding (volgorde)', () => {
+    // Triggerfout bevat ook 'deelnemers_potje_id_naam' nooit tegelijk,
+    // maar puur als volgorde-check: MAX_DEELNEMERS staat eerder in de functie
+    const fout = new Error('MAX_DEELNEMERS triggerfout')
+    expect(vertaalFout(fout)).toBe('Dit potje heeft het maximum van 20 deelnemers bereikt.')
+  })
+})
+
+// ── SEC-A8: te brede auth-matcher vervangen door specifieke JWT-checks ─────────
+
+describe('vertaalFout — SEC-A8: JWT-matcher niet te breed', () => {
+  it('VF-JWT-01: "JWT expired" geeft sessie-melding', () => {
+    expect(vertaalFout(new Error('JWT expired'))).toBe('Sessie verlopen. Ververs de pagina.')
+  })
+
+  it('VF-JWT-02: "Invalid JWT" geeft sessie-melding', () => {
+    expect(vertaalFout(new Error('Invalid JWT'))).toBe('Sessie verlopen. Ververs de pagina.')
+  })
+
+  it('VF-JWT-03: "JWTExpired" geeft sessie-melding', () => {
+    expect(vertaalFout(new Error('JWTExpired'))).toBe('Sessie verlopen. Ververs de pagina.')
+  })
+
+  it('VF-JWT-04: "not authenticated" geeft sessie-melding', () => {
+    expect(vertaalFout(new Error('not authenticated'))).toBe('Sessie verlopen. Ververs de pagina.')
+  })
+
+  it('VF-JWT-05: "unauthorized action" mag GEEN sessie-melding geven (false positive fix)', () => {
+    // Vóór SEC-A8 matchte "auth" op "unauthorized" → valse sessie-melding
+    const result = vertaalFout(new Error('unauthorized action on table'))
+    expect(result).not.toBe('Sessie verlopen. Ververs de pagina.')
+  })
+
+  it('VF-JWT-06: "authentication" als woord mag GEEN sessie-melding geven', () => {
+    const result = vertaalFout(new Error('authentication method not supported'))
+    expect(result).not.toBe('Sessie verlopen. Ververs de pagina.')
   })
 })

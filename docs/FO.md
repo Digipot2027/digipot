@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 1.2
-**Datum:** 2026-04-03
+**Versie:** 1.6
+**Datum:** 2026-04-07
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -200,6 +200,11 @@ Snelkeuze heeft altijd prioriteit boven vrij invoerveld. De twee kunnen niet teg
 | Bedrag boven €999,99 | "Het maximale bedrag per storting is €999,99." |
 | Geen actieve deelnemer | "Je bent geen deelnemer van dit potje." |
 | Potje gesloten | "Dit potje is gesloten." |
+| Databasefout bij opslaan | Nederlandse foutmelding via `logFout()` |
+
+### Foutafhandeling bij opslaan (SEC-H1)
+
+De storting wordt pas als geregistreerd beschouwd nadat de database een succesvolle bevestiging heeft teruggegeven. Als de database een fout retourneert (RLS-fout, netwerk-onderbreking, constraint-schending), verschijnt een foutmelding en navigeert de app **niet** door. De gebruiker kan het opnieuw proberen.
 
 ### Gedrag na storten
 
@@ -344,7 +349,7 @@ Zie §14 voor volledige uitleg. Samenvatting: afgemelden betalen volledige inleg
 
 ### Tikkie-integratie
 
-Knop opent Tikkie-app via deep link (`tikkie://`). Fallback naar `https://tikkie.me` bij ontbrekende app.
+Knop opent Tikkie-app via deep link (`tikkie://`). Fallback naar `https://tikkie.me` bij ontbrekende app. De fallback-pagina wordt geopend met `noopener,noreferrer` om tab-napping te voorkomen (SEC-S4).
 
 ---
 
@@ -432,6 +437,10 @@ Alle data-schermen tonen een geanimeerde skeletonlader tijdens laden.
 
 Online/offline detectie via browser-events én Supabase WebSocket-status. Rode banner bij verbindingsverlies op Scherm 4.
 
+### Levenscyclus
+
+Potjes worden automatisch beheerd op basis van leeftijd. Open potjes ouder dan 24 uur worden automatisch gesloten. Potjes ouder dan 7 dagen worden volledig verwijderd inclusief alle deelnemers en transacties. De uitvoering loopt via drie Supabase Edge Functions (`lifecycle-sluiten`, `lifecycle-verwijderen`, `lifecycle-keepalive`) die worden aangeroepen door pg_cron jobs in de database. Zie TO §23 voor de technische uitwerking.
+
 ---
 
 ## 15. Validaties en begrenzingen
@@ -465,3 +474,7 @@ Interne ondersteuning voor EUR, USD, GBP, CHF, DKK, NOK, SEK is aanwezig. De val
 | 1.0 | 2026-03-01 | Initieel FO opgesteld | Projectstart |
 | 1.1 | 2026-04-02 | Valutakeuze verborgen op Scherm 1; "Deel potje" → "Nodig vrienden uit" (mobiel); "saldo" → "nog te besteden" op Scherm 4; tabel mobiel-robuust; FO en TO opgenomen in repository | UX-verbetering, multicurrency uitgesteld, mobiele optimalisatie |
 | 1.2 | 2026-04-03 | Scherm 404 (PaginaNietGevonden) toegevoegd aan §13; DeelnemerDetailSheet beschreven in §7; toast-timing gedocumenteerd; "ontvangen/bijbetaald" → "te ontvangen/bij te betalen" in S3; roving tabindex radiogroup gedocumenteerd in S4; toast via location.state na storting gedocumenteerd; UUID-validatie bij apparaatidentificatie beschreven | Auditbevindingen: ontbrekende documentatie, UX-correcties, security-toelichting |
+| 1.3 | 2026-04-04 | §6 uitgebreid: foutafhandeling bij opslaan (SEC-H1) — storting wordt pas als geregistreerd beschouwd na databasebevestiging; §8 bijgewerkt: Tikkie-fallback opent met noopener,noreferrer (SEC-S4) | Auditbevindingen 2026-04-04: stille mislukking bij INSERT-fout opgelost, tab-napping via Tikkie-fallback voorkomen |
+| 1.4 | 2026-04-04 | Push-notificaties toegevoegd aan §14: `push_subscriptions`-tabel beschreven, device-gebonden toegang via RLS, vier policies | Security-audit: push_subscriptions had RLS zonder policies — volledige blokkade opgeheven |
+| 1.5 | 2026-04-04 | §14 bijgewerkt: lifecycle nu uitgevoerd via Cloudflare Worker Cron Trigger in plaats van onbekende scheduler; technische verwijzing naar TO §22 toegevoegd | Lifecycle-functies draaiden nergens — Cloudflare Worker lost dit op |
+| 1.6 | 2026-04-07 | §14 lifecycle bijgewerkt: Cloudflare Worker → Supabase Edge Functions + pg_cron (TO §23); RLS-beveiligingen gedocumenteerd: `potjes_update_sluiten` nu met deelnemercheck (SEC-PRIO2), `transacties_delete` nu met open-potje-check (SEC-PRIO3) | Auditbevindingen 2026-04-07 verwerkt |

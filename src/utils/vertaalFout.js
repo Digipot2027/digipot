@@ -9,6 +9,9 @@ export function vertaalFout(error) {
   if (bericht.includes('SALDO_TE_LAAG'))
     return null // Wordt afgehandeld met het actuele saldo in de component
 
+  if (bericht.includes('MAX_DEELNEMERS'))
+    return 'Dit potje heeft het maximum van 20 deelnemers bereikt.'
+
   if (bericht.includes('duplicate key') && bericht.includes('deelnemers_potje_id_naam'))
     return 'Deze naam is al bezet in dit potje. Kies een andere naam.'
 
@@ -24,7 +27,11 @@ export function vertaalFout(error) {
   if (bericht.includes('check_violation') && bericht.includes('naam'))
     return 'De naam is te lang. Maximaal 30 tekens toegestaan.'
 
-  if (bericht.includes('JWT') || bericht.includes('auth'))
+  // SEC-A8: 'auth' was te breed — matcht ook op foutberichten die toevallig
+  // het woord 'auth' bevatten (bijv. 'unauthorized action'). Specifiekere
+  // checks voorkomen valse vertalingen.
+  if (bericht.includes('JWT') || bericht.includes('Invalid JWT') ||
+      bericht.includes('JWTExpired') || bericht.includes('not authenticated'))
     return 'Sessie verlopen. Ververs de pagina.'
 
   if (bericht.includes('fetch') || bericht.includes('network') || bericht.includes('NetworkError'))
