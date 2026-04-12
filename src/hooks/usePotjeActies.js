@@ -19,6 +19,18 @@ import { useDeviceId } from './useDeviceId'
  *   handleSluiten    — sluit het potje (status → 'gesloten')
  *   handleAfmelden   — meldt huidige deelnemer af (actief → false)
  *
+ * Fixes (2026-04-12):
+ *   - handleAfmelden: .single() vervangen door .maybeSingle() (kritiek-2).
+ *     .single() gooide PGRST116 als de UPDATE 0 rijen raakte (bijv. deelnemer
+ *     ondertussen verwijderd door lifecycle-cron). Die fout werd vertaald als
+ *     "Dit potje bestaat niet of is verwijderd" — inhoudelijk onjuist.
+ *     .maybeSingle() retourneert null bij 0 rijen zonder fout te gooien.
+ *     Expliciete null-check daarna geeft een correcte gebruikersmelding.
+ *   - handleSluiten: null-guard op deelnemer toegevoegd (kritiek-3).
+ *     Zonder guard crashte deelnemer.id met een TypeError als deelnemer null
+ *     was op het moment van aanroepen (race condition: afmelden + sluiten
+ *     tegelijkertijd, of realtime-update die deelnemer null zette).
+ *
  * @param {Object} params
  * @param {string}   params.potjeId       - UUID van het potje
  * @param {object}   params.potje         - potje-record (incl. valuta)
@@ -147,8 +159,21 @@ export function usePotjeActies({
   }, [transacties, deelnemers, deelnemer, toonToast, setTransacties])
 
   // ── handleSluiten ────────────────────────────────────────────────────────────
+  //
+  // Fix (2026-04-12 / kritiek-3): null-guard op deelnemer toegevoegd.
+  // Zonder guard crashte deelnemer.id met TypeError als deelnemer null was
+  // op het moment van aanroepen. Dit kon optreden bij een race condition
+  // (afmelden + sluiten tegelijk) of een realtime-update die de deelnemer-state
+  // null zette tussen het openen van ModalSluiten en het bevestigen.
+  // De guard gooit een expliciete, logbare Error in plaats van een TypeError.
 
   const handleSluiten = useCallback(async () => {
+    if (!deelnemer?.id) {
+      // Defensieve guard — kan optreden bij race condition (afmelden + sluiten tegelijk).
+      // Gooi een Error zodat de aanroeper (PaginaPotje) hem kan loggen en afhandelen.
+      throw new Error('DEELNEMER_ONTBREEKT')
+    }
+
     const { error } = await supabase
       .from('potjes')
       .update({
@@ -163,6 +188,17 @@ export function usePotjeActies({
   }, [potjeId, deelnemer, setModaal])
 
   // ── handleAfmelden ───────────────────────────────────────────────────────────
+  //
+  // Fix (2026-04-12 / kritiek-2): .single() vervangen door .maybeSingle().
+  //
+  // Oud gedrag: .single() gooide PGRST116 als de UPDATE 0 rijen raakte —
+  // bijv. als de deelnemer ondertussen verwijderd was door lifecycle-cron of
+  // een directe DB-ingreep. Die fout werd (na de PGRST116-fix van vandaag)
+  // vertaald als "Dit potje bestaat niet of is verwijderd", wat inhoudelijk
+  // onjuist is: de deelnemer is weg, niet het potje.
+  //
+  // Nieuw gedrag: .maybeSingle() retourneert { data: null, error: null } bij
+  // 0 rijen. De expliciete null-check daarna geeft een correcte melding.
 
   const handleAfmelden = useCallback(async () => {
     if (!deelnemer) return
@@ -181,8 +217,15 @@ export function usePotjeActies({
         .update({ actief: false, afgemeld_op: new Date().toISOString() })
         .eq('id', deelnemer.id)
         .select()
-        .single()
+        .maybeSingle() // was: .single() — gooit PGRST116 bij 0 rijen (kritiek-2 fix)
       if (error) throw error
+
+      // null = deelnemer ondertussen verwijderd (lifecycle of directe DB-ingreep)
+      if (!data) {
+        toonToast('Afmelden mislukt. Je deelnemersprofiel is niet meer beschikbaar.', 'fout')
+        return
+      }
+
       setDeelnemer(data)
       setDeelnemers(prev => prev.map(d => d.id === data.id ? data : d))
       toonToast('Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen.', 'info')

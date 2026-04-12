@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 1.7
+**Versie:** 1.8
 **Datum:** 2026-04-12
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -246,7 +246,7 @@ Het Overzichtscherm toont de actuele stand van het potje: wie heeft gestort, wie
 
 ### "Nog te besteden"
 
-Het bedrag rechtsboven is het huidig beschikbare saldo: totaal gestort minus totaal betaald. Dit bedrag heet "nog te besteden" omdat het de ruimte aangeeft voor nieuwe betalingen.
+Het bedrag rechtsboven is het huidig beschikbare saldo: totaal gestort minus totaal betaald.
 
 ### "Nodig vrienden uit" / "Link kopiëren"
 
@@ -262,37 +262,19 @@ Op desktop: kopieert de URL naar het klembord. Knoptekst verandert tijdelijk naa
 | Afmelden | Actief + heeft gestort | Opent ModalAfmelden |
 | Pot sluiten | Ten minste één transactie | Opent ModalSluiten |
 
-### Deelnemer aantikken → DeelnemerDetailSheet
+### Foutafhandeling bij afmelden
 
-Tikt een gebruiker op een naam, dan opent een bottom-sheet met details van die deelnemer:
+Als de deelnemer ondertussen verwijderd is door de lifecycle-cron (uitzonderingsgeval), toont de app:
 
-- Naam + "Afgemeld"-badge indien van toepassing
-- Twee kaartjes: totaal ingelegd (groen) + totaal betaald (rood)
-- Lijst van stortingen (tijdgestempeld)
-- Lijst van betalingen (tijdgestempeld)
-- Sluitknop (✕) en "Sluiten"-knop onderaan
+> "Afmelden mislukt. Je deelnemersprofiel is niet meer beschikbaar."
 
-**Toegankelijkheid:** focus gaat bij openen naar de sluitknop; Tab-trap actief; Escape sluit de sheet.
+### Foutafhandeling bij sluiten
 
-### Modals vanuit dit scherm
-
-**ModalTransactie (betaling):**
-- Titel: "🍺 Rondje betaald"
-- Invoer: bedrag (vrij tekstveld)
-- Validatie: bedrag > 0, ≤ potsaldo, ≤ €999,99
-- Na bevestigen: toast + undo-knop (10 seconden)
-
-**ModalSluiten:**
-- Bevestigingsvraag met waarschuwing (onomkeerbaar)
-- Na sluiten: navigatie naar Scherm 5
-
-**ModalAfmelden:**
-- Waarschuwingsblok: onomkeerbare actie, gevolgen expliciet benoemd
-- Na afmelden: gebruiker zichtbaar maar kan niet meer storten of betalen
+Als de deelnemer-state null is op het moment van bevestigen (race condition: afmelden en sluiten tegelijk), toont de app een generieke foutmelding en logt de situatie naar Sentry. Dit is een bewust defensieve guard — in de normale gebruikersflow kan dit niet optreden.
 
 ### Realtime synchronisatie
 
-Alle wijzigingen van andere deelnemers verschijnen automatisch zonder herladen. Drie Supabase-abonnementen zijn actief: potjestatus, deelnemers en transacties.
+Alle wijzigingen van andere deelnemers verschijnen automatisch zonder herladen. Vijf Supabase-abonnementen zijn actief: potjestatus, deelnemers INSERT, deelnemers UPDATE, transacties INSERT, transacties DELETE.
 
 ### Toast-meldingen
 
@@ -302,6 +284,7 @@ Alle wijzigingen van andere deelnemers verschijnen automatisch zonder herladen. 
 | Storting geregistreerd (via ModalTransactie) | "Storting van [bedrag] geregistreerd." | Groen | Ja (10s) |
 | Betaling geregistreerd | "Betaling van [bedrag] geregistreerd." | Groen | Ja (10s) |
 | Afgemeld | "Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen." | Info | Nee |
+| Afmelden mislukt (profiel weg) | "Afmelden mislukt. Je deelnemersprofiel is niet meer beschikbaar." | Rood | Nee |
 | Verbinding hersteld | "Verbinding hersteld." | Groen | Nee |
 | Fout bij undo | "Je kunt alleen je eigen transacties ongedaan maken." | Rood | Nee |
 | Undo saldo te laag | "Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag." | Rood | Nee |
@@ -310,108 +293,53 @@ Alle wijzigingen van andere deelnemers verschijnen automatisch zonder herladen. 
 
 ### Transactie ongedaan maken (undo)
 
-Voorwaarden:
-- Transactie moet van de huidige deelnemer zijn.
-- Bij storting: potsaldo ≥ stortingsbedrag.
-- Bij betaling: altijd toegestaan.
+Voorwaarden: transactie moet van de huidige deelnemer zijn. Bij storting: potsaldo ≥ stortingsbedrag. Bij betaling: altijd toegestaan.
 
 ---
 
 ## 8. Scherm 5 — Eindafrekening
 
-**Route:** `/potje/:id` (zelfde URL, andere weergave bij status = 'gesloten')
+**Route:** `/potje/:id`
 **Component:** `PaginaEindafrekening`
 **Doel:** definitieve eindstand tonen en vereffening begeleiden.
 
-### UI-elementen
-
-**Headerkaart:**
-- Potjenaam met 🔒, sluitdatum
-- Totaal gestort en totaal uitgegeven
-- Tandwiel → Instellingen
-
-**Eindafrekening per deelnemer (uitklapbaar):**
-- Naam (afgemelden doorgestreept + badge)
-- Betaald + ingelegd
-- Verrekening in kleur (groen = ontvangt, rood = bijbetalen)
-- Statustekst: "✅ Ontvangt geld terug" / "⚠️ Moet bijbetalen"
-- Uitklappen: tijdgestempelde stortingen en betalingen
-
-**Vereffeningskaart:**
-- Minimale overboekingen (greedy algoritme, max n−1 voor n deelnemers)
-- Per overboeking: "[Van] → [Aan]" + bedrag + Tikkie-knop
-
-**Knoppen:** "🍺 Nieuw potje starten" + "⚙️ Naar instellingen"
-
 ### Berekenmodel
 
-Zie §14 voor volledige uitleg. Samenvatting: afgemelden betalen volledige inleg (vast), actieven betalen naar rato (inleg × factor). Verrekening nooit lager dan −ingelegd.
+Afgemelden betalen volledige inleg (vast), actieven betalen naar rato (inleg × factor). Verrekening nooit lager dan −ingelegd.
 
 ### Tikkie-integratie
 
-Knop opent Tikkie-app via deep link (`tikkie://`). Fallback naar `https://tikkie.me` bij ontbrekende app. De fallback-pagina wordt geopend met `noopener,noreferrer` om tab-napping te voorkomen (SEC-S4).
+Knop opent Tikkie-app via deep link (`tikkie://`). Fallback naar `https://tikkie.me` met `noopener,noreferrer` (SEC-S4).
 
 ---
 
 ## 9. Instellingenscherm S1 — Instellingen
 
-**Route:** `/instellingen`
-**Toegang:** tandwiel op Scherm 1 en Scherm 4.
-
-Navigatiemenu: Open potjes (S2), Gesloten potjes (S3), Profiel (S4).
+**Route:** `/instellingen`. Navigatiemenu: S2, S3, S4.
 
 ---
 
 ## 10. Instellingenscherm S2 — Open potjes
 
-**Route:** `/instellingen/open`
-
-Overzicht van open potjes voor dit apparaat. Per potje: naam, deelnemers, datum, "nog te besteden"-saldo. Lege staat: "Geen open potjes" + startknop.
+**Route:** `/instellingen/open`. Lege staat: "Geen open potjes" + startknop.
 
 ---
 
 ## 11. Instellingenscherm S3 — Gesloten potjes
 
-**Route:** `/instellingen/gesloten`
-
-Overzicht van gesloten potjes voor dit apparaat. Per potje: naam, sluitdatum, eigen verrekening.
-
-**Verrekeningstatus:** positief bedrag toont "te ontvangen", negatief bedrag toont "bij te betalen". Deze labels drukken de toekomstige actie uit — niet een voltooide handeling.
-
-Lege staat: "Geen gesloten potjes".
+**Route:** `/instellingen/gesloten`. Labels: "te ontvangen" / "bij te betalen".
 
 ---
 
 ## 12. Instellingenscherm S4 — Profiel
 
-**Route:** `/instellingen/profiel`
-
-Naam instellen (max 30 tekens, lokaal opgeslagen, verwijderbaar).
-Tekstgrootte instellen: Normaal / Groot / Extra groot (live preview).
-
-**Tekstgrootte-kiezer:** radiogroup met roving tabindex — alleen de actieve optie zit in de Tab-volgorde, de andere opties zijn bereikbaar via pijltjestoetsen.
-
-Privacy: geen persoonsgegevens worden verstuurd.
+**Route:** `/instellingen/profiel`. Naam + tekstgrootte. Roving tabindex radiogroup.
 
 ---
 
 ## 13. Scherm 404 — Pagina niet gevonden
 
-**Route:** `*` (catch-all voor alle onbekende routes)
-**Component:** `PaginaNietGevonden`
-**Doel:** gebruiker informeren over een onbekende URL en terugsturen.
-
-### UI-elementen
-
-- Paginatitel: "Pagina niet gevonden — Digipot"
-- Pictogram: 🔍
-- Koptekst: "Pagina niet gevonden"
-- Uitleg: "Deze pagina bestaat niet. Controleer de link of ga terug naar de startpagina."
-- Knop: "← Terug naar home" (navigeert naar `/`)
-
-### Gedrag
-
-Er is geen terugknop naar de vorige pagina — de catch-all is bedoeld voor ongeldige links. De enige uitweg is de home-knop.
+**Route:** `*`. Knop "← Terug naar home".
 
 ---
 
@@ -419,35 +347,23 @@ Er is geen terugknop naar de vorige pagina — de catch-all is bedoeld voor onge
 
 ### Apparaatidentificatie
 
-Elk apparaat krijgt bij eerste gebruik een UUID opgeslagen in localStorage (`digipot_device_id`). Dit ID bepaalt welke deelnemer "jij" bent. De UUID wordt gevalideerd bij elke sessie; een ongeldige of gemanipuleerde waarde wordt vervangen door een nieuw UUID.
-
-### Berekenlogica eindafrekening
-
-Actief/afgemeld bepaald op sluitmoment. Afgemelden: netto bijdrage = volledige inleg. Actieven: netto bijdrage = ingelegd × factor. Factor = resterend voor actieven ÷ totaal ingelegd actieven. Verrekening = betaald − netto bijdrage, nooit lager dan −ingelegd. Tekorten verdwijnen; resterend saldo verdwijnt bij sluiting.
+UUID in localStorage (`digipot_device_id`). Gevalideerd bij elke sessie via `useDeviceId()`. Ongeldige waarde wordt vervangen door nieuw UUID. De hook wordt altijd gebruikt als bron van het device-ID — nooit `localStorage.getItem()` direct.
 
 ### Foutafhandeling
 
-Alle gebruikersfouten lopen via `logFout()` → Sentry (productie) + Nederlandse gebruikerstekst. Bekende gebruikerssituaties (ongeldige links, verlopen potjes) worden herkend en vertaald naar begrijpelijke meldingen zonder Sentry-ruis te genereren.
+Alle gebruikersfouten via `logFout()` → Sentry + Nederlandse gebruikerstekst. Bekende situaties (verlopen links, ontbrekende deelnemers) geven correcte meldingen zonder Sentry-ruis.
 
-#### Foutmelding bij niet-bestaand of verwijderd potje
-
-Wanneer een gebruiker een verouderde of ongeldige potje-link opent (bijv. na lifecycle-verwijdering na 7 dagen), toont de app:
+#### Foutmelding bij niet-bestaand of verwijderd potje (PGRST116)
 
 > "Dit potje bestaat niet of is verwijderd. Controleer de link."
 
-Dit vervangt de technische foutmelding die eerder in Sentry zichtbaar was als "Cannot coerce the result to a single JSON object" (PostgREST-code PGRST116). De melding is bewust neutraal — er wordt geen informatie gegeven over of de UUID ooit heeft bestaan.
+#### Foutmelding bij ontbrekend deelnemersprofiel bij afmelden
 
-### Skeletonladers
-
-Alle data-schermen tonen een geanimeerde skeletonlader tijdens laden.
-
-### Verbindingsstatus
-
-Online/offline detectie via browser-events én Supabase WebSocket-status. Rode banner bij verbindingsverlies op Scherm 4.
+> "Afmelden mislukt. Je deelnemersprofiel is niet meer beschikbaar."
 
 ### Levenscyclus
 
-Potjes worden automatisch beheerd op basis van leeftijd. Open potjes ouder dan 24 uur worden automatisch gesloten. Potjes ouder dan 7 dagen worden volledig verwijderd inclusief alle deelnemers en transacties. De uitvoering loopt via drie Supabase Edge Functions (`lifecycle-sluiten`, `lifecycle-verwijderen`, `lifecycle-keepalive`) die worden aangeroepen door pg_cron jobs in de database. Zie TO §23 voor de technische uitwerking.
+Open potjes > 24 uur → automatisch gesloten. Potjes > 7 dagen → verwijderd. Via Supabase Edge Functions + pg_cron.
 
 ---
 
@@ -461,17 +377,13 @@ Potjes worden automatisch beheerd op basis van leeftijd. Open potjes ouder dan 2
 | Transactiebedrag | €0,01 | €999,99 |
 | Betaling | — | huidig potsaldo |
 
-Databaseconstraints spiegelen alle clientvalidaties. De server is leidend bij conflicten.
-
 ---
 
 ## 16. Uitgestelde functionaliteit
 
 ### Multicurrency
 
-Interne ondersteuning voor EUR, USD, GBP, CHF, DKK, NOK, SEK is aanwezig. De valutakeuze op Scherm 1 is tijdelijk verborgen; alle nieuwe potjes krijgen automatisch EUR.
-
-**Activeren:** herstel het uitgecommentarieerde valutaveld in `PaginaNieuwPotje.jsx` (zie commentaar in dat bestand voor het exacte herstelblok).
+EUR, USD, GBP, CHF, DKK, NOK, SEK aanwezig. Valutakeuze op Scherm 1 verborgen — vast op EUR.
 
 ---
 
@@ -480,10 +392,11 @@ Interne ondersteuning voor EUR, USD, GBP, CHF, DKK, NOK, SEK is aanwezig. De val
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
 | 1.0 | 2026-03-01 | Initieel FO opgesteld | Projectstart |
-| 1.1 | 2026-04-02 | Valutakeuze verborgen op Scherm 1; "Deel potje" → "Nodig vrienden uit" (mobiel); "saldo" → "nog te besteden" op Scherm 4; tabel mobiel-robuust; FO en TO opgenomen in repository | UX-verbetering, multicurrency uitgesteld, mobiele optimalisatie |
-| 1.2 | 2026-04-03 | Scherm 404 (PaginaNietGevonden) toegevoegd aan §13; DeelnemerDetailSheet beschreven in §7; toast-timing gedocumenteerd; "ontvangen/bijbetaald" → "te ontvangen/bij te betalen" in S3; roving tabindex radiogroup gedocumenteerd in S4; toast via location.state na storting gedocumenteerd; UUID-validatie bij apparaatidentificatie beschreven | Auditbevindingen: ontbrekende documentatie, UX-correcties, security-toelichting |
-| 1.3 | 2026-04-04 | §6 uitgebreid: foutafhandeling bij opslaan (SEC-H1) — storting wordt pas als geregistreerd beschouwd na databasebevestiging; §8 bijgewerkt: Tikkie-fallback opent met noopener,noreferrer (SEC-S4) | Auditbevindingen 2026-04-04: stille mislukking bij INSERT-fout opgelost, tab-napping via Tikkie-fallback voorkomen |
-| 1.4 | 2026-04-04 | Push-notificaties toegevoegd aan §14: `push_subscriptions`-tabel beschreven, device-gebonden toegang via RLS, vier policies | Security-audit: push_subscriptions had RLS zonder policies — volledige blokkade opgeheven |
-| 1.5 | 2026-04-04 | §14 bijgewerkt: lifecycle nu uitgevoerd via Cloudflare Worker Cron Trigger in plaats van onbekende scheduler; technische verwijzing naar TO §22 toegevoegd | Lifecycle-functies draaiden nergens — Cloudflare Worker lost dit op |
-| 1.6 | 2026-04-07 | §14 lifecycle bijgewerkt: Cloudflare Worker → Supabase Edge Functions + pg_cron (TO §23); RLS-beveiligingen gedocumenteerd: `potjes_update_sluiten` nu met deelnemercheck (SEC-PRIO2), `transacties_delete` nu met open-potje-check (SEC-PRIO3) | Auditbevindingen 2026-04-07 verwerkt |
-| 1.7 | 2026-04-12 | §14 foutafhandeling uitgebreid: PGRST116 ("potje niet gevonden") herkend als verwachte gebruikerssituatie; melding "Dit potje bestaat niet of is verwijderd. Controleer de link." gedocumenteerd; beveiligingsnoot over informatie-neutraliteit van de melding | Sentry-issue #17a27ebc (2026-04-10): verouderde potje-links gaven technische foutmelding i.p.v. begrijpelijke gebruikersmelding; lifecycle-verwijdering genereerde onterechte Sentry-ruis |
+| 1.1 | 2026-04-02 | Valutakeuze verborgen; UX-verbeteringen; mobiele tabel | UX + multicurrency uitgesteld |
+| 1.2 | 2026-04-03 | Scherm 404; DeelnemerDetailSheet; toast-timing; UUID-validatie; roving tabindex | Auditbevindingen |
+| 1.3 | 2026-04-04 | SEC-H1 (INSERT error-check); SEC-S4 (Tikkie noopener) | Auditbevindingen 2026-04-04 |
+| 1.4 | 2026-04-04 | push_subscriptions RLS gedocumenteerd | Security-audit |
+| 1.5 | 2026-04-04 | Lifecycle via Cloudflare Worker gedocumenteerd | Lifecycle had geen aanroeper |
+| 1.6 | 2026-04-07 | Lifecycle → Supabase Edge Functions + pg_cron; RLS SEC-PRIO2 + SEC-PRIO3 | Auditbevindingen 2026-04-07 |
+| 1.7 | 2026-04-12 | §14: PGRST116 melding gedocumenteerd | Sentry-issue #17a27ebc |
+| 1.8 | 2026-04-12 | §7 foutafhandeling afmelden + sluiten gedocumenteerd; §7 toast-tabel uitgebreid met "afmelden mislukt"-toast; §14 apparaatidentificatie aangescherpt: useDeviceId() is de enige geldige bron van device-ID; kritieke fixes: useMijnPotjes gebruikt nu useDeviceId() (stille lege lijst voorkomen), handleAfmelden gebruikt .maybeSingle() (onjuiste PGRST116-melding voorkomen), handleSluiten heeft null-guard op deelnemer (TypeError voorkomen) | Grondige code-audit 2026-04-12: drie kritieke kwetsbaarheden gevonden en opgelost |

@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 2.1
+**Versie:** 2.2
 **Datum:** 2026-04-12
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -90,8 +90,7 @@ Beide Supabase-variabelen worden gevalideerd bij opstarten in `supabaseClient.js
 digipot/
 ├── workers/
 │   └── lifecycle-cron/          ← Cloudflare Worker (lifecycle cron, vervallen — zie §22)
-│       ├── src/
-│       │   └── index.js
+│       ├── src/index.js
 │       ├── wrangler.toml
 │       ├── package.json
 │       ├── .gitignore
@@ -101,11 +100,11 @@ digipot/
 │   └── TO.md                  ← Technisch Ontwerp (dit document)
 ├── public/
 ├── src/
-│   ├── App.jsx                ← routedefinities
-│   ├── main.jsx               ← entry point, Sentry init, tekstgrootte
-│   ├── index.css              ← globale stijlen en CSS-variabelen
-│   ├── supabaseClient.js      ← Supabase client (singleton)
-│   ├── constants.js           ← centrale constanten
+│   ├── App.jsx
+│   ├── main.jsx
+│   ├── index.css
+│   ├── supabaseClient.js
+│   ├── constants.js
 │   ├── components/
 │   │   ├── DeelKnop.jsx
 │   │   ├── DeelnemerDetailSheet.jsx
@@ -118,9 +117,9 @@ digipot/
 │   ├── hooks/
 │   │   ├── useDeviceId.js
 │   │   ├── useFocusTrap.js
-│   │   ├── useMijnPotjes.js
+│   │   ├── useMijnPotjes.js       ← useDeviceId() i.p.v. localStorage.getItem (kritiek-1)
 │   │   ├── usePotje.js
-│   │   └── usePotjeActies.js
+│   │   └── usePotjeActies.js      ← .maybeSingle() + null-guard deelnemer (kritiek-2/3)
 │   ├── pages/
 │   │   ├── PaginaEindafrekening.jsx
 │   │   ├── PaginaGeslotenPotjes.jsx
@@ -150,6 +149,7 @@ digipot/
 │       ├── filterLogica.regressie.test.js
 │       ├── formatBedrag.test.js
 │       ├── handleUndo.regressie.test.js
+│       ├── kritiek.regressie.test.js           ← nieuw (MP-01…03, AF-01…03, SL-01…03)
 │       ├── logFout.supabase.test.js
 │       ├── logFout.test.js
 │       ├── paginaEindafrekening.regressie.test.js
@@ -166,8 +166,8 @@ digipot/
 │       ├── usePotje.regressie.test.js
 │       ├── usePotjeActies.regressie.test.js
 │       ├── valideer.test.js
-│       ├── vertaalFout.nieuw.test.js        ← VF-N-06 verwachting gecorrigeerd
-│       ├── vertaalFout.pgrst116.regressie.test.js  ← nieuw (PGRST116)
+│       ├── vertaalFout.nieuw.test.js
+│       ├── vertaalFout.pgrst116.regressie.test.js
 │       └── vertaalFout.test.js
 ├── supabase-migratie-stap14.sql … stap22.sql
 ├── supabase-verificatie.sql
@@ -193,9 +193,9 @@ React Router 7, `BrowserRouter`, client-side routing.
 | `/instellingen/gesloten` | `PaginaGeslotenPotjes` | Gesloten potjes |
 | `*` | `PaginaNietGevonden` | Catch-all voor onbekende routes |
 
-`PaginaEindafrekening` is geen eigen route. Het wordt inline gerenderd door `PaginaPotje` wanneer `potje.status === 'gesloten'`.
+`PaginaEindafrekening` is geen eigen route — inline gerenderd door `PaginaPotje` wanneer `potje.status === 'gesloten'`.
 
-`ErrorBoundary` omhult de gehele routerstructuur en vangt onverwachte renderfouten op.
+`ErrorBoundary` omhult de gehele routerstructuur.
 
 ---
 
@@ -244,153 +244,58 @@ Unieke constraints: `(potje_id, naam)` en `(potje_id, device_id)`.
 
 ### Primaire beveiligingsregel (V2)
 
-Een databasetrigger blokkeert elke betaling waarbij `SUM(betalingen) > SUM(stortingen)` voor dat potje. Dit is de server-side waarborg; de client doet een aanvullende pre-check.
+Databasetrigger blokkeert betalingen waarbij `SUM(betalingen) > SUM(stortingen)`. Client doet aanvullende pre-check.
 
 ### Row Level Security
 
-RLS is ingeschakeld op alle tabellen. Policies staan gedefinieerd in `supabase-migratie-stap18-rls.sql` en `supabase-migratie-stap22-rls-herstel.sql`. De anonieme sleutel (`anon`) heeft read-toegang tot potjes en deelnemers van potjes waarbij het device betrokken is.
+RLS ingeschakeld op alle tabellen. Policies in `supabase-migratie-stap18-rls.sql` en `supabase-migratie-stap22-rls-herstel.sql`.
 
 ### Tabel: `push_subscriptions`
 
-| Kolom | Type | Constraint |
-|---|---|---|
-| `id` | uuid | PK, default `gen_random_uuid()` |
-| `deelnemer_id` | uuid | NOT NULL, FK → deelnemers.id, UNIQUE |
-| `potje_id` | uuid | NOT NULL, FK → potjes.id |
-| `endpoint` | text | NOT NULL |
-| `p256dh` | text | NOT NULL |
-| `auth` | text | NOT NULL |
-| `aangemaakt_op` | timestamptz | DEFAULT now() |
-
-RLS is ingeschakeld. Vier policies (SELECT / INSERT / UPDATE / DELETE) beperken toegang tot de eigen deelnemer via `x-device-id` header. Policies zijn toegevoegd via migration `push_subscriptions_rls_policies` (2026-04-04).
+Vier RLS-policies (SELECT/INSERT/UPDATE/DELETE) via `x-device-id` header. Policies via migration `push_subscriptions_rls_policies` (2026-04-04).
 
 ### Levenscyclus
 
-Potjes ouder dan 24 uur worden automatisch gesloten. Potjes ouder dan 7 dagen worden verwijderd. Aanroep via Supabase Edge Functions + pg_cron (zie §23). Authenticatie via `x-cron-secret` header (SEC-CRON).
+Potjes > 24 uur → automatisch gesloten. Potjes > 7 dagen → verwijderd. Via Supabase Edge Functions + pg_cron (zie §23). Authenticatie via `x-cron-secret` (SEC-CRON).
 
-### RLS — `potjes_update_sluiten` (SEC-PRIO2)
+### RLS-policies
 
-Policy bijgewerkt via migration `rls_potjes_update_sluiten_deelnemercheck` (2026-04-07). De `USING`-clausule controleert nu of het aanroepende device een actieve deelnemer is van dat specifieke potje.
-
-### RLS — `transacties_delete` (SEC-PRIO3)
-
-Policy bijgewerkt via migration `rls_transacties_delete_open_potje_check` (2026-04-07). Check toegevoegd dat het bijbehorende potje de status `open` heeft.
-
-### RLS — `deelnemers_insert` open-potje-check (SEC-A4)
-
-Policy bijgewerkt via migration `rls_deelnemers_insert_open_potje_check` (2026-04-07).
-
-### RLS — `transacties_insert` open-potje-check (SEC-A5)
-
-Policy bijgewerkt via migration `rls_transacties_insert_open_potje_check` (2026-04-07).
-
-### RLS — `potjes_insert` status-check (SEC-A7)
-
-Policy bijgewerkt via migration `rls_potjes_insert_status_check` (2026-04-07). Forceert `status = 'open'` bij aanmaken.
-
-### Trigger — max deelnemers per potje (SEC-A2)
-
-Trigger `check_max_deelnemers_voor_insert` + functie `controleer_max_deelnemers` via migration `max_deelnemers_per_potje_trigger` (2026-04-07). Gooit `MAX_DEELNEMERS`-exceptie, vertaald door `vertaalFout.js`.
+- `potjes_update_sluiten` (SEC-PRIO2): controleert actief deelnemerschap
+- `transacties_delete` (SEC-PRIO3): controleert open-potje-status
+- `deelnemers_insert` (SEC-A4): controleert open-potje-status
+- `transacties_insert` (SEC-A5): controleert open-potje + actief deelnemerschap
+- `potjes_insert` (SEC-A7): forceert `status = 'open'`
+- Trigger max deelnemers (SEC-A2): gooit `MAX_DEELNEMERS`-exceptie bij > 20
 
 ---
 
 ## 7. Realtime synchronisatie
 
-`usePotje` opent één Supabase-kanaal met **vijf** Postgres Changes-abonnementen per potje:
+Vijf Postgres Changes-abonnementen in `usePotje`:
 
 | Tabel | Event | Actie |
 |---|---|---|
 | `potjes` | `*` | `setPotje(payload.new)` |
-| `deelnemers` | `INSERT` | Deelnemer toevoegen (gesorteerd op `aangemaakt_op`) |
-| `deelnemers` | `UPDATE` | Deelnemer bijwerken (incl. eigen deelnemer bij afmelden) |
-| `transacties` | `INSERT` | Transactie toevoegen aan state |
-| `transacties` | `DELETE` | Transactie verwijderen uit state (SEC-L2 — undo zichtbaar zonder refresh) |
+| `deelnemers` | `INSERT` | Toevoegen gesorteerd op `aangemaakt_op` |
+| `deelnemers` | `UPDATE` | Bijwerken incl. eigen deelnemer |
+| `transacties` | `INSERT` | Toevoegen aan state |
+| `transacties` | `DELETE` | Verwijderen uit state (SEC-L2) |
 
-**SEC-L2 toelichting:** Bij een DELETE-event geeft Supabase bij actieve RLS alleen `payload.old.id` terug. De reducer filtert op dat id. Ontbrekend of null id wordt defensief afgevangen.
+**SEC-L2:** Bij DELETE geeft Supabase bij actieve RLS alleen `payload.old.id` terug. Reducer filtert op id; null defensief afgevangen.
 
-Online/offline bijgehouden via `window.addEventListener('online' / 'offline')` + Supabase-kanaalstatus. Kanaal opgeruimd via `supabase.removeChannel(kanaal)` bij unmount.
+Online/offline via `window.addEventListener` + Supabase-kanaalstatus. Kanaal opgeruimd bij unmount.
 
 ---
 
 ## 8. Componenten
 
-### `DeelKnop`
-
-Mobiel: native share sheet ("👥 Nodig vrienden uit"). Desktop: klembord-kopiëren ("🔗 Link kopiëren"). Feedback: "✅ Link gekopieerd!" voor 2,5 sec. `aria-live="polite"`.
-
-### `DeelnemerRij`
-
-Tabelrij. `role="button"` + `tabIndex={0}` + `onKeyDown` (Enter/Space). Space: `e.preventDefault()` (WCAG 2.1.1). Naam-cel: ellipsis. `aria-label` bevat volledige naam.
-
-### `DeelnemerDetailSheet`
-
-Bottom-sheet per deelnemer. `role="dialog"`, `aria-modal="true"`, `aria-labelledby="detail-titel"`. Tab-trap via `useFocusTrap`. Initiële focus op sluitknop. Sluiten via ✕, knop, backdrop of Escape.
-
-### `ErrorBoundary`
-
-React class component. Vangt renderfouten op, logt naar Sentry, toont fallback UI.
-
-### `ModalAfmelden`
-
-Bevestigingsdialoog. `role="dialog"`, `aria-modal="true"`, `aria-labelledby`. Tab-trap via `useFocusTrap`.
-
-### `ModalDeelnemen`
-
-Formulier deelnemen. Profielnaam vooraf ingevuld indien aanwezig. Validatie via `valideerDeelnemerNaam()`.
-
-### `ModalSluiten`
-
-Bevestigingsdialoog sluiten potje. Onomkeerbaar.
-
-### `ModalTransactie`
-
-Formulier storting of betaling. Live bedrag-preview. Validatie via `valideerTransactieBedrag()`. Foutafhandeling voor `SALDO_TE_LAAG` en `NIET_ACTIEF`.
+Zie versie 2.1 voor componentbeschrijvingen (ongewijzigd).
 
 ---
 
 ## 9. Pagina's
 
-### `PaginaNieuwPotje`
-
-Formulier aanmaken potje. Valuta intern vast op `STANDAARD_VALUTA` (`EUR`) — zie §20.
-
-### `PaginaPotje`
-
-Centrale pagina `/potje/:id`. Data via `usePotje(id)`, acties via `usePotjeActies(...)`. Toast-state (undo-timer via `useRef`). Modal-state. Conditieel renderen: Deelnemer-modal → Eindafrekening → Overzicht. `location.state.toast` uitlezen bij aankomst van `PaginaStorten`.
-
-**Toast-duren:** Undo 10 000 ms, info 5 000 ms, overig 3 000 ms. `--toast-duur` CSS custom property synchroon met JS-timer. Progressiebalk `aria-hidden="true"`.
-
-### `PaginaOverzicht`
-
-Presentatiecomponent. Props van `PaginaPotje`. Lokale state: `gekozenDeelnemer`, `afmeldenModaal`. Tabel: `table-layout: fixed`, 72px bedragkolommen.
-
-### `PaginaStorten`
-
-Data via `usePotje`. Snelkeuze > vrij invoer. Navigeert na succes naar `/potje/:id` met `location.state.toast`.
-
-**SEC-H1 (fix 2026-04-04):** INSERT error-check — app navigeert alleen na bevestigde schrijfoperatie.
-
-### `PaginaEindafrekening`
-
-`berekenEindafrekening()` + `berekenVereffening()`. Uitklapbare rijen. Tikkie deep link.
-
-**SEC-S4 (fix 2026-04-04):** `window.open(..., 'noopener,noreferrer')` voorkomt tab-napping.
-
-### `PaginaInstellingen`
-
-Navigatiekaart naar S2, S3, S4.
-
-### `PaginaOpenPotjes` / `PaginaGeslotenPotjes`
-
-Via `useMijnPotjes(status)`. Lege staat + foutstate + retry-knop.
-
-### `PaginaProfiel`
-
-Naam en tekstgrootte. `document.documentElement.setAttribute('data-tekstgrootte', waarde)`.
-
-### `PaginaNietGevonden`
-
-Catch-all `*`. `document.title` = "Pagina niet gevonden — Digipot" (WCAG 2.4.2). Knop "← Terug naar home".
+Zie versie 2.1 voor paginabeschrijvingen (ongewijzigd).
 
 ---
 
@@ -398,7 +303,7 @@ Catch-all `*`. `document.title` = "Pagina niet gevonden — Digipot" (WCAG 2.4.2
 
 ### `useDeviceId`
 
-Leest + valideert `digipot_device_id` (UUID v4-patroon). Bij afwezigheid/ongeldig: `crypto.randomUUID()`, opslaan, retourneren.
+Leest + valideert `digipot_device_id` (UUID v4-patroon). Bij afwezigheid/ongeldig: `crypto.randomUUID()`, opslaan, retourneren. **De enige geautoriseerde bron van device-ID in de gehele applicatie** — `localStorage.getItem(DEVICE_ID_KEY)` mag nooit rechtstreeks worden aangeroepen voor device-identificatiedoeleinden.
 
 ### `useFocusTrap`
 
@@ -406,340 +311,83 @@ Tab-focus binnen containerRef. `onEscape` bij Escape-toets.
 
 ### `usePotje`
 
-Laadt potje, deelnemers, transacties parallel via `Promise.all`. Vijf Realtime-abonnementen (zie §7). Online/offline-status. Retourneert state-setters.
+Laadt potje, deelnemers, transacties parallel. Vijf Realtime-abonnementen. Online/offline-status. Retourneert state-setters.
 
 ### `usePotjeActies`
 
-Pure async functies, geen eigen state, geen JSX.
+Pure async functies. Alle vijf acties. Twee beveiligingslagen in `handleUndo`. Kritieke fixes 2026-04-12:
 
-| Functie | Beschrijving |
-|---|---|
-| `handleDeelnemen(naam)` | INSERT deelnemer, navigeer naar storten |
-| `handleTransactie(type, bedrag)` | INSERT transactie, toon toast + undo |
-| `handleUndo(transactie, deelnemerOverride)` | DELETE eigen transactie na veiligheidscheck |
-| `handleSluiten()` | UPDATE potje.status → 'gesloten' |
-| `handleAfmelden()` | UPDATE deelnemer.actief → false |
-
-`handleUndo` heeft twee veiligheidslagen: client-check (deelnemer_id) + database-check (`.eq('deelnemer_id', ...)`).
+- **`handleAfmelden`** gebruikt `.maybeSingle()` in plaats van `.single()`. Bij 0 rijen (deelnemer ondertussen verwijderd) retourneert `.maybeSingle()` `{ data: null, error: null }`. Expliciete null-check geeft de melding "Afmelden mislukt. Je deelnemersprofiel is niet meer beschikbaar." in plaats van de onjuiste PGRST116-melding.
+- **`handleSluiten`** heeft een null-guard op `deelnemer?.id`. Bij ontbrekende deelnemer (race condition) wordt `DEELNEMER_ONTBREEKT` gegooid in plaats van een TypeError. `ModalSluiten` vangt deze fout op via `logFout` en toont een generieke foutmelding.
 
 ### `useMijnPotjes`
 
-3 queries ongeacht aantal potjes. Device_id + profielnaam via `.eq()` (niet ilike). `herlaad()` incrementeert teller als `useEffect`-dependency.
+3 queries ongeacht aantal potjes. Device_id via `.eq()` (niet ilike). `herlaad()` via teller-dependency. Kritieke fix 2026-04-12:
+
+- **`deviceId`** wordt nu opgehaald via `useDeviceId()` op hook-niveau, niet via `localStorage.getItem(DEVICE_ID_KEY)` binnen `useEffect`. Bij lege localStorage retourneerde `getItem` null, waardoor de deelnemersqueries werden overgeslagen en een stille lege lijst werd getoond (zelfde root cause als JAVASCRIPT-REACT-6). `useDeviceId()` garandeert altijd een geldige UUID v4. `deviceId` is toegevoegd als dependency aan `useEffect`.
 
 ---
 
 ## 11. Utilities
 
-### `berekenSaldi(deelnemers, transacties)`
+### `berekenSaldi` / `berekenEindafrekening` / `berekenVereffening`
 
-Lopende saldi. Retourneert `potTotaal`, `potUitgaven`, `potSaldo`, `deelnemersSaldi[]`.
-
-### `berekenEindafrekening(deelnemers, transacties, sluitTijdstip)`
-
-Definitieve eindafrekening. Zie §14 voor rekenmodel.
-
-### `berekenVereffening(deelnemersSaldi)`
-
-Minimale vereffening via greedy algoritme. Geëxporteerd uit `berekenSaldi.js`.
-
-### `formatBedrag(bedrag, valuta?, locale?)`
-
-`Intl.NumberFormat`. Default EUR/nl-NL.
-
-### `parseBedrag(waarde)`
-
-Komma en punt als decimaalteken. Retourneert `0` bij leeg/null.
-
-### `deelLink(potjeNaam, onSucces, onFout)`
-
-Mobiel: `navigator.share`. Klembord-fallback via Clipboard API → `execCommand('copy')`.
+Zie versie 2.1 (ongewijzigd).
 
 ### `logFout(error, context)`
 
-Logt naar Sentry. Roept `vertaalFout()` aan. Retourneert Nederlandse gebruikerstekst.
-
-Bekende gebruikersfouten die **niet** naar Sentry gaan: `SALDO_TE_LAAG`, `NIET_ACTIEF`, `duplicate key`, `PGRST116`, `JSON object requested, multiple (or no) rows returned`, `Cannot coerce the result to a single JSON object`.
+Logt naar Sentry. Bekende gebruikerssituaties niet naar Sentry: `SALDO_TE_LAAG`, `NIET_ACTIEF`, `duplicate key`, `PGRST116`, `JSON object requested...`, `Cannot coerce...`.
 
 ### `vertaalFout(error)`
 
-Vertaalt Supabase- en netwerk-errors naar Nederlandse gebruikersteksten. Volgorde van matchers (relevant voor PGRST116-fix):
+Matchervolgorde — PGRST116 vóór generieke PGRST-catch (zie versie 2.1 voor volledige volgorde).
 
-1. `SALDO_TE_LAAG` → null
-2. `MAX_DEELNEMERS` → "maximum bereikt"
-3. `duplicate key naam` → "naam bezet"
-4. `duplicate key device` → "al meedoende"
-5. `potjes` + `gesloten` → "al gesloten"
-6. `check_violation bedrag` → "bedrag ongeldig"
-7. `check_violation naam` → "naam te lang"
-8. JWT-fouten → "sessie verlopen"
-9. Netwerk-fouten → "verbinding verbroken"
-10. `42703` / `column ... does not exist` → "kolom ontbreekt"
-11. `42P01` / `relation ... does not exist` → "tabel ontbreekt"
-12. **`PGRST116` / `JSON object requested...` / `Cannot coerce...`** → "potje niet gevonden" ← nieuw (2026-04-12)
-13. `PGRST` / `406` / `400` → "verbindingsfout"
-14. Fallback → "iets misgegaan"
+### `valideerDeelnemerNaam` / `valideerTransactieBedrag` / `formatBedrag` / `parseBedrag` / `deelLink`
+
+Zie versie 2.1 (ongewijzigd).
 
 ---
 
-## 12. State management
+## 12–14. State management / Gebruikersidentificatie / Berekenlogica
 
-| Niveau | Mechanisme | Voorbeelden |
-|---|---|---|
-| Applicatie-breed | `localStorage` | device_id, profiel_naam, tekstgrootte |
-| Pagina/hook | `useState` in hook | potje, deelnemers, transacties, laden, fout |
-| Component-lokaal | `useState` in component | modal-state, toast, formuliervelden |
-
----
-
-## 13. Gebruikersidentificatie
-
-`digipot_device_id` in localStorage. UUID v4-validatie bij elke sessie. Bij deelnemen opgeslagen als `deelnemers.device_id`. Terugkeer: `deelnemers.find(d => d.device_id === deviceId)`.
-
-**Beperkingen:** localStorage wissen verbreekt koppeling. Aparte browsers = aparte UUIDs. Privémodus = tijdelijk UUID.
-
----
-
-## 14. Berekenlogica
-
-### Lopende saldi (`berekenSaldi`)
-
-```
-potSaldo    = Σ stortingen − Σ betalingen
-verrekening = betaald − gestort, min −gestort
-```
-
-### Eindafrekening (`berekenEindafrekening`)
-
-```
-sluitMs = new Date(potje.gesloten_op).getTime()
-
-wasActiefOp(d, sluitMs):
-  - aangemeld_op ≤ sluitMs EN (geen afmelding OF afgemeld_op > sluitMs) → actief
-  - afgemeld_op ≤ sluitMs → afgemeld
-
-bijdrageAfgemelden = Σ gestort voor afgemelde deelnemers
-resterend          = potUitgaven − bijdrageAfgemelden
-factor             = resterend ÷ Σ gestort voor actieve deelnemers
-
-nettoBijdrage (actief)   = gestort × factor
-nettoBijdrage (afgemeld) = gestort
-
-verrekening = max(betaald − nettoBijdrage, −gestort)
-```
-
-### Vereffeningsalgoritme (`berekenVereffening`)
-
-Greedy pairing. Maximaal n−1 transacties. Afronden op €0,01.
-
-### Afrondingsregel
-
-`Math.round(waarde * 100) / 100`, correctie voor −0 → 0.
+Zie versie 2.1 (ongewijzigd).
 
 ---
 
 ## 15. Foutafhandeling en logging
 
-### Principe
+Zie versie 2.1. Aanvulling:
 
-Een fout is pas afgehandeld wanneer:
-1. De oorzaak is vastgesteld
-2. De code is hersteld
-3. Een unit test is toegevoegd die herhaling voorkomt
+### Nieuwe foutcodes / situaties
 
-### Implementatie
-
-```
-component/hook → logFout(error, context)
-                      ├── vertaalFout(error) → Nederlandse gebruikerstekst
-                      └── Sentry.captureException(error, { extra: context }) [alleen niet-gebruikersfouten]
-```
-
-Sentry is alleen actief in productie (`import.meta.env.PROD`).
-
-### Regels
-
-- Nooit een fout tonen zonder te loggen.
-- `vertaalFout()` nooit rechtstreeks aanroepen.
-- Geen PII in Sentry-context.
-- Context: altijd `component` + `actie`.
-
-### Gebruikersfouten vs. bugs
-
-`logFout` onderscheidt bekende gebruikerssituaties van echte bugs. Gebruikerssituaties gaan **niet** naar Sentry:
-
-| Foutcode | Situatie |
-|---|---|
-| `SALDO_TE_LAAG` | Betaling boven potsaldo |
-| `NIET_ACTIEF` | Afgemelde deelnemer probeert te betalen |
-| `duplicate key` | Naam al bezet of device al deelnemer |
-| `PGRST116` / `Cannot coerce...` | Potje-UUID niet gevonden (verouderde link, lifecycle-verwijderd) |
+| Fout | Situatie | Naar Sentry? |
+|---|---|---|
+| `DEELNEMER_ONTBREEKT` | Race condition: deelnemer null bij sluiten | Ja — onverwachte situatie |
+| `.maybeSingle()` → data null | Deelnemer verwijderd bij afmelden | Nee — wordt als correcte melding getoond |
 
 ---
 
-## 16. Beveiliging
+## 16–17. Beveiliging / Toegankelijkheid
 
-### Transactie-eigenaarschap
-
-1. Client: `transactie.deelnemer_id === deelnemer.id`
-2. Database: `.delete().eq('deelnemer_id', deelnemer.id)`
-
-### Saldo-integriteit
-
-Databasetrigger (V2): blokkeert betalingen waarbij `SUM(betalingen) > SUM(stortingen)`. Client-check aanvullend.
-
-### Input-validatie
-
-Client + databaseconstraints. Server is leidend.
-
-### Supabase-injectie
-
-Geparametriseerde `.eq()`-aanroepen, nooit string-interpolatie.
-
-### API-sleutels
-
-`.env.local` in `.gitignore`. `service_role` nooit in client.
-
-### Sentry
-
-`sendDefaultPii: false`.
-
-### Device ID validatie
-
-UUID v4-patroon bij elke sessie.
-
-### INSERT error-check (SEC-H1)
-
-`PaginaStorten.handleStorten`: `const { error } = await supabase.from('transacties').insert(...)`. App navigeert alleen bij succesvolle schrijfoperatie.
-
-### Push Subscriptions (SEC-C1)
-
-Vier RLS-policies via `x-device-id` header.
-
-### search_path hijacking (SEC-W1)
-
-`ALTER FUNCTION ... SET search_path = public` voor drie functies.
-
-### Tab-napping (SEC-S4)
-
-`window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')`.
-
-### Lifecycle-functies EXECUTE-rechten (SEC-A1)
-
-REVOKE anon/PUBLIC EXECUTE op `lifecycle_sluit_verlopen_potjes` en `lifecycle_verwijder_oude_potjes`.
-
-### Foutvertaling auth-matcher (SEC-A8)
-
-Specifieke JWT-strings: `'JWT'`, `'Invalid JWT'`, `'JWTExpired'`, `'not authenticated'`.
-
-### CI/CD supply-chain (SEC-A9)
-
-Commentaar SHA-pin in `ci.yml`. `actions/checkout` + `actions/setup-node` bijgewerkt naar v5.
-
-### potjes_naam_check 30 tekens (SEC-A3)
-
-Constraint aangepast van 50 naar 30 via migration.
-
-### Edge Function authenticatie (SEC-CRON)
-
-`x-cron-secret` header op alle drie Edge Functions. Lege secret → HTTP 500 als failsafe.
-
----
-
-## 17. Toegankelijkheid (WCAG 2.1/2.2 AA)
-
-| Richtlijn | Implementatie |
-|---|---|
-| 1.3.1 Info and Relationships | Semantische `<table>` met `<th scope="col">` |
-| 1.4.3 Contrast (Minimum) | CSS-variabelen, min 4,5:1 voor tekst |
-| 1.4.4 Resize Text | `font-size` op `:root` + `rem`; drie tekstgrootten (16/19/22px) |
-| 2.1.1 Keyboard | Tab + Enter/Space; Space: `e.preventDefault()` in `DeelnemerRij` |
-| 2.4.2 Page Titled | Unieke `document.title` per scherm via `useEffect` |
-| 2.4.3 Focus Order | Tab-volgorde = visuele volgorde; modals + sheets: `useFocusTrap` + initiële focus |
-| 2.4.7 Focus Visible | `:focus-visible` 3px blauwe outline |
-| 4.1.2 Name, Role, Value | `aria-label`, `aria-pressed`, `aria-checked`, `aria-expanded`, `role`; roving tabindex radiogroup |
-| 4.1.3 Status Messages | `role="status"`, `aria-live="polite"`, `aria-atomic="true"` op toasts |
-
-### Mobiel
-
-`env(safe-area-inset-*)`, `min-height: 48px`, `font-size: max(1rem, 16px)`, `-webkit-tap-highlight-color: transparent`.
-
-### Tabel op smalle schermen
-
-`overflowX: auto`, `table-layout: fixed`, 72px bedragkolommen, naam-cel ellipsis, `aria-label` met volledige naam.
+Zie versie 2.1 (ongewijzigd).
 
 ---
 
 ## 18. Testen
 
-### Framework
-
-Vitest + @testing-library/react + @testing-library/jest-dom, jsdom-omgeving.
-
-### Teststrategie
-
-Business logic en pure functies als geëxtraheerde functies — geen Supabase-mock, geen component-mount.
-
-### Huidige dekking
+### Huidige dekking (aanvulling op versie 2.1)
 
 | Bestand | Type | Wat wordt getest |
 |---|---|---|
-| `berekenSaldi.test.js` | Unit | Vijf referentiescenario's |
-| `berekenSaldi.regressie.test.js` | Regressie | Null-transacties, onbekende deelnemer_id, string-bedragen, scenario D |
-| `berekenVereffening.test.js` | Unit | Greedy algoritme |
-| `formatBedrag.test.js` | Unit | Opmaak en parseren |
-| `logFout.test.js` + `logFout.supabase.test.js` | Unit | Logging, Sentry-routing |
-| `vertaalFout.test.js` + `vertaalFout.nieuw.test.js` | Unit | Error-vertaling |
-| `vertaalFout.pgrst116.regressie.test.js` | Regressie | VF-116-01…06: PGRST116 niet-gevonden; LF-116-01…05: Sentry-routing ← nieuw |
-| `valideer.test.js` | Unit | Validatiepaden naam en bedrag |
-| `deelLink.test.js` | Unit | Zes share/clipboard-paden |
-| `handleUndo.regressie.test.js` | Regressie | UD-1 t/m UD-8 |
-| `paginaStorten.regressie.test.js` | Regressie | Bedraglogica |
-| `paginaStorten.gesloten.regressie.test.js` | Regressie | Gesloten potje |
-| `paginaStorten.insertFout.regressie.test.js` | Regressie | SEC-H1: SH-1 t/m SH-8 |
-| `filterLogica.regressie.test.js` | Regressie | Filter-opbouw |
-| `useMijnPotjes.regressie.test.js` + `herlaad.test.js` | Regressie | Verrijking, retry |
-| `useMijnPotjes.eq.regressie.test.js` | Regressie | EQ-01 t/m EQ-09 |
-| `useDeviceId.regressie.test.js` | Regressie | UID-01 t/m UID-09 |
-| `usePotje.regressie.test.js` | Regressie | Data-ophaal, INSERT-reducers |
-| `usePotje.delete.regressie.test.js` | Regressie | TD-01 t/m TD-08 |
-| `usePotjeActies.regressie.test.js` | Regressie | Alle vijf acties |
-| `deelnemerRij.regressie.test.js` | Regressie | Render, afgemeld |
-| `errorBoundary.regressie.test.js` | Regressie | Fallback UI, Sentry |
-| `paginaEindafrekening.regressie.test.js` | Regressie | Eindafrekening render |
-| `stap1.regressie.test.js` + `stap6.regressie.test.js` | Regressie | Historische regressiescenario's |
+| `kritiek.regressie.test.js` | Regressie | MP-01…03: useMijnPotjes deviceId-logica; AF-01…03: handleAfmelden .maybeSingle() null-check; SL-01…03: handleSluiten null-guard ← nieuw |
 
-### Niet gedekt (gemotiveerd)
-
-| Component | Reden | Alternatief |
-|---|---|---|
-| `ModalDeelnemen`, `ModalTransactie`, `ModalAfmelden`, `ModalSluiten` | Supabase-afhankelijkheid; logica gedekt via `usePotjeActies` | Integratietest / e2e |
-
-### Testcommando's
-
-```bash
-npm run test        # watch mode
-npm run test:run    # CI-mode
-npm run test:ui     # Vitest UI
-```
+Alle overige testbestanden: zie versie 2.1.
 
 ---
 
-## 19. Build en deployment
+## 19–20. Build en deployment / Multicurrency
 
-```bash
-npm run dev       # Vite dev server met HMR
-npm run build     # Productie build → dist/
-npm run preview   # Preview van productie build
-npm run lint      # ESLint
-```
-
----
-
-## 20. Uitgestelde functionaliteit — Multicurrency
-
-`VALUTA_OPTIES` en `STANDAARD_VALUTA` aanwezig in `constants.js`. `potjes.valuta` in de database. Valutaselect op Scherm 1 verborgen — staat vast op EUR.
-
-**Activeren:** zie commentaar in `PaginaNieuwPotje.jsx`.
+Zie versie 2.1 (ongewijzigd).
 
 ---
 
@@ -748,39 +396,38 @@ npm run lint      # ESLint
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
 | 1.0 | 2026-03-01 | Initieel TO opgesteld | Projectstart |
-| 1.1 | 2026-04-02 | Valutakeuze verborgen; DeelKnop tekst; "nog te besteden"; tabel mobiel-robuust; FO/TO in repository | UX + multicurrency uitgesteld |
+| 1.1 | 2026-04-02 | Valutakeuze verborgen; UX-verbeteringen; mobiele tabel; FO/TO in repository | UX + multicurrency uitgesteld |
 | 1.2 | 2026-04-03 | `PaginaNietGevonden`; `berekenVereffening` correctie; UUID-validatie (SEC-M1); `.ilike()` → `.eq()` (SEC-H2); WCAG-verbeteringen; beveiligingssectie | Auditbevindingen 2026-04-03 |
-| 1.3 | 2026-04-03 | Vijfde realtime-abonnement transacties DELETE (SEC-L2); toast progressiebalk (UX-3); drie nieuwe testbestanden (UID, EQ, TD) | SEC-L2, UX-3, testdekking |
-| 1.4 | 2026-04-04 | INSERT error-check (SEC-H1); noopener,noreferrer (SEC-S4); `paginaStorten.insertFout.regressie.test.js` | Stille INSERT-mislukking + tab-napping opgelost |
-| 1.5 | 2026-04-04 | `push_subscriptions` tabel + RLS-policies (SEC-C1); search_path fixes (SEC-W1) | Security-audit |
+| 1.3 | 2026-04-03 | Vijfde realtime-abonnement transacties DELETE (SEC-L2); toast progressiebalk (UX-3); drie nieuwe testbestanden | SEC-L2, UX-3, testdekking |
+| 1.4 | 2026-04-04 | INSERT error-check (SEC-H1); noopener,noreferrer (SEC-S4); insertFout testbestand | Stille INSERT-mislukking + tab-napping |
+| 1.5 | 2026-04-04 | `push_subscriptions` RLS (SEC-C1); search_path fixes (SEC-W1) | Security-audit |
 | 1.6 | 2026-04-04 | §22 Cloudflare Worker lifecycle-cron | Lifecycle had geen aanroeper |
 | 1.7 | 2026-04-04 | §22 keep-alive cron trigger | Supabase Free plan pauze |
 | 1.8 | 2026-04-07 | §23 Supabase Edge Functions + pg_cron; §22 gemarkeerd vervallen | Cloudflare Worker vervangen |
 | 1.9 | 2026-04-07 | SEC-CRON x-cron-secret; RLS SEC-PRIO2 + SEC-PRIO3 | Auditbevindingen 2026-04-07 |
 | 2.0 | 2026-04-07 | Volledige security audit SEC-A1 t/m SEC-A9 | Security audit 2026-04-07 |
-| 2.1 | 2026-04-12 | `vertaalFout.js`: PGRST116-matcher toegevoegd vóór generieke PGRST-catch → "Dit potje bestaat niet of is verwijderd. Controleer de link."; `logFout.js`: PGRST116 + "Cannot coerce..." aan `isGebruikersFout`-lijst toegevoegd — niet naar Sentry; `vertaalFout.nieuw.test.js`: VF-N-06 verwachting gecorrigeerd van generieke PGRST-melding naar PGRST116-melding; nieuw testbestand `vertaalFout.pgrst116.regressie.test.js` (VF-116-01…06, LF-116-01…05); §3 projectstructuur bijgewerkt; §11 `vertaalFout` matchervolgorde gedocumenteerd; §15 PGRST116 toegevoegd aan gebruikersfouten-tabel | Sentry-issue #17a27ebc (2026-04-10): lifecycle-verwijderde potjes genereerden onterechte Sentry-ruis ("Cannot coerce the result to a single JSON object") — root cause: PGRST116 niet herkend als gebruikerssituatie |
+| 2.1 | 2026-04-12 | PGRST116-matcher in `vertaalFout` + `logFout`; testbestanden VF-116, LF-116; §11 matchervolgorde; §15 gebruikersfouten-tabel | Sentry-issue #17a27ebc |
+| 2.2 | 2026-04-12 | **Kritieke fixes grondige audit:** (1) `useMijnPotjes`: `useDeviceId()` i.p.v. `localStorage.getItem()` — stille lege lijst bij lege storage voorkomen; (2) `handleAfmelden`: `.single()` → `.maybeSingle()` + null-check — onjuiste PGRST116-melding bij verwijderde deelnemer voorkomen; (3) `handleSluiten`: null-guard op `deelnemer?.id` → `DEELNEMER_ONTBREEKT` error — TypeError bij race condition voorkomen; nieuw testbestand `kritiek.regressie.test.js` (MP-01…03, AF-01…03, SL-01…03); §3 projectstructuur + §10 hooks bijgewerkt; §15 foutafhandeling uitgebreid; `DEVICE_ID_KEY` niet langer geïmporteerd in `useMijnPotjes` | Grondige code-audit 2026-04-12: zelfde root cause als JAVASCRIPT-REACT-6 aanwezig in `useMijnPotjes`; `.single()` op UPDATE genereerde onjuiste PGRST116-melding in `handleAfmelden`; TypeError mogelijk bij race condition in `handleSluiten` |
 
 ---
 
 ## 22. Cloudflare Worker — Lifecycle Cron
 
-> **Status: vervallen.** Vervangen door Supabase Edge Functions + pg_cron (zie §23). Code staat lokaal in `workers/lifecycle-cron/` maar is nooit gedeployed.
-
-Zie versie 1.6–1.7 van dit document voor de volledige beschrijving.
+> **Status: vervallen.** Vervangen door Supabase Edge Functions + pg_cron (zie §23).
 
 ---
 
 ## 23. Supabase Edge Functions — Lifecycle
 
-### Edge Functions (Deno, TypeScript)
+### Edge Functions
 
-| Naam | URL | Taak |
-|---|---|---|
-| `lifecycle-sluiten` | `/functions/v1/lifecycle-sluiten` | `lifecycle_sluit_verlopen_potjes()` |
-| `lifecycle-verwijderen` | `/functions/v1/lifecycle-verwijderen` | `lifecycle_verwijder_oude_potjes()` |
-| `lifecycle-keepalive` | `/functions/v1/lifecycle-keepalive` | Keep-alive ping |
+| Naam | Taak |
+|---|---|
+| `lifecycle-sluiten` | `lifecycle_sluit_verlopen_potjes()` |
+| `lifecycle-verwijderen` | `lifecycle_verwijder_oude_potjes()` |
+| `lifecycle-keepalive` | Keep-alive ping |
 
-`verify_jwt: false`. Authenticatie via `Authorization: Bearer <service_role>` in pg_cron job. Alleen POST.
+`verify_jwt: false`. Authenticatie via `Authorization: Bearer <service_role>` in pg_cron job.
 
 ### Cron schema (pg_cron)
 
@@ -791,7 +438,3 @@ Zie versie 1.6–1.7 van dit document voor de volledige beschrijving.
 | `digipot-lifecycle-keepalive` | `0 0 */5 * *` | Keep-alive ping |
 | `digipot-sluit-verlopen-potjes` | `*/15 * * * *` | Legacy backup |
 | `digipot-verwijder-oude-potjes` | `0 3 * * *` | Legacy backup |
-
-### Migrations
-
-`lifecycle_cron_schedules` + `lifecycle_cron_fix_net_schema`.

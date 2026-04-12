@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi, berekenEindafrekening } from '../utils/berekenSaldi'
-import { DEVICE_ID_KEY, PROFIEL_NAAM_KEY } from '../constants'
+import { useDeviceId } from './useDeviceId'
+import { PROFIEL_NAAM_KEY } from '../constants'
 
 /**
  * useMijnPotjes — laadt alle open of gesloten potjes voor dit device/profiel.
@@ -25,6 +26,14 @@ import { DEVICE_ID_KEY, PROFIEL_NAAM_KEY } from '../constants'
  *     deelnemers matchen en daarmee potjes van vreemden tonen (informatielekage).
  *     eq is een exacte case-sensitieve vergelijking zonder wildcardrisico.
  *
+ * Fix (2026-04-12):
+ *   - deviceId wordt nu opgehaald via useDeviceId() in plaats van
+ *     localStorage.getItem() direct (zelfde root cause als JAVASCRIPT-REACT-6).
+ *     Bij lege of ongeldige localStorage retourneerde getItem() null, waardoor
+ *     de hook de deelnemersqueries oversloeg en een stille lege lijst toonde.
+ *     useDeviceId() garandeert altijd een geldige UUID v4.
+ *   - DEVICE_ID_KEY import verwijderd — niet langer nodig.
+ *
  * @param {'open'|'gesloten'} status - Welke potjes te laden
  * @returns {{
  *   potjes: Array,   — verrijkte potjes (met saldo, aantalDeelnemers of mijnVerrekening)
@@ -34,6 +43,12 @@ import { DEVICE_ID_KEY, PROFIEL_NAAM_KEY } from '../constants'
  * }}
  */
 export function useMijnPotjes(status) {
+  // Fix 2026-04-12: useDeviceId() i.p.v. localStorage.getItem() direct.
+  // useDeviceId is een hook en moet op het niveau van de functie worden aangeroepen —
+  // niet binnen useEffect. De waarde is stabiel voor de gehele levensduur (useMemo
+  // met lege deps in useDeviceId), dus het is veilig als useEffect-dependency.
+  const deviceId = useDeviceId()
+
   const [potjes, setPotjes] = useState([])
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState('')
@@ -46,7 +61,9 @@ export function useMijnPotjes(status) {
   }, [])
 
   useEffect(() => {
-    const deviceId = localStorage.getItem(DEVICE_ID_KEY)
+    // profielNaam blijft via localStorage — dit is geen device-identiteit maar
+    // een optionele profielnaam die de gebruiker zelf instelt. Er is geen hook
+    // voor nodig; localStorage.getItem() hier is correct en intentioneel.
     const profielNaam = localStorage.getItem(PROFIEL_NAAM_KEY)?.trim() || null
 
     async function laadPotjes() {
@@ -151,7 +168,7 @@ export function useMijnPotjes(status) {
             const saldi = berekenEindafrekening(potjeDeelnemers, potjeTransacties, potje.gesloten_op)
             const mijnDeelnemer = potjeDeelnemers.find(d =>
               d.device_id === deviceId ||
-              (profielNaam && d.naam === profielNaam)  // was: d.naam.toLowerCase() === profielNaam.toLowerCase()
+              (profielNaam && d.naam === profielNaam)
             )
             const mijnVerrekening = mijnDeelnemer
               ? saldi.deelnemersSaldi.find(s => s.id === mijnDeelnemer.id)?.verrekening ?? null
@@ -172,7 +189,7 @@ export function useMijnPotjes(status) {
     }
 
     laadPotjes()
-  }, [status, teller]) // teller-dependency triggert herlaad()
+  }, [status, teller, deviceId]) // deviceId toegevoegd als dependency (stabiel via useMemo)
 
   return { potjes, laden, fout, herlaad }
 }
