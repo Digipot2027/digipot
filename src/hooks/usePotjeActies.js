@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
-import { DEVICE_ID_KEY } from '../constants'
+import { useDeviceId } from './useDeviceId'
 
 /**
  * usePotjeActies — alle schrijf-acties voor één potje.
@@ -46,12 +46,12 @@ export function usePotjeActies({
   setAfmeldenLaden,
 }) {
   const navigate = useNavigate()
+  const deviceId = useDeviceId()
   const valuta = potje?.valuta ?? 'EUR'
 
   // ── handleDeelnemen ──────────────────────────────────────────────────────────
 
   const handleDeelnemen = useCallback(async (naam) => {
-    const deviceId = localStorage.getItem(DEVICE_ID_KEY)
     const { data, error } = await supabase
       .from('deelnemers')
       .insert({ potje_id: potjeId, naam, device_id: deviceId })
@@ -60,7 +60,7 @@ export function usePotjeActies({
     if (error) throw error
     setDeelnemer(data)
     navigate(`/potje/${potjeId}/storten`)
-  }, [potjeId, setDeelnemer, navigate])
+  }, [potjeId, deviceId, setDeelnemer, navigate])
 
   // ── handleTransactie ─────────────────────────────────────────────────────────
 
