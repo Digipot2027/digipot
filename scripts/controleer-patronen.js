@@ -17,8 +17,11 @@
  * STRUCTUUR PER PATROON
  *   patroon       — letterlijke string om naar te grep'en (geen regex)
  *   reden         — uitleg + verwijzing naar de bug/fix
- *   uitzonderingen — paden (relatief t.o.v. src/) waar het patroon WEL mag
+ *   uitzonderingen — paden (relatief t.o.v. repo-root) waar het patroon WEL mag
  *   waarschuwing  — true = meldt maar blokkeert CI niet; false = blokkeert CI
+ *
+ * NOOT: testbestanden (src/test/) en commentaarregels worden automatisch
+ * uitgesloten — die bevatten het patroon als tekst, niet als code.
  *
  * GESCHIEDENIS
  *   2026-04-12 — initieel: drie patronen uit grondige code-audit
@@ -34,7 +37,7 @@ const PATRONEN = [
   {
     // Root cause van JAVASCRIPT-REACT-6 (null device_id in DB) én kritiek-1
     // (useMijnPotjes stille lege lijst). Direct aanroepen omzeilt de UUID-validatie
-    // en fallback-logica in useDeviceId(). Buiten useDeviceId.js altijd verboden.
+    // en fallback-logica in useDeviceId(). Buiten de uitzonderingen altijd verboden.
     patroon: 'localStorage.getItem(DEVICE_ID_KEY)',
     reden: [
       'Gebruik useDeviceId() in plaats van localStorage.getItem(DEVICE_ID_KEY) direct.',
@@ -42,7 +45,8 @@ const PATRONEN = [
       'Root cause: JAVASCRIPT-REACT-6 (null device_id) + kritiek-1 (stille lege lijst).',
     ].join(' '),
     uitzonderingen: [
-      'src/hooks/useDeviceId.js', // enige geautoriseerde implementatie
+      'src/hooks/useDeviceId.js',   // enige geautoriseerde implementatie van de hook zelf
+      'src/supabaseClient.js',      // legitiem: meesturen als request-header, geen device-ID-logica
     ],
     waarschuwing: false,
   },
@@ -64,6 +68,9 @@ const PATRONEN = [
       // Na INSERT: DB-constraint garandeert altijd precies 1 rij
       'src/hooks/usePotjeActies.js',    // handleDeelnemen + handleTransactie (INSERT)
       'src/pages/PaginaNieuwPotje.jsx', // potje aanmaken (INSERT)
+      // usePotje gebruikt .single() op SELECT — bewust geaccepteerd risico (TO §18 hoog-4)
+      // want PGRST116 wordt hier al correct afgevangen door logFout/vertaalFout
+      'src/hooks/usePotje.js',
     ],
     waarschuwing: true, // context bepaalt of het veilig is — geen harde blokkade
   },
@@ -93,8 +100,13 @@ let aantalWaarschuwingen = 0
 for (const { patroon, reden, uitzonderingen = [], waarschuwing } of PATRONEN) {
   let grep = ''
   try {
+    // --include sluit testbestanden en commentaar-zware utils uit:
+    //   src/test/ — testbestanden bevatten patronen als strings/commentaar, geen code
+    // Commentaarregels (beginnen met //) worden gefilterd in de post-processing.
     grep = execSync(
-      `grep -rn --include="*.js" --include="*.jsx" "${patroon}" src/`,
+      `grep -rn --include="*.js" --include="*.jsx" \
+        --exclude-dir="test" \
+        "${patroon}" src/`,
       { encoding: 'utf-8', cwd: REPO_ROOT }
     )
   } catch {
@@ -104,12 +116,19 @@ for (const { patroon, reden, uitzonderingen = [], waarschuwing } of PATRONEN) {
   const gevonden = grep
     .split('\n')
     .filter(Boolean)
+    // Sla commentaarregels over — die bevatten het patroon als tekst, niet als code
+    .filter(regel => {
+      const regeltekst = regel.split(':').slice(2).join(':').trimStart()
+      return !regeltekst.startsWith('//')  && !regeltekst.startsWith('*')
+    })
+    // Sla uitzonderingsbestanden over
     .filter(regel => {
       const relatief = regel.split(':')[0]
       return !uitzonderingen.some(u =>
         relatief === u ||
         relatief.endsWith('/' + u.replace(/^src\//, '')) ||
-        ('src/' + relatief).endsWith(u)
+        ('src/' + relatief).endsWith(u) ||
+        relatief.endsWith(u.replace('src/', ''))
       )
     })
 
