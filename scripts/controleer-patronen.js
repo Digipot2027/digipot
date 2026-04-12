@@ -25,6 +25,8 @@
  *
  * GESCHIEDENIS
  *   2026-04-12 — initieel: drie patronen uit grondige code-audit
+ *   2026-04-12 — PaginaNieuwPotje.jsx uitzondering verwijderd voor .single():
+ *                .single() is daar verwijderd na hoog-4 fix (audit bevinding 3)
  */
 
 import { execSync } from 'child_process'
@@ -53,26 +55,27 @@ const PATRONEN = [
 
   {
     // .single() gooit PGRST116 wanneer een query 0 rijen retourneert.
-    // Bij INSERT is 0 rijen theoretisch onmogelijk — .single() is daar veilig.
-    // Bij UPDATE/SELECT kan 0 rijen optreden (race condition, lifecycle-verwijdering).
-    // Kritiek-2: handleAfmelden gaf onjuiste "potje bestaat niet"-melding.
-    // Gebruik .maybeSingle() als 0 rijen een geldige uitkomst is.
+    // Bij INSERT is 0 rijen theoretisch onmogelijk — .single() is daar veilig,
+    // maar alleen als de returnwaarde niet nodig is voor navigatie of state.
+    // Gebruik bij twijfel .maybeSingle() + null-check.
+    // Root cause kritiek-2: handleAfmelden gaf onjuiste "potje bestaat niet"-melding.
+    // Hoog-4: PaginaNieuwPotje had zelfde patroon — opgelost door client-side UUID.
+    // Audit bevinding 1: handleDeelnemen had zelfde patroon — opgelost door client-side UUID.
     patroon: '.single()',
     reden: [
       'Controleer of .maybeSingle() beter past.',
       '.single() gooit PGRST116 bij 0 rijen — misleidende foutmelding bij UPDATE/SELECT.',
-      'Root cause: kritiek-2 (handleAfmelden onjuiste PGRST116-melding).',
-      'Uitzondering: na INSERT is 0 rijen onmogelijk — .single() is daar correct.',
+      'Na INSERT: overweeg client-side UUID i.p.v. .select().single() (zie hoog-4, bevinding-1).',
     ].join(' '),
     uitzonderingen: [
-      // Na INSERT: DB-constraint garandeert altijd precies 1 rij
-      'src/hooks/usePotjeActies.js',    // handleDeelnemen + handleTransactie (INSERT)
-      'src/pages/PaginaNieuwPotje.jsx', // potje aanmaken (INSERT)
-      // usePotje gebruikt .single() op SELECT — bewust geaccepteerd risico (TO §18 hoog-4)
-      // want PGRST116 wordt hier al correct afgevangen door logFout/vertaalFout
+      // handleTransactie: INSERT op transacties — DB-constraint garandeert 1 rij,
+      // returnwaarde is nodig voor de undo-handler (data.id). .single() is hier correct.
+      'src/hooks/usePotjeActies.js',
+      // usePotje: SELECT op potjes — PGRST116 wordt correct afgevangen door
+      // logFout/vertaalFout als "potje niet gevonden". Bewust geaccepteerd risico.
       'src/hooks/usePotje.js',
     ],
-    waarschuwing: true, // context bepaalt of het veilig is — geen harde blokkade
+    waarschuwing: true,
   },
 
   {
@@ -100,9 +103,6 @@ let aantalWaarschuwingen = 0
 for (const { patroon, reden, uitzonderingen = [], waarschuwing } of PATRONEN) {
   let grep = ''
   try {
-    // --include sluit testbestanden en commentaar-zware utils uit:
-    //   src/test/ — testbestanden bevatten patronen als strings/commentaar, geen code
-    // Commentaarregels (beginnen met //) worden gefilterd in de post-processing.
     grep = execSync(
       `grep -rn --include="*.js" --include="*.jsx" \
         --exclude-dir="test" \
@@ -116,12 +116,10 @@ for (const { patroon, reden, uitzonderingen = [], waarschuwing } of PATRONEN) {
   const gevonden = grep
     .split('\n')
     .filter(Boolean)
-    // Sla commentaarregels over — die bevatten het patroon als tekst, niet als code
     .filter(regel => {
       const regeltekst = regel.split(':').slice(2).join(':').trimStart()
-      return !regeltekst.startsWith('//')  && !regeltekst.startsWith('*')
+      return !regeltekst.startsWith('//') && !regeltekst.startsWith('*')
     })
-    // Sla uitzonderingsbestanden over
     .filter(regel => {
       const relatief = regel.split(':')[0]
       return !uitzonderingen.some(u =>

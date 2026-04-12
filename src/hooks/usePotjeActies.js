@@ -21,15 +21,17 @@ import { useDeviceId } from './useDeviceId'
  *
  * Fixes (2026-04-12):
  *   - handleAfmelden: .single() vervangen door .maybeSingle() (kritiek-2).
- *     .single() gooide PGRST116 als de UPDATE 0 rijen raakte (bijv. deelnemer
- *     ondertussen verwijderd door lifecycle-cron). Die fout werd vertaald als
- *     "Dit potje bestaat niet of is verwijderd" — inhoudelijk onjuist.
- *     .maybeSingle() retourneert null bij 0 rijen zonder fout te gooien.
- *     Expliciete null-check daarna geeft een correcte gebruikersmelding.
  *   - handleSluiten: null-guard op deelnemer toegevoegd (kritiek-3).
- *     Zonder guard crashte deelnemer.id met een TypeError als deelnemer null
- *     was op het moment van aanroepen (race condition: afmelden + sluiten
- *     tegelijkertijd, of realtime-update die deelnemer null zette).
+ *
+ * Fixes (2026-04-12 / audit bevinding 1 & 2):
+ *   - handleDeelnemen: deelnemer-ID client-side genereren zodat .select().single()
+ *     na de INSERT niet meer nodig is. Zelfde patroon als hoog-4 fix in
+ *     PaginaNieuwPotje. Bij RLS-blokkade van de SELECT gooide .single() PGRST116
+ *     met een misleidende "potje bestaat niet"-melding.
+ *   - handleTransactie: null-guard op deelnemer toegevoegd vóór deelnemer.id.
+ *     De NIET_ACTIEF-check (`deelnemer?.actief === false`) gaat ervan uit dat
+ *     deelnemer bestaat — maar bij een race condition (afmelden + betalen tegelijk)
+ *     kan deelnemer null zijn. Zonder guard crasht deelnemer.id met TypeError.
  *
  * @param {Object} params
  * @param {string}   params.potjeId       - UUID van het potje
@@ -62,22 +64,58 @@ export function usePotjeActies({
   const valuta = potje?.valuta ?? 'EUR'
 
   // ── handleDeelnemen ──────────────────────────────────────────────────────────
+  //
+  // Audit bevinding 1 (2026-04-12): deelnemer-ID client-side genereren.
+  //
+  // Oud gedrag: .insert(...).select().single() — als de RLS-policy de SELECT
+  // na de INSERT blokkeerde, gooide .single() PGRST116. Die fout werd vertaald
+  // als "Dit potje bestaat niet of is verwijderd" — terwijl de deelnemer net
+  // succesvol was aangemaakt. Zelfde patroon als hoog-4 (PaginaNieuwPotje).
+  //
+  // Nieuw gedrag: deelnemer-ID client-side genereren via crypto.randomUUID().
+  // De ID wordt meegegeven in de INSERT en direct gebruikt voor setDeelnemer
+  // en navigatie — geen .select().single() meer nodig.
+  //
+  // Voordeel: robuuster bij RLS-variaties + consistent met hoog-4.
 
   const handleDeelnemen = useCallback(async (naam) => {
-    const { data, error } = await supabase
+    const nieuweDeelnemerId = crypto.randomUUID()
+
+    const { error } = await supabase
       .from('deelnemers')
-      .insert({ potje_id: potjeId, naam, device_id: deviceId })
-      .select()
-      .single()
+      .insert({ id: nieuweDeelnemerId, potje_id: potjeId, naam, device_id: deviceId })
+
     if (error) throw error
-    setDeelnemer(data)
+
+    // Construeer het deelnemer-object lokaal — zelfde structuur als wat de DB
+    // zou teruggeven. aangemaakt_op wordt hier met now() ingevuld; de DB-waarde
+    // kan iets afwijken maar is niet kritisch voor weergave.
+    setDeelnemer({
+      id: nieuweDeelnemerId,
+      potje_id: potjeId,
+      naam,
+      device_id: deviceId,
+      actief: true,
+      aangemaakt_op: new Date().toISOString(),
+      afgemeld_op: null,
+    })
+
     navigate(`/potje/${potjeId}/storten`)
   }, [potjeId, deviceId, setDeelnemer, navigate])
 
   // ── handleTransactie ─────────────────────────────────────────────────────────
+  //
+  // Audit bevinding 2 (2026-04-12): null-guard op deelnemer vóór deelnemer.id.
+  //
+  // De NIET_ACTIEF-check (`deelnemer?.actief === false`) laat deelnemer null
+  // doorvallen — null is niet false, dus de check passeert stil. Vervolgens
+  // crasht `deelnemer.id` met TypeError.
+  // Fix: expliciete null-guard vóór alle deelnemer-toegangen.
 
   const handleTransactie = useCallback(async (type, bedrag) => {
-    if (deelnemer?.actief === false) throw new Error('NIET_ACTIEF')
+    // Null-guard — kan optreden bij race condition (afmelden + betalen tegelijk)
+    if (!deelnemer?.id) throw new Error('DEELNEMER_ONTBREEKT')
+    if (deelnemer.actief === false) throw new Error('NIET_ACTIEF')
 
     const saldi = berekenSaldi(deelnemers, transacties)
     if (type === 'betaling' && bedrag > saldi.potSaldo) {
@@ -102,38 +140,21 @@ export function usePotjeActies({
         ? `Storting van ${formatBedrag(bedrag, valuta)} geregistreerd.`
         : `Betaling van ${formatBedrag(bedrag, valuta)} geregistreerd.`,
       'ok',
-      // Geef het volledige transactie-object mee (niet alleen data.id) zodat
-      // handleUndo niet hoeft te zoeken in de mogelijk verouderde transacties-closure.
-      // Geef ook de deelnemerSnapshot mee om de stale-closure bug te voorkomen
-      // waarbij deelnemer nog null was op het moment dat handleTransactie werd gemaakt.
       { label: 'Ongedaan', handler: () => handleUndo(data, deelnemerSnapshot) }
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [potjeId, deelnemer, deelnemers, transacties, valuta, setModaal, toonToast])
 
   // ── handleUndo ───────────────────────────────────────────────────────────────
-  //
-  // Accepteert het volledige transactie-object zodat eigenaarschaps-check
-  // niet afhankelijk is van de `transacties`-closure.
-  //
-  // Bug (opgelost): handleTransactie gaf data.id door aan handleUndo. Op het
-  // moment van klikken had de realtime-listener de array soms nog niet bijgewerkt,
-  // waardoor transacties.find() undefined retourneerde → foutmelding
-  // "alleen eigen transacties", ook bij de enige gebruiker.
 
   const handleUndo = useCallback(async (transactie, deelnemerOverride) => {
-    // Gebruik de meegegeven deelnemer-snapshot (uit handleTransactie) als die beschikbaar
-    // is. Dit voorkomt de stale-closure bug waarbij `deelnemer` uit de useCallback-closure
-    // nog de oude (null) waarde heeft op het moment dat de toast-knop wordt getoond.
     const actiefDeelnemer = deelnemerOverride ?? deelnemer
 
-    // Veiligheidscheck 1: eigenaarschap op basis van meegegeven object
     if (!transactie || transactie.deelnemer_id !== actiefDeelnemer?.id) {
       toonToast('Je kunt alleen je eigen transacties ongedaan maken.', 'fout')
       return
     }
 
-    // Veiligheidscheck 2: storting terugdraaien mag saldo niet negatief maken
     if (transactie.type === 'storting') {
       const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
       if (huidigSaldo < Number(transactie.bedrag)) {
@@ -149,7 +170,7 @@ export function usePotjeActies({
       .from('transacties')
       .delete()
       .eq('id', transactie.id)
-      .eq('deelnemer_id', actiefDeelnemer.id) // expliciete ownership-check op DB-niveau
+      .eq('deelnemer_id', actiefDeelnemer.id)
     if (error) {
       toonToast(logFout(error, { component: 'usePotjeActies', actie: 'undo' }), 'fout')
     } else {
@@ -159,18 +180,9 @@ export function usePotjeActies({
   }, [transacties, deelnemers, deelnemer, toonToast, setTransacties])
 
   // ── handleSluiten ────────────────────────────────────────────────────────────
-  //
-  // Fix (2026-04-12 / kritiek-3): null-guard op deelnemer toegevoegd.
-  // Zonder guard crashte deelnemer.id met TypeError als deelnemer null was
-  // op het moment van aanroepen. Dit kon optreden bij een race condition
-  // (afmelden + sluiten tegelijk) of een realtime-update die de deelnemer-state
-  // null zette tussen het openen van ModalSluiten en het bevestigen.
-  // De guard gooit een expliciete, logbare Error in plaats van een TypeError.
 
   const handleSluiten = useCallback(async () => {
     if (!deelnemer?.id) {
-      // Defensieve guard — kan optreden bij race condition (afmelden + sluiten tegelijk).
-      // Gooi een Error zodat de aanroeper (PaginaPotje) hem kan loggen en afhandelen.
       throw new Error('DEELNEMER_ONTBREEKT')
     }
 
@@ -188,17 +200,6 @@ export function usePotjeActies({
   }, [potjeId, deelnemer, setModaal])
 
   // ── handleAfmelden ───────────────────────────────────────────────────────────
-  //
-  // Fix (2026-04-12 / kritiek-2): .single() vervangen door .maybeSingle().
-  //
-  // Oud gedrag: .single() gooide PGRST116 als de UPDATE 0 rijen raakte —
-  // bijv. als de deelnemer ondertussen verwijderd was door lifecycle-cron of
-  // een directe DB-ingreep. Die fout werd (na de PGRST116-fix van vandaag)
-  // vertaald als "Dit potje bestaat niet of is verwijderd", wat inhoudelijk
-  // onjuist is: de deelnemer is weg, niet het potje.
-  //
-  // Nieuw gedrag: .maybeSingle() retourneert { data: null, error: null } bij
-  // 0 rijen. De expliciete null-check daarna geeft een correcte melding.
 
   const handleAfmelden = useCallback(async () => {
     if (!deelnemer) return
@@ -217,10 +218,9 @@ export function usePotjeActies({
         .update({ actief: false, afgemeld_op: new Date().toISOString() })
         .eq('id', deelnemer.id)
         .select()
-        .maybeSingle() // was: .single() — gooit PGRST116 bij 0 rijen (kritiek-2 fix)
+        .maybeSingle()
       if (error) throw error
 
-      // null = deelnemer ondertussen verwijderd (lifecycle of directe DB-ingreep)
       if (!data) {
         toonToast('Afmelden mislukt. Je deelnemersprofiel is niet meer beschikbaar.', 'fout')
         return
