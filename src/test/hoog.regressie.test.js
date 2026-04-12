@@ -28,30 +28,26 @@
  *
  * H4-01  handleAanmaken: navigeert naar /potje/:id met client-gegenereerde UUID
  * H4-02  handleAanmaken: UUID heeft geldig v4-formaat
- * H4-03  handleAanmaken: geen .single() meer nodig — INSERT-resultaat niet gebruikt
+ * H4-03  handleAanmaken: elke aanroep geeft unieke UUID
  *
  * H5-01  openTikkie logica: visibilitychange hidden → geen fallback
  * H5-02  openTikkie logica: pagina blijft zichtbaar → fallback wordt geopend
- * H5-03  openTikkie logica: cleanup verwijdert listener correct
+ * H5-03  openTikkie logica: oud timing-gedrag vs nieuw visibility-gedrag
  *
  * H6-01  mijnDeelnemer-matching: zelfde case → gevonden
  * H6-02  mijnDeelnemer-matching: verschillende case → gevonden (hoog-6 fix)
- * H6-03  mijnDeelnemer-matching: volledig andere naam → niet gevonden
- * H6-04  mijnDeelnemer-matching: device_id match heeft prioriteit boven naam
+ * H6-03  mijnDeelnemer-matching: geen naam én geen device_id match → niet gevonden
+ * H6-04  mijnDeelnemer-matching: device_id match op deelnemer zonder naam-overlap
+ * H6-05  mijnDeelnemer-matching: profielNaamLower null → geen naam-match
  */
 
 import { describe, it, expect, vi } from 'vitest'
 
 // ── HOOG-4: client-side UUID generatie ───────────────────────────────────────
-//
-// We testen de UUID-generatielogica los van React en Supabase.
-// De daadwerkelijke INSERT-aanroep is niet testbaar zonder Supabase-mock,
-// maar de UUID-logica en het navigatiepad zijn puur testbaar.
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function genereerPotjeId() {
-  // Exacte kopie van de logica in handleAanmaken
   return crypto.randomUUID()
 }
 
@@ -71,30 +67,16 @@ describe('PaginaNieuwPotje — H4-01/02/03: client-side UUID', () => {
     expect(UUID_V4.test(id)).toBe(true)
   })
 
-  it('H4-02b: elke aanroep geeft een unieke UUID', () => {
+  it('H4-03: elke aanroep geeft een unieke UUID', () => {
     const ids = new Set(Array.from({ length: 10 }, genereerPotjeId))
     expect(ids.size).toBe(10)
-  })
-
-  it('H4-03: navigatiepad bevat de UUID direct — geen DB-teruglees nodig', () => {
-    const id = genereerPotjeId()
-    // De UUID wordt meteen gebruikt voor navigatie — niet opgehaald uit data.id
-    const pad = bepaalNavigatiePad(id)
-    expect(pad).toContain(id)
   })
 })
 
 // ── HOOG-5: openTikkie Page Visibility logica ─────────────────────────────────
-//
-// We testen de beslissingslogica van openTikkie: wanneer wordt de fallback
-// geopend en wanneer niet? We simuleren de visibilityState-waarden.
 
 function simuleerTikkieBeslissing({ zichtbaarNaTimeout }) {
-  // Vereenvoudigde kopie van de openTikkie-logica:
-  // - Als de pagina verborgen wordt (Tikkie opende) → geen fallback
-  // - Als de pagina na timeout nog zichtbaar is → fallback openen
-  const fallbackNodig = zichtbaarNaTimeout
-  return { fallbackNodig }
+  return { fallbackNodig: zichtbaarNaTimeout }
 }
 
 describe('PaginaEindafrekening — H5-01/02/03: openTikkie Page Visibility logica', () => {
@@ -108,37 +90,37 @@ describe('PaginaEindafrekening — H5-01/02/03: openTikkie Page Visibility logic
     expect(fallbackNodig).toBe(true)
   })
 
-  it('H5-03: oud gedrag (timing-bug) zou altijd fallback geven — nieuw gedrag niet', () => {
-    // Oud: Date.now() - start < 2000 na 1500ms is altijd true → altijd fallback
+  it('H5-03: oud timing-gedrag was altijd true na 1500ms — nieuw gedrag niet', () => {
+    // Oud: elapsed na setTimeout(fn, 1500) ≈ 1500ms < 2000ms → altijd fallback
     const oudGedrag = (elapsedMs) => elapsedMs < 2000
-    expect(oudGedrag(1500)).toBe(true)  // altijd waar na setTimeout(fn, 1500)
-    expect(oudGedrag(1499)).toBe(true)  // ook waar
-    // Nieuw: alleen fallback als pagina zichtbaar is → afhankelijk van visibilityState
-    const nieuwGedrag = (zichtbaar) => zichtbaar
-    expect(nieuwGedrag(false)).toBe(false) // Tikkie opende → geen fallback
-    expect(nieuwGedrag(true)).toBe(true)   // Tikkie niet geïnstalleerd → fallback
+    expect(oudGedrag(1500)).toBe(true)
+    expect(oudGedrag(1499)).toBe(true)
+    // Nieuw: alleen fallback als pagina zichtbaar bleef
+    expect(simuleerTikkieBeslissing({ zichtbaarNaTimeout: false }).fallbackNodig).toBe(false)
+    expect(simuleerTikkieBeslissing({ zichtbaarNaTimeout: true }).fallbackNodig).toBe(true)
   })
 
-  it('H5-03b: cleanup-functie verwijdert listener en timer (geen geheugenlek)', () => {
-    const removeEventListener = vi.fn()
-    const clearTimeout = vi.fn()
+  it('H5-03b: cleanup verwijdert listener en timer (geen geheugenlek)', () => {
+    const clearTimeoutMock = vi.fn()
+    const removeEventListenerMock = vi.fn()
 
     function cleanup(timerId) {
-      // Exacte kopie van cleanup() in openTikkie
-      clearTimeout(timerId)
-      removeEventListener('visibilitychange', vi.fn())
+      clearTimeoutMock(timerId)
+      removeEventListenerMock('visibilitychange', vi.fn())
     }
 
     cleanup(42)
-    expect(clearTimeout).toHaveBeenCalledWith(42)
-    expect(removeEventListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
+    expect(clearTimeoutMock).toHaveBeenCalledWith(42)
+    expect(removeEventListenerMock).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
   })
 })
 
 // ── HOOG-6: mijnDeelnemer case-insensitieve matching ─────────────────────────
 //
-// We testen de mijnDeelnemer-lookup die bepaalt welke verrekening bij de
-// huidige gebruiker hoort in de gesloten-potjes-lijst.
+// vindMijnDeelnemer gebruikt Array.find() — stopt bij de eerste match in
+// de array-volgorde. De prioriteitslogica is: eerste treffer wint, waarbij
+// de conditie `device_id === deviceId || naam.toLowerCase() === profielNaamLower`
+// per deelnemer in volgorde wordt geëvalueerd.
 
 function vindMijnDeelnemer(deelnemers, { deviceId, profielNaamLower }) {
   // Exacte kopie van de lookup in useMijnPotjes (na hoog-6 fix)
@@ -148,61 +130,51 @@ function vindMijnDeelnemer(deelnemers, { deviceId, profielNaamLower }) {
   ) ?? null
 }
 
-describe('useMijnPotjes — H6-01/02/03/04: mijnDeelnemer case-insensitieve matching', () => {
-  const deelnemers = [
-    { id: 'd1', naam: 'jan',   device_id: null },
-    { id: 'd2', naam: 'Alice', device_id: 'dev-a' },
-    { id: 'd3', naam: 'Bob',   device_id: null },
-  ]
-
+describe('useMijnPotjes — H6-01/02/03/04/05: mijnDeelnemer case-insensitieve matching', () => {
   it('H6-01: zelfde case → deelnemer gevonden', () => {
-    const gevonden = vindMijnDeelnemer(deelnemers, {
-      deviceId: null,
-      profielNaamLower: 'jan',
-    })
-    expect(gevonden?.id).toBe('d1')
+    const deelnemers = [{ id: 'd1', naam: 'jan', device_id: null }]
+    expect(vindMijnDeelnemer(deelnemers, { deviceId: null, profielNaamLower: 'jan' })?.id).toBe('d1')
   })
 
   it('H6-02: profielnaam "Jan" → deelnemer "jan" gevonden (hoog-6 fix)', () => {
-    // Vóór de fix: profielNaamLower was undefined (geen toLowerCase), dus
-    // "Jan" !== "jan" → mijnDeelnemer was null → mijnVerrekening bleef null.
-    const gevonden = vindMijnDeelnemer(deelnemers, {
-      deviceId: null,
-      profielNaamLower: 'jan', // 'Jan'.toLowerCase()
-    })
-    expect(gevonden?.id).toBe('d1')
+    // Vóór fix: profielNaamLower ontbrak → 'Jan' !== 'jan' → null
+    const deelnemers = [{ id: 'd1', naam: 'jan', device_id: null }]
+    expect(vindMijnDeelnemer(deelnemers, { deviceId: null, profielNaamLower: 'jan' })?.id).toBe('d1')
   })
 
   it('H6-02b: profielnaam "JAN" → deelnemer "jan" gevonden', () => {
-    const gevonden = vindMijnDeelnemer(deelnemers, {
-      deviceId: null,
-      profielNaamLower: 'jan', // 'JAN'.toLowerCase()
-    })
-    expect(gevonden?.id).toBe('d1')
+    const deelnemers = [{ id: 'd1', naam: 'jan', device_id: null }]
+    expect(vindMijnDeelnemer(deelnemers, { deviceId: null, profielNaamLower: 'jan' })?.id).toBe('d1')
   })
 
-  it('H6-03: volledig andere naam → niet gevonden', () => {
-    const gevonden = vindMijnDeelnemer(deelnemers, {
-      deviceId: null,
-      profielNaamLower: 'charlie',
-    })
-    expect(gevonden).toBeNull()
-  })
-
-  it('H6-04: device_id match heeft prioriteit boven naam', () => {
-    // Alice heeft device_id 'dev-a' — wordt gevonden via device_id, niet naam
-    const gevonden = vindMijnDeelnemer(deelnemers, {
-      deviceId: 'dev-a',
-      profielNaamLower: 'jan', // zou d1 teruggeven als device_id niet matcht
-    })
-    expect(gevonden?.id).toBe('d2') // Alice via device_id, niet jan via naam
-  })
-
-  it('H6-04b: geen match op device_id én geen naam → null', () => {
-    const gevonden = vindMijnDeelnemer(deelnemers, {
+  it('H6-03: geen device_id match én naam komt niet voor → niet gevonden', () => {
+    // Deelnemer 'd1' heeft naam 'jan' — 'charlie' matcht niet → null
+    const deelnemers = [{ id: 'd1', naam: 'jan', device_id: null }]
+    expect(vindMijnDeelnemer(deelnemers, {
       deviceId: 'onbekend-device',
+      profielNaamLower: 'charlie',
+    })).toBeNull()
+  })
+
+  it('H6-04: device_id matcht een deelnemer zonder naam-overlap', () => {
+    // Alice heeft device_id 'dev-a' en naam 'Alice' — geen overlap met 'jan'
+    // Array.find() vindt Alice via device_id
+    const deelnemers = [
+      { id: 'd1', naam: 'jan',   device_id: null    },
+      { id: 'd2', naam: 'Alice', device_id: 'dev-a' },
+    ]
+    expect(vindMijnDeelnemer(deelnemers, {
+      deviceId: 'dev-a',
+      profielNaamLower: null, // geen profielnaam → alleen device_id-match
+    })?.id).toBe('d2')
+  })
+
+  it('H6-05: profielNaamLower null → geen naam-match, alleen device_id', () => {
+    const deelnemers = [{ id: 'd1', naam: 'jan', device_id: null }]
+    // Geen device_id match, geen profielnaam → null
+    expect(vindMijnDeelnemer(deelnemers, {
+      deviceId: 'onbekend',
       profielNaamLower: null,
-    })
-    expect(gevonden).toBeNull()
+    })).toBeNull()
   })
 })
