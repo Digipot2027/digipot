@@ -7,6 +7,7 @@
  *   - Supabase REST API-foutcodes (PGRST, 406, 400)
  *   - SEC-A2: MAX_DEELNEMERS trigger-exceptie (2026-04-07)
  *   - SEC-A8: JWT-matcher te breed gerepareerd (2026-04-07)
+ *   - PGRST116: potje-niet-gevonden herkenning (2026-04-12) — zie ook vertaalFout.pgrst116.regressie.test.js
  *
  * Gedekte cases:
  *   VF-N-01  42703 → databasefout kolom ontbreekt
@@ -14,10 +15,10 @@
  *   VF-N-03  42703 + "does not exist" samen → zelfde melding
  *   VF-N-04  42P01 → databasefout tabel ontbreekt
  *   VF-N-05  "relation ... does not exist" → databasefout tabel ontbreekt
- *   VF-N-06  PGRST → verbindingsfout
+ *   VF-N-06  PGRST116 → niet-gevonden melding (was: generieke verbindingsfout; gecorrigeerd 2026-04-12)
  *   VF-N-07  "(406)" → verbindingsfout
  *   VF-N-08  "(400)" → verbindingsfout
- *   VF-N-09  onbekende PGRST-code → verbindingsfout
+ *   VF-N-09  onbekende PGRST-code (PGRST301) → verbindingsfout
  *   VF-N-10  volgorde: 42703 gaat vóór fallback
  *   VF-N-11  volgorde: 42P01 gaat vóór fallback
  *   VF-N-12  bestaande codes werken nog steeds (geen regressie)
@@ -80,12 +81,19 @@ describe('vertaalFout — VF-N-04/05: PostgreSQL 42P01 tabel ontbreekt', () => {
 })
 
 // ── VF-N-06 t/m VF-N-09: Supabase PGRST / HTTP 406 / HTTP 400 ───────────────
+//
+// VF-N-06 gecorrigeerd op 2026-04-12: PGRST116 krijgt een eigen specifiekere
+// matcher ("niet gevonden") die vóór de generieke PGRST-catch staat.
+// Uitgebreide PGRST116-tests staan in vertaalFout.pgrst116.regressie.test.js.
 
 describe('vertaalFout — VF-N-06/07/08/09: Supabase API-fouten', () => {
-  it('VF-N-06: fout met "PGRST" geeft verbindingsfout-melding', () => {
+  it('VF-N-06: PGRST116 geeft niet-gevonden melding (specifiek, niet generiek)', () => {
+    // PGRST116 = .single() vond 0 rijen — potje bestaat niet (meer).
+    // Correctie 2026-04-12: verwachting bijgesteld van generieke verbindingsfout
+    // naar specifieke niet-gevonden melding na toevoeging van PGRST116-matcher.
     const fout = new Error('PGRST116: The result contains 0 rows')
     expect(vertaalFout(fout)).toBe(
-      'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
+      'Dit potje bestaat niet of is verwijderd. Controleer de link.'
     )
   })
 
@@ -168,8 +176,6 @@ describe('vertaalFout — SEC-A2: MAX_DEELNEMERS trigger', () => {
   })
 
   it('VF-MD-03: MAX_DEELNEMERS gaat vóór duplicate-key-melding (volgorde)', () => {
-    // Triggerfout bevat ook 'deelnemers_potje_id_naam' nooit tegelijk,
-    // maar puur als volgorde-check: MAX_DEELNEMERS staat eerder in de functie
     const fout = new Error('MAX_DEELNEMERS triggerfout')
     expect(vertaalFout(fout)).toBe('Dit potje heeft het maximum van 20 deelnemers bereikt.')
   })
@@ -195,7 +201,6 @@ describe('vertaalFout — SEC-A8: JWT-matcher niet te breed', () => {
   })
 
   it('VF-JWT-05: "unauthorized action" mag GEEN sessie-melding geven (false positive fix)', () => {
-    // Vóór SEC-A8 matchte "auth" op "unauthorized" → valse sessie-melding
     const result = vertaalFout(new Error('unauthorized action on table'))
     expect(result).not.toBe('Sessie verlopen. Ververs de pagina.')
   })

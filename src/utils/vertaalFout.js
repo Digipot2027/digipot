@@ -44,6 +44,17 @@ export function vertaalFout(error) {
   if (bericht.includes('42P01') || (bericht.includes('relation') && bericht.includes('does not exist')))
     return 'Databasefout: een vereiste tabel ontbreekt. Voer de openstaande migraties uit.'
 
+  // PGRST116: PostgREST .single() vond nul of meer dan één rij.
+  // Dit treedt op wanneer een potje-UUID niet (meer) bestaat in de database,
+  // bijv. na lifecycle-verwijdering (7 dagen oud) of bij een getypte / verouderde link.
+  // Behandeld als gebruikerssituatie — niet als bug, niet naar Sentry.
+  if (
+    bericht.includes('PGRST116') ||
+    bericht.includes('JSON object requested, multiple (or no) rows returned') ||
+    bericht.includes('Cannot coerce the result to a single JSON object')
+  )
+    return 'Dit potje bestaat niet of is verwijderd. Controleer de link.'
+
   if (bericht.includes('PGRST') || bericht.includes('406') || bericht.includes('400'))
     return 'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
 

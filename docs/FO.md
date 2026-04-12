@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 1.6
-**Datum:** 2026-04-07
+**Versie:** 1.7
+**Datum:** 2026-04-12
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -427,7 +427,15 @@ Actief/afgemeld bepaald op sluitmoment. Afgemelden: netto bijdrage = volledige i
 
 ### Foutafhandeling
 
-Alle gebruikersfouten lopen via `logFout()` → Sentry (productie) + Nederlandse gebruikerstekst.
+Alle gebruikersfouten lopen via `logFout()` → Sentry (productie) + Nederlandse gebruikerstekst. Bekende gebruikerssituaties (ongeldige links, verlopen potjes) worden herkend en vertaald naar begrijpelijke meldingen zonder Sentry-ruis te genereren.
+
+#### Foutmelding bij niet-bestaand of verwijderd potje
+
+Wanneer een gebruiker een verouderde of ongeldige potje-link opent (bijv. na lifecycle-verwijdering na 7 dagen), toont de app:
+
+> "Dit potje bestaat niet of is verwijderd. Controleer de link."
+
+Dit vervangt de technische foutmelding die eerder in Sentry zichtbaar was als "Cannot coerce the result to a single JSON object" (PostgREST-code PGRST116). De melding is bewust neutraal — er wordt geen informatie gegeven over of de UUID ooit heeft bestaan.
 
 ### Skeletonladers
 
@@ -478,3 +486,4 @@ Interne ondersteuning voor EUR, USD, GBP, CHF, DKK, NOK, SEK is aanwezig. De val
 | 1.4 | 2026-04-04 | Push-notificaties toegevoegd aan §14: `push_subscriptions`-tabel beschreven, device-gebonden toegang via RLS, vier policies | Security-audit: push_subscriptions had RLS zonder policies — volledige blokkade opgeheven |
 | 1.5 | 2026-04-04 | §14 bijgewerkt: lifecycle nu uitgevoerd via Cloudflare Worker Cron Trigger in plaats van onbekende scheduler; technische verwijzing naar TO §22 toegevoegd | Lifecycle-functies draaiden nergens — Cloudflare Worker lost dit op |
 | 1.6 | 2026-04-07 | §14 lifecycle bijgewerkt: Cloudflare Worker → Supabase Edge Functions + pg_cron (TO §23); RLS-beveiligingen gedocumenteerd: `potjes_update_sluiten` nu met deelnemercheck (SEC-PRIO2), `transacties_delete` nu met open-potje-check (SEC-PRIO3) | Auditbevindingen 2026-04-07 verwerkt |
+| 1.7 | 2026-04-12 | §14 foutafhandeling uitgebreid: PGRST116 ("potje niet gevonden") herkend als verwachte gebruikerssituatie; melding "Dit potje bestaat niet of is verwijderd. Controleer de link." gedocumenteerd; beveiligingsnoot over informatie-neutraliteit van de melding | Sentry-issue #17a27ebc (2026-04-10): verouderde potje-links gaven technische foutmelding i.p.v. begrijpelijke gebruikersmelding; lifecycle-verwijdering genereerde onterechte Sentry-ruis |

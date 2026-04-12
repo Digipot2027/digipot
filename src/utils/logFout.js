@@ -33,11 +33,17 @@ export function logFout(error, context = {}) {
   const bericht = errorInstantie.message || ''
 
   // Bekende gebruikersfouten worden niet naar Sentry gestuurd —
-  // dit zijn verwachte validatiefouten, geen bugs
+  // dit zijn verwachte validatiefouten of verwachte gebruikerssituaties, geen bugs.
+  //
+  // PGRST116: .single() vond nul of meer dan één rij — treedt op bij verouderde/
+  // ongeldige potje-links na lifecycle-verwijdering. Verwacht gedrag, geen bug.
   const isGebruikersFout =
     bericht.includes('SALDO_TE_LAAG') ||
     bericht.includes('NIET_ACTIEF') ||
-    bericht.includes('duplicate key')
+    bericht.includes('duplicate key') ||
+    bericht.includes('PGRST116') ||
+    bericht.includes('JSON object requested, multiple (or no) rows returned') ||
+    bericht.includes('Cannot coerce the result to a single JSON object')
 
   if (!isGebruikersFout) {
     Sentry.captureException(errorInstantie, {
