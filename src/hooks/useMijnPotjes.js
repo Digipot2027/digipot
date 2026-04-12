@@ -34,6 +34,14 @@ import { PROFIEL_NAAM_KEY } from '../constants'
  *     useDeviceId() garandeert altijd een geldige UUID v4.
  *   - DEVICE_ID_KEY import verwijderd — niet langer nodig.
  *
+ * Fix (2026-04-12 / hoog-6):
+ *   - Profielnaam-matching bij het zoeken van de eigen deelnemer (mijnDeelnemer)
+ *     was case-sensitief: "Jan" vond geen deelnemer "jan".
+ *     valideerDeelnemerNaam() matcht case-insensitief — beide moeten consistent zijn.
+ *     Fix: .toLowerCase() op beide zijden bij de mijnDeelnemer-lookup.
+ *     De DB-query (.eq('naam', profielNaam)) blijft case-sensitief voor SEC-H2 —
+ *     alleen de client-side verrijkingsstap is aangepast.
+ *
  * @param {'open'|'gesloten'} status - Welke potjes te laden
  * @returns {{
  *   potjes: Array,   — verrijkte potjes (met saldo, aantalDeelnemers of mijnVerrekening)
@@ -65,6 +73,9 @@ export function useMijnPotjes(status) {
     // een optionele profielnaam die de gebruiker zelf instelt. Er is geen hook
     // voor nodig; localStorage.getItem() hier is correct en intentioneel.
     const profielNaam = localStorage.getItem(PROFIEL_NAAM_KEY)?.trim() || null
+    // Hoog-6 fix: lowercase voor case-insensitieve vergelijking in de verrijkingsstap.
+    // De DB-query (.eq) blijft exact — alleen de client-side lookup wordt versoepeld.
+    const profielNaamLower = profielNaam?.toLowerCase() ?? null
 
     async function laadPotjes() {
       try {
@@ -166,9 +177,15 @@ export function useMijnPotjes(status) {
           } else {
             // gesloten: bereken verrekening voor dit device / deze naam
             const saldi = berekenEindafrekening(potjeDeelnemers, potjeTransacties, potje.gesloten_op)
+
+            // Hoog-6 fix (2026-04-12): case-insensitieve vergelijking voor naam.
+            // valideerDeelnemerNaam() matcht ook case-insensitief — beide moeten
+            // consistent zijn. Scenario: profielnaam "Jan", deelnemernaam "jan" →
+            // zonder toLowerCase() werd mijnDeelnemer niet gevonden en bleef
+            // mijnVerrekening null, ook al is "jan" dezelfde persoon.
             const mijnDeelnemer = potjeDeelnemers.find(d =>
               d.device_id === deviceId ||
-              (profielNaam && d.naam === profielNaam)
+              (profielNaamLower && d.naam.toLowerCase() === profielNaamLower)
             )
             const mijnVerrekening = mijnDeelnemer
               ? saldi.deelnemersSaldi.find(s => s.id === mijnDeelnemer.id)?.verrekening ?? null

@@ -8,18 +8,41 @@ import { formatBedrag } from '../utils/formatBedrag'
  * Fallback naar tikkie.me als de app niet geïnstalleerd is.
  *
  * SEC-FIX (2026-04-04): window.open krijgt 'noopener,noreferrer' als derde
- * argument. Zonder dit konden kwaadaardige pagina's via window.opener
- * de originele tab overnemen (tab-napping). noopener verbreekt de
- * opener-referentie; noreferrer voorkomt dat het Referer-header wordt
- * meegestuurd.
+ * argument om tab-napping te voorkomen.
+ *
+ * Hoog-5 fix (2026-04-12): de timing-conditie `Date.now() - start < 2000`
+ * was na 1500ms altijd waar (elapsed ≈ 1500ms < 2000ms), waardoor de fallback
+ * altijd opende — ook als Tikkie wél geïnstalleerd was.
+ *
+ * Nieuwe aanpak: gebruik het Page Visibility API. Als Tikkie de deep link
+ * afhandelt, schakelt de browser naar de Tikkie-app en wordt de pagina
+ * verborgen (document.visibilityState === 'hidden'). Als de pagina na 1500ms
+ * nog steeds zichtbaar is, is Tikkie niet geïnstalleerd en openen we de fallback.
+ * Cleanup: de listener wordt altijd verwijderd om geheugenlekken te voorkomen.
  */
 function openTikkie() {
-  const start = Date.now()
   window.location.href = 'tikkie://'
-  setTimeout(() => {
-    if (Date.now() - start < 2000) {
-      window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')
+
+  let fallbackTimer = null
+
+  function cleanup() {
+    clearTimeout(fallbackTimer)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'hidden') {
+      // Tikkie is geïnstalleerd en heeft de deep link overgenomen — geen fallback nodig
+      cleanup()
     }
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  fallbackTimer = setTimeout(() => {
+    // Na 1500ms nog steeds zichtbaar → Tikkie niet geïnstalleerd → open fallback
+    cleanup()
+    window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')
   }, 1500)
 }
 

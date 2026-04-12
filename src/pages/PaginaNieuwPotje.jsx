@@ -35,14 +35,26 @@ function PaginaNieuwPotje() {
 
     setLaden(true)
     try {
-      const { data, error } = await supabase
+      // Hoog-4 fix (2026-04-12): potje-ID client-side genereren zodat we na de
+      // INSERT niet afhankelijk zijn van .select().single() voor de navigatie.
+      //
+      // Oud gedrag: .insert(...).select().single() — als de RLS-policy de SELECT
+      // na de INSERT blokkeerde, gooide .single() PGRST116. Die fout werd (na de
+      // PGRST116-fix) vertaald als "Dit potje bestaat niet of is verwijderd" —
+      // terwijl het potje net succesvol was aangemaakt.
+      //
+      // Nieuw gedrag: UUID client-side aanmaken via crypto.randomUUID() en als
+      // `id` meesturen in de INSERT. Na een succesvolle INSERT navigeren we direct
+      // naar /potje/:id zonder terug te hoeven lezen uit de DB.
+      // crypto.randomUUID() is beschikbaar in alle moderne browsers en in Node.js ≥ 14.
+      const nieuweId = crypto.randomUUID()
+
+      const { error } = await supabase
         .from('potjes')
-        .insert({ naam: naamTrimmed, valuta })
-        .select()
-        .single()
+        .insert({ id: nieuweId, naam: naamTrimmed, valuta })
 
       if (error) throw error
-      navigate(`/potje/${data.id}`)
+      navigate(`/potje/${nieuweId}`)
     } catch (error) {
       setFout(logFout(error, { component: 'PaginaNieuwPotje', actie: 'aanmaken' }))
     } finally {
