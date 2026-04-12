@@ -4,7 +4,15 @@ import { logFout } from '../utils/logFout'
 import { valideerTransactieBedrag } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
-function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnnuleer }) {
+/**
+ * ModalTransactie — formulier voor storting of betaling.
+ *
+ * Issue 10 fix (2026-04-12): formatBedrag werd op drie plekken aangeroepen
+ * zonder valuta-parameter. formatBedrag gebruikt dan de default 'EUR', waardoor
+ * de weergave incorrect is zodra multicurrency wordt geactiveerd.
+ * Fix: valuta-prop toegevoegd en doorgegeven aan alle formatBedrag-aanroepen.
+ */
+function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
@@ -14,16 +22,13 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
   const titel = isStorting ? '💰 Storting toevoegen' : '🍺 Rondje betaald'
   const MAX = 999.99
 
-  // V3: live bedrag-preview
   const bedragNum = parseBedrag(bedrag)
   const bedragGeldig = bedrag.length > 0 && !isNaN(bedragNum) && bedragNum > 0 && bedragNum <= MAX
 
-  // Focus eerste focusbaar element bij openen
   useEffect(() => {
     panelRef.current?.querySelector('input, button:not([disabled])')?.focus()
   }, [])
 
-  // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
   useFocusTrap(panelRef, onAnnuleer, { selector: 'input:not([disabled]), button:not([disabled])' })
 
   async function handleSubmit(e) {
@@ -33,7 +38,7 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
     const validatieFout = valideerTransactieBedrag(bedrag, bedragNum, {
       isStorting,
       potSaldo,
-      formatBedrag,
+      formatBedrag: (b) => formatBedrag(b, valuta),
       max: MAX,
     })
     if (validatieFout) {
@@ -47,9 +52,12 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
     } catch (error) {
       if (error.message?.includes('SALDO_TE_LAAG')) {
         const saldo = error.message.split(':')[1]
-        setFout(`Het potje heeft niet genoeg saldo. Maximaal beschikbaar: ${formatBedrag(saldo)}.`)
+        // Issue 10 fix: valuta meegeven zodat het juiste valutasymbool getoond wordt
+        setFout(`Het potje heeft niet genoeg saldo. Maximaal beschikbaar: ${formatBedrag(saldo, valuta)}.`)
       } else if (error.message?.includes('NIET_ACTIEF')) {
         setFout('Je hebt je afgemeld en kunt geen transacties meer invoeren.')
+      } else if (error.message?.includes('DEELNEMER_ONTBREEKT')) {
+        setFout('Er is iets misgegaan. Ververs de pagina en probeer opnieuw.')
       } else {
         setFout(logFout(error, { component: 'ModalTransactie', actie: type }))
       }
@@ -79,13 +87,14 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
 
         {!isStorting && ikBenActief && (
           <p style={{ fontSize: 14, color: 'var(--grijs-600)', marginBottom: 16 }}>
-            Beschikbaar saldo: <strong>{formatBedrag(potSaldo)}</strong>
+            {/* Issue 10 fix: valuta meegeven */}
+            Beschikbaar saldo: <strong>{formatBedrag(potSaldo, valuta)}</strong>
           </p>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="veld">
-            <label className="label" htmlFor="bedrag-invoer">Bedrag (€)</label>
+            <label className="label" htmlFor="bedrag-invoer">Bedrag ({valuta})</label>
             <input
               id="bedrag-invoer"
               className={`input ${fout ? 'fout' : ''}`}
@@ -97,9 +106,9 @@ function ModalTransactie({ type, potSaldo, ikBenActief = true, onBevestig, onAnn
               disabled={!ikBenActief}
               autoFocus
             />
-            {/* V3: live preview van het geparsede bedrag */}
+            {/* Issue 10 fix: valuta meegeven aan live preview */}
             {bedragGeldig && !fout && (
-              <div className="teller" style={{ color: 'var(--groen)' }}>= {formatBedrag(bedragNum)}</div>
+              <div className="teller" style={{ color: 'var(--groen)' }}>= {formatBedrag(bedragNum, valuta)}</div>
             )}
             {fout && <div className="fout-tekst">{fout}</div>}
           </div>

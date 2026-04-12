@@ -79,7 +79,15 @@ function PaginaStorten() {
       return
     }
 
-    if (!deelnemer) {
+    // Issue 7 fix (2026-04-12): null-guard op deelnemer.id vlak vóór gebruik.
+    // De eerdere `if (!deelnemer)` guard vóór de validatie is correct, maar
+    // tussen die check en de async INSERT-aanroep kan de deelnemer-state in
+    // theorie null worden door een realtime-update of race condition.
+    // Door hier opnieuw te controleren en de id direct vast te leggen in een
+    // lokale const, vermijden we dat deelnemer.id crasht met TypeError ook al
+    // is de initiële guard gepasseerd.
+    const deelnemerId = deelnemer?.id
+    if (!deelnemerId) {
       setInvoerFout('Je bent geen deelnemer van dit potje.')
       return
     }
@@ -91,16 +99,9 @@ function PaginaStorten() {
 
     setBezig(true)
     try {
-      // SEC-H1 (2026-04-04): destructureer altijd de error uit de Supabase-response.
-      // Zonder deze check werd een RLS-fout, netwerk-fout of constraint-schending
-      // stil genegeerd: navigate() werd toch aangeroepen en de gebruiker zag een
-      // valse succesmelding terwijl de storting nooit in de database was opgeslagen.
-      // .select()/.single() zijn verwijderd: de returnwaarde is niet nodig voor
-      // navigatie, en .single() gooide zelf een fout bij 0 rijen (wat het probleem
-      // maskeerde in plaats van zichtbaar te maken).
       const { error } = await supabase
         .from('transacties')
-        .insert({ potje_id: id, deelnemer_id: deelnemer.id, type: 'storting', bedrag: effectiefBedrag })
+        .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag })
       if (error) throw error
 
       navigate(`/potje/${id}`, {

@@ -40,7 +40,6 @@ function PaginaPotje() {
 
   // ── Toast ─────────────────────────────────────────────────────────────────────
 
-  // useCallback zodat toonToast stabiel is als dependency in useEffect hieronder.
   const toonToast = useCallback((bericht, type = 'info', actie = null) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     const duur = actie ? TOAST_DUUR_UNDO : type === 'info' ? TOAST_DUUR_INFO : TOAST_DUUR_KORT
@@ -48,23 +47,15 @@ function PaginaPotje() {
     toastTimerRef.current = setTimeout(() => setToast(null), duur)
   }, [])
 
-  // UX-2 / Bug: toast tonen die PaginaStorten via location.state meegaf na storting.
-  // navigate() met state wordt eenmalig gelezen en daarna gewist (replace: true)
-  // zodat de toast niet opnieuw verschijnt bij terug-navigatie.
   useEffect(() => {
     if (location.state?.toast) {
       const { bericht, type } = location.state.toast
       toonToast(bericht, type)
       navigate(location.pathname, { replace: true, state: {} })
     }
-    // Bewust geen toonToast/navigate in de deps: deze effect mag alleen
-    // eenmalig lopen bij mount (of bij nieuw state-object via navigatie).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Verbinding hersteld → toast tonen.
-  // setTimeout(..., 0) verschuift de setState naar een microtask zodat hij
-  // niet synchroon in de effect-body valt (react-hooks/set-state-in-effect).
   const vorigeOnline = useRef(online)
   useEffect(() => {
     if (!vorigeOnline.current && online) {
@@ -94,8 +85,10 @@ function PaginaPotje() {
 
   const saldi = berekenSaldi(deelnemers, transacties)
   const ikBenActief = deelnemer?.actief !== false
+  // Issue 10 fix: valuta uit potje lezen en doorgeven aan ModalTransactie.
+  // Voorheen gebruikte ModalTransactie de default 'EUR' van formatBedrag.
+  const valuta = potje?.valuta ?? 'EUR'
 
-  // WCAG 2.4.2: paginatitel aanpassen op basis van schermstatus
   useEffect(() => {
     if (!potje) return
     if (potje.status === 'gesloten') {
@@ -184,6 +177,7 @@ function PaginaPotje() {
         <ModalTransactie
           type="betaling"
           potSaldo={saldi.potSaldo}
+          valuta={valuta}
           ikBenActief={ikBenActief}
           onBevestig={handleTransactie}
           onAnnuleer={() => setModaal(null)}
@@ -198,15 +192,6 @@ function PaginaPotje() {
       )}
 
       {toast && (
-        /*
-          UX-3: toast heeft twee sub-elementen:
-            .toast-inhoud     — tekst + undo-knop (flex-row)
-            .toast-voortgang  — progressiebalk, alleen zichtbaar bij .toast--heeft-undo
-          --toast-duur als CSS custom property zodat de animatie synchroon loopt
-          met de JS setTimeout-duur.
-
-          WCAG 4.1.3: role="status" + aria-live="polite" + aria-atomic="true"
-        */
         <div
           className={`toast ${toast.type}${toast.actie ? ' toast--heeft-undo' : ''}`}
           style={toast.actie ? { '--toast-duur': `${toast.duur}ms` } : undefined}
@@ -222,7 +207,6 @@ function PaginaPotje() {
               </button>
             )}
           </div>
-          {/* Progressiebalk — aria-hidden want de timer is niet informatief voor screenreaders */}
           <div className="toast-voortgang" aria-hidden="true" />
         </div>
       )}

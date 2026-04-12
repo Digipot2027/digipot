@@ -6,34 +6,27 @@ import { useDeviceId } from './useDeviceId'
 /**
  * usePotje — laadt en synchroniseert alle data voor één potje.
  *
- * Vervangt de gedupliceerde laadData + realtime-abonnementen +
- * online/offline-logica in PaginaPotje en PaginaStorten.
- *
- * Realtime-abonnementen (vier events):
- *   potjes     *       — potjestatus, gesloten_op, enz.
+ * Realtime-abonnementen (vijf events):
+ *   potjes     UPDATE  — potjestatus, gesloten_op, enz.
+ *   potjes     DELETE  — potje verwijderd door lifecycle-cron
  *   deelnemers INSERT  — nieuwe deelnemer
  *   deelnemers UPDATE  — bijv. actief → false bij afmelden
  *   transacties INSERT — nieuwe storting of betaling
  *   transacties DELETE — undo van eigen transactie (SEC-L2)
  *
- * SEC-L2: DELETE-abonnement toegevoegd zodat undo's van andere clients
- * (of van eigen client via directe API-aanroep) direct zichtbaar zijn
- * zonder herladen. Zonder dit abonnement bleef een verwijderde transactie
- * zichtbaar in de lokale state tot aan de volgende refresh.
+ * Issue 8 fix (2026-04-12): potjes-abonnement was `event: '*'`, waardoor
+ * DELETE-events ook binnenkwamen met `payload.new === undefined`. Die
+ * waarde werd direct aan setPotje doorgegeven → `potje` state werd
+ * undefined → UI brak stil zonder fout of Sentry-melding.
+ *
+ * Fix: aparte abonnementen voor UPDATE en DELETE op potjes.
+ * - UPDATE: setPotje(payload.new) — payload.new is altijd aanwezig
+ * - DELETE: setFout met een begrijpelijke melding; potje-state op null
+ *
+ * SEC-L2: DELETE-abonnement op transacties geeft bij actieve RLS alleen
+ * payload.old.id terug. De reducer filtert op dat id.
  *
  * @param {string} potjeId - UUID van het potje (uit useParams)
- * @returns {{
- *   potje: object|null,
- *   deelnemers: Array,
- *   transacties: Array,
- *   deelnemer: object|null,
- *   setDeelnemer: Function,
- *   setDeelnemers: Function,
- *   setTransacties: Function,
- *   laden: boolean,
- *   fout: string,
- *   online: boolean,
- * }}
  */
 export function usePotje(potjeId) {
   const deviceId = useDeviceId()
@@ -83,11 +76,26 @@ export function usePotje(potjeId) {
     const kanaal = supabase
       .channel(`potje-${potjeId}`)
 
-      // Potje-updates (status, gesloten_op, enz.)
+      // Potje UPDATE — bijv. status → 'gesloten', gesloten_op ingevuld.
+      // Alleen UPDATE: payload.new is bij UPDATE altijd aanwezig.
+      // Issue 8 fix: was event: '*' — DELETE-event gaf payload.new === undefined
+      // waardoor setPotje(undefined) de potje-state stil kapot maakte.
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'potjes', filter: `id=eq.${potjeId}` },
+        { event: 'UPDATE', schema: 'public', table: 'potjes', filter: `id=eq.${potjeId}` },
         payload => setPotje(payload.new)
+      )
+
+      // Potje DELETE — lifecycle-cron verwijdert potjes na 7 dagen.
+      // Bij DELETE is payload.new undefined; payload.old bevat alleen het id.
+      // Toon een begrijpelijke melding in plaats van stil de UI te breken.
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'potjes', filter: `id=eq.${potjeId}` },
+        () => {
+          setPotje(null)
+          setFout('Dit potje is verwijderd. Na 7 dagen worden potjes automatisch opgeruimd.')
+        }
       )
 
       // Nieuwe deelnemer
@@ -120,8 +128,7 @@ export function usePotje(potjeId) {
       )
 
       // SEC-L2: Verwijderde transactie (undo).
-      // payload.old bevat alleen het primaire sleutel-veld (id) als RLS actief is.
-      // We filteren op id — meer data is niet nodig voor een DELETE.
+      // payload.old bevat alleen het id als RLS actief is.
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'transacties', filter: `potje_id=eq.${potjeId}` },

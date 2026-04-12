@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi, berekenEindafrekening } from '../utils/berekenSaldi'
@@ -14,53 +14,55 @@ import { PROFIEL_NAAM_KEY } from '../constants'
  *   Nieuw: 3 queries totaal ongeacht het aantal potjes.
  *
  * Fix (2026-03-31):
- *   - Profielnaam-filter gebruikt nu aparte queries zonder string-interpolatie
- *     om Supabase query-injectie te voorkomen (security fix)
- *   - Geneste query gesplitst: eerst potjes ophalen, dan deelnemers+transacties apart
- *     om RLS-conflicten bij geneste selects te vermijden (bugfix foutmelding)
- *   - herlaad() functie toegevoegd zodat de UI een retry-knop kan aanbieden (UX fix)
+ *   - Profielnaam-filter gebruikt aparte queries zonder string-interpolatie (SEC)
+ *   - Geneste query gesplitst om RLS-conflicten te vermijden
+ *   - herlaad() toegevoegd voor retry-knop in UI
  *
  * Fix (2026-04-03):
- *   - Profielnaam-filter gewijzigd van .ilike() naar .eq() (SEC-H2).
- *     ilike accepteert SQL-wildcards (% en _): een profielnaam '%' zou alle
- *     deelnemers matchen en daarmee potjes van vreemden tonen (informatielekage).
- *     eq is een exacte case-sensitieve vergelijking zonder wildcardrisico.
+ *   - .ilike() → .eq() voor profielnaam-filter (SEC-H2)
  *
- * Fix (2026-04-12):
- *   - deviceId wordt nu opgehaald via useDeviceId() in plaats van
- *     localStorage.getItem() direct (zelfde root cause als JAVASCRIPT-REACT-6).
- *     Bij lege of ongeldige localStorage retourneerde getItem() null, waardoor
- *     de hook de deelnemersqueries oversloeg en een stille lege lijst toonde.
- *     useDeviceId() garandeert altijd een geldige UUID v4.
- *   - DEVICE_ID_KEY import verwijderd — niet langer nodig.
+ * Fix (2026-04-12 / kritiek-1):
+ *   - deviceId via useDeviceId() i.p.v. localStorage.getItem() direct
  *
  * Fix (2026-04-12 / hoog-6):
- *   - Profielnaam-matching bij het zoeken van de eigen deelnemer (mijnDeelnemer)
- *     was case-sensitief: "Jan" vond geen deelnemer "jan".
- *     valideerDeelnemerNaam() matcht case-insensitief — beide moeten consistent zijn.
- *     Fix: .toLowerCase() op beide zijden bij de mijnDeelnemer-lookup.
- *     De DB-query (.eq('naam', profielNaam)) blijft case-sensitief voor SEC-H2 —
- *     alleen de client-side verrijkingsstap is aangepast.
+ *   - mijnDeelnemer-lookup case-insensitief via .toLowerCase()
+ *
+ * Fix (2026-04-12 / issue 9):
+ *   - Realtime-abonnement toegevoegd op potjes (UPDATE/DELETE) en
+ *     deelnemers (INSERT/UPDATE) voor potjes die dit device/profiel betreffen.
+ *
+ *   Probleem: de lijst open/gesloten potjes verouderde zodra een ander device
+ *   een potje sloot of een nieuwe deelnemer zich aanmeldde. De gebruiker zag
+ *   verouderde data tot aan een handmatige refresh.
+ *
+ *   Aanpak: één Supabase-kanaal per status ('open' of 'gesloten') dat luistert
+ *   op wijzigingen in de potjes-tabel. Bij elke relevante wijziging wordt
+ *   herlaad() aangeroepen die de volledige datalaad opnieuw uitvoert.
+ *   Dit is een "herlaad bij change"-aanpak (i.p.v. granulaire state-mutaties)
+ *   omdat useMijnPotjes meerdere potjes aggregeert en granulaire updates
+ *   de verrijkingslogica in stap 4 zouden compliceren.
+ *
+ *   Kanaal wordt opgeruimd bij unmount of bij wijziging van status/deviceId.
  *
  * @param {'open'|'gesloten'} status - Welke potjes te laden
  * @returns {{
- *   potjes: Array,   — verrijkte potjes (met saldo, aantalDeelnemers of mijnVerrekening)
+ *   potjes: Array,
  *   laden: boolean,
  *   fout: string,
- *   herlaad: Function, — handmatige retry
+ *   herlaad: Function,
  * }}
  */
 export function useMijnPotjes(status) {
-  // Fix 2026-04-12: useDeviceId() i.p.v. localStorage.getItem() direct.
-  // useDeviceId is een hook en moet op het niveau van de functie worden aangeroepen —
-  // niet binnen useEffect. De waarde is stabiel voor de gehele levensduur (useMemo
-  // met lege deps in useDeviceId), dus het is veilig als useEffect-dependency.
   const deviceId = useDeviceId()
 
   const [potjes, setPotjes] = useState([])
   const [laden, setLaden] = useState(true)
   const [fout, setFout] = useState('')
-  const [teller, setTeller] = useState(0) // increment triggert herlaad
+  const [teller, setTeller] = useState(0)
+
+  // Ref om de gevonden potje-IDs bij te houden voor het realtime-filter.
+  // Een ref voorkomt dat het abonnement opnieuw wordt opgebouwd bij elke render.
+  const potjeIdsRef = useRef([])
 
   const herlaad = useCallback(() => {
     setFout('')
@@ -68,26 +70,16 @@ export function useMijnPotjes(status) {
     setTeller(t => t + 1)
   }, [])
 
+  // ── Datalaad ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    // profielNaam blijft via localStorage — dit is geen device-identiteit maar
-    // een optionele profielnaam die de gebruiker zelf instelt. Er is geen hook
-    // voor nodig; localStorage.getItem() hier is correct en intentioneel.
     const profielNaam = localStorage.getItem(PROFIEL_NAAM_KEY)?.trim() || null
-    // Hoog-6 fix: lowercase voor case-insensitieve vergelijking in de verrijkingsstap.
-    // De DB-query (.eq) blijft exact — alleen de client-side lookup wordt versoepeld.
     const profielNaamLower = profielNaam?.toLowerCase() ?? null
 
     async function laadPotjes() {
       try {
-        // ── Stap 1: zoek potje-IDs voor dit device / deze profielnaam ──────────
-        // Twee aparte queries gecombineerd client-side om RLS-problemen met .or()
-        // op meerdere kolommen te vermijden.
-        //
-        // SEC-H2: .eq() i.p.v. .ilike() — ilike accepteert SQL-wildcards (% en _)
-        // waardoor een profielnaam zoals '%' alle deelnemers zou matchen.
-        // .eq() is een exacte vergelijking zonder wildcardrisico.
         if (!deviceId && !profielNaam) {
           setPotjes([])
+          potjeIdsRef.current = []
           setLaden(false)
           return
         }
@@ -103,11 +95,10 @@ export function useMijnPotjes(status) {
             ? supabase
                 .from('deelnemers')
                 .select('potje_id, naam, id, device_id')
-                .eq('naam', profielNaam)          // was: .ilike('naam', profielNaam)
+                .eq('naam', profielNaam)
             : Promise.resolve({ data: [], error: null }),
         ])
 
-        // Gooi bij eerste fout
         for (const { error } of deelnemerSets) {
           if (error) throw error
         }
@@ -119,13 +110,14 @@ export function useMijnPotjes(status) {
 
         if (alleDeelnemers.length === 0) {
           setPotjes([])
+          potjeIdsRef.current = []
           setLaden(false)
           return
         }
 
         const potjeIds = [...new Set(alleDeelnemers.map(d => d.potje_id))]
+        potjeIdsRef.current = potjeIds
 
-        // ── Stap 2: haal potjes op (zonder geneste selects om RLS-conflicten te vermijden) ──
         const orderKolom = status === 'open' ? 'aangemaakt_op' : 'gesloten_op'
         const { data: gevondenPotjes, error: pError } = await supabase
           .from('potjes')
@@ -143,26 +135,17 @@ export function useMijnPotjes(status) {
 
         const gevondenIds = gevondenPotjes.map(p => p.id)
 
-        // ── Stap 3: haal deelnemers + transacties op in 2 losse queries ────────
-        // Losse queries vermijden RLS-problemen met geneste selects.
         const [
           { data: deelnemers, error: dError },
           { data: transacties, error: tError },
         ] = await Promise.all([
-          supabase
-            .from('deelnemers')
-            .select('*')
-            .in('potje_id', gevondenIds),
-          supabase
-            .from('transacties')
-            .select('*')
-            .in('potje_id', gevondenIds),
+          supabase.from('deelnemers').select('*').in('potje_id', gevondenIds),
+          supabase.from('transacties').select('*').in('potje_id', gevondenIds),
         ])
 
         if (dError) throw dError
         if (tError) throw tError
 
-        // ── Stap 4: verrijk elk potje met berekende waarden (puur, geen DB) ───
         const verrijkt = gevondenPotjes.map(potje => {
           const potjeDeelnemers = (deelnemers ?? []).filter(d => d.potje_id === potje.id)
           const potjeTransacties = (transacties ?? []).filter(t => t.potje_id === potje.id)
@@ -175,14 +158,7 @@ export function useMijnPotjes(status) {
               potSaldo: saldi.potSaldo,
             }
           } else {
-            // gesloten: bereken verrekening voor dit device / deze naam
             const saldi = berekenEindafrekening(potjeDeelnemers, potjeTransacties, potje.gesloten_op)
-
-            // Hoog-6 fix (2026-04-12): case-insensitieve vergelijking voor naam.
-            // valideerDeelnemerNaam() matcht ook case-insensitief — beide moeten
-            // consistent zijn. Scenario: profielnaam "Jan", deelnemernaam "jan" →
-            // zonder toLowerCase() werd mijnDeelnemer niet gevonden en bleef
-            // mijnVerrekening null, ook al is "jan" dezelfde persoon.
             const mijnDeelnemer = potjeDeelnemers.find(d =>
               d.device_id === deviceId ||
               (profielNaamLower && d.naam.toLowerCase() === profielNaamLower)
@@ -190,10 +166,7 @@ export function useMijnPotjes(status) {
             const mijnVerrekening = mijnDeelnemer
               ? saldi.deelnemersSaldi.find(s => s.id === mijnDeelnemer.id)?.verrekening ?? null
               : null
-            return {
-              ...potje,
-              mijnVerrekening,
-            }
+            return { ...potje, mijnVerrekening }
           }
         })
 
@@ -206,7 +179,69 @@ export function useMijnPotjes(status) {
     }
 
     laadPotjes()
-  }, [status, teller, deviceId]) // deviceId toegevoegd als dependency (stabiel via useMemo)
+  }, [status, teller, deviceId])
+
+  // ── Realtime abonnement (issue 9 fix 2026-04-12) ─────────────────────────────
+  //
+  // Luistert op potjes-wijzigingen (UPDATE/DELETE) en deelnemers-wijzigingen
+  // (INSERT/UPDATE) om de lijst automatisch bij te werken.
+  //
+  // Aanpak: herlaad() aanroepen bij elke relevante wijziging. Dit is een
+  // "herlaad bij change"-strategie — niet granulaire state-mutaties — omdat
+  // de verrijkingslogica meerdere potjes aggregeert en een volledige herlaad
+  // eenvoudiger en correcte is dan partiële state-updates.
+  //
+  // Filter: we kunnen niet filteren op potje_id in het abonnement zelf omdat
+  // we meerdere potje-IDs bewaken. Supabase ondersteunt geen IN-filter in
+  // realtime-abonnementen. We filteren client-side na ontvangst.
+  useEffect(() => {
+    if (!deviceId) return
+
+    const kanaal = supabase
+      .channel(`mijn-potjes-${status}-${deviceId}`)
+
+      // Potje gesloten of status gewijzigd → herlaad de lijst
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'potjes' },
+        payload => {
+          // Alleen herlaad als dit potje ons betreft
+          if (potjeIdsRef.current.includes(payload.new?.id)) {
+            herlaad()
+          }
+        }
+      )
+
+      // Potje verwijderd (lifecycle-cron na 7 dagen) → verwijder uit lijst
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'potjes' },
+        payload => {
+          const verwijderdId = payload.old?.id
+          if (verwijderdId && potjeIdsRef.current.includes(verwijderdId)) {
+            setPotjes(prev => prev.filter(p => p.id !== verwijderdId))
+            potjeIdsRef.current = potjeIdsRef.current.filter(id => id !== verwijderdId)
+          }
+        }
+      )
+
+      // Nieuwe deelnemer in een van onze potjes → herlaad (aantalDeelnemers bijwerken)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'deelnemers' },
+        payload => {
+          if (potjeIdsRef.current.includes(payload.new?.potje_id)) {
+            herlaad()
+          }
+        }
+      )
+
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(kanaal)
+    }
+  }, [status, deviceId, herlaad])
 
   return { potjes, laden, fout, herlaad }
 }
