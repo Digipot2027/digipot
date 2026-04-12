@@ -27,6 +27,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Patroon-check
+        # Controleert op verboden codepatronen die eerder tot productiefouten
+        # hebben geleid (JAVASCRIPT-REACT-6, kritiek-1/2/3).
+        # Blokkerende patronen: localStorage.getItem(DEVICE_ID_KEY) buiten useDeviceId.js
+        # Waarschuwende patronen: .single() buiten INSERT-context, payload.new zonder guard
+        # Voeg nieuwe patronen toe in scripts/controleer-patronen.js.
+        run: npm run lint:patronen
+
       - name: Vulnerability scan
         run: npm audit --audit-level=high
 
