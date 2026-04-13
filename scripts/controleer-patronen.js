@@ -27,6 +27,8 @@
  *   2026-04-12 — initieel: drie patronen uit grondige code-audit
  *   2026-04-12 — PaginaNieuwPotje.jsx uitzondering verwijderd voor .single():
  *                .single() is daar verwijderd na hoog-4 fix (audit bevinding 3)
+ *   2026-04-13 — vierde patroon toegevoegd: [...prev, payload.new] zonder deduplicatie
+ *                root cause UI-dubbelpost (fetch + Realtime-event race condition)
  */
 
 import { execSync } from 'child_process'
@@ -92,6 +94,22 @@ const PATRONEN = [
       'src/hooks/usePotje.js', // bewust geaccepteerd + gedocumenteerd (TO §18 hoog-8)
     ],
     waarschuwing: true,
+  },
+
+  {
+    // Root cause UI-dubbelpost (2026-04-13): Realtime INSERT-reducers zonder
+    // deduplicatie voegen een rij twee keer toe als de initiële fetch en het
+    // Realtime-event elkaar overlappen op het moment van navigatie.
+    // Het patroon [...prev, payload.new] is altijd onveilig in een INSERT-handler.
+    // Correct: prev.some(t => t.id === payload.new.id) ? prev : [...prev, payload.new]
+    patroon: '...prev, payload.new]',
+    reden: [
+      'Realtime INSERT-reducer zonder deduplicatie — UI kan dezelfde rij twee keer tonen.',
+      'Gebruik: prev.some(t => t.id === payload.new.id) ? prev : [...prev, payload.new]',
+      'Root cause UI-dubbelpost 2026-04-13: fetch + Realtime-event leverden zelfde rij twee keer.',
+    ].join(' '),
+    uitzonderingen: [],
+    waarschuwing: false,
   },
 ]
 
