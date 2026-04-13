@@ -44,11 +44,11 @@
  * IS10-03 ModalTransactie: formatBedrag met valuta bij SALDO_TE_LAAG fout
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // ── ISSUE 7: PaginaStorten deelnemer race condition ───────────────────────────
 
-function simuleerHandleStorten({ deelnemer, potjeStatus, bedrag }) {
+function simuleerHandleStorten({ deelnemer, potjeStatus }) {
   // Exacte kopie van de guard-logica in handleStorten (na issue 7 fix)
   const deelnemerId = deelnemer?.id
   if (!deelnemerId) {
@@ -89,7 +89,6 @@ describe('PaginaStorten — IS7-01/02/03: deelnemer race condition fix', () => {
 
     // Simuleer: deelnemer wordt null nádat deelnemerId is vastgelegd
     // (zoals bij een race condition via realtime-update)
-    // eslint-disable-next-line no-param-reassign
     deelnemer.id = null // muteert het originele object
 
     // deelnemerId is al vastgelegd — onveranderd
