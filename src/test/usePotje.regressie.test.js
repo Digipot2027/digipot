@@ -173,3 +173,50 @@ describe('usePotje — vindBekende deelnemer (UP-08)', () => {
     expect(result).toBeNull()
   })
 })
+
+// ── UP-09: transacties INSERT-reducer deduplicatie ───────────────────────────
+// Fix UI-dubbelpost 2026-04-13: de initiële fetch en het Realtime INSERT-event
+// kunnen dezelfde transactie beiden aanleveren als navigate en Realtime-event
+// elkaar overlappen. De reducer mag een id nooit twee keer toevoegen.
+
+function transactieInsertReducer(prev, nieuw) {
+  return prev.some(t => t.id === nieuw.id) ? prev : [...prev, nieuw]
+}
+
+describe('usePotje — UP-09: transacties INSERT-reducer deduplicatie', () => {
+  const bestaand = { id: 'tx-1', bedrag: '20.00', type: 'storting' }
+
+  it('UP-09a: nieuwe transactie wordt toegevoegd', () => {
+    const result = transactieInsertReducer([], { id: 'tx-1', bedrag: '20.00', type: 'storting' })
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('tx-1')
+  })
+
+  it('UP-09b: bestaand id wordt niet opnieuw toegevoegd (deduplicatie)', () => {
+    const result = transactieInsertReducer([bestaand], bestaand)
+    expect(result).toHaveLength(1)
+  })
+
+  it('UP-09c: zelfde id drie keer aangeboden blijft één rij', () => {
+    let state = []
+    state = transactieInsertReducer(state, bestaand)
+    state = transactieInsertReducer(state, bestaand)
+    state = transactieInsertReducer(state, bestaand)
+    expect(state).toHaveLength(1)
+  })
+
+  it('UP-09d: verschillende ids worden allemaal toegevoegd', () => {
+    const tx2 = { id: 'tx-2', bedrag: '10.00', type: 'betaling' }
+    const tx3 = { id: 'tx-3', bedrag: '5.00',  type: 'storting' }
+    let state = [bestaand]
+    state = transactieInsertReducer(state, tx2)
+    state = transactieInsertReducer(state, tx3)
+    expect(state).toHaveLength(3)
+    expect(state.map(t => t.id)).toEqual(['tx-1', 'tx-2', 'tx-3'])
+  })
+
+  it('UP-09e: lege beginstate + nieuw id → lijst met één element', () => {
+    const result = transactieInsertReducer([], { id: 'tx-nieuw', bedrag: '50.00', type: 'storting' })
+    expect(result).toHaveLength(1)
+  })
+})

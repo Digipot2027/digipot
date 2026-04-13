@@ -121,10 +121,16 @@ export function usePotje(potjeId) {
       )
 
       // Nieuwe transactie
+      // Deduplicatie (fix UI-dubbelpost 2026-04-13): de initiële fetch en het
+      // Realtime INSERT-event kunnen dezelfde transactie beiden aanleveren als
+      // het navigate-moment en het Realtime-event elkaar overlappen. Filter op
+      // id voordat de transactie wordt toegevoegd zodat de UI nooit duplicaten toont.
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'transacties', filter: `potje_id=eq.${potjeId}` },
-        payload => setTransacties(prev => [...prev, payload.new])
+        payload => setTransacties(prev =>
+          prev.some(t => t.id === payload.new.id) ? prev : [...prev, payload.new]
+        )
       )
 
       // SEC-L2: Verwijderde transactie (undo).
