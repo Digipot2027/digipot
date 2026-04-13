@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 1.8
-**Datum:** 2026-04-12
+**Versie:** 2.0
+**Datum:** 2026-04-13
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -400,3 +400,5 @@ EUR, USD, GBP, CHF, DKK, NOK, SEK aanwezig. Valutakeuze op Scherm 1 verborgen �
 | 1.6 | 2026-04-07 | Lifecycle → Supabase Edge Functions + pg_cron; RLS SEC-PRIO2 + SEC-PRIO3 | Auditbevindingen 2026-04-07 |
 | 1.7 | 2026-04-12 | §14: PGRST116 melding gedocumenteerd | Sentry-issue #17a27ebc |
 | 1.8 | 2026-04-12 | §7 foutafhandeling afmelden + sluiten gedocumenteerd; §7 toast-tabel uitgebreid met "afmelden mislukt"-toast; §14 apparaatidentificatie aangescherpt: useDeviceId() is de enige geldige bron van device-ID; kritieke fixes: useMijnPotjes gebruikt nu useDeviceId() (stille lege lijst voorkomen), handleAfmelden gebruikt .maybeSingle() (onjuiste PGRST116-melding voorkomen), handleSluiten heeft null-guard op deelnemer (TypeError voorkomen) | Grondige code-audit 2026-04-12: drie kritieke kwetsbaarheden gevonden en opgelost |
+| 1.9 | 2026-04-13 | §7 toast-tabel: fout-toasts krijgen directe schermlezermelding (role=alert/assertive); §5 validatieconstanten gesynchroniseerd met constants.js; §4 overzicht: afmeldknop toont aria-disabled + not-allowed cursor als al afgemeld (WCAG 4.1.2) | Medium audit-bevindingen 2026-04-13: SEC-M1, WCAG-2, UX-1 opgelost |
+| 2.0 | 2026-04-13 | §14: SEC-L2 gedocumenteerd (x-device-id getter leest localStorage direct, bewuste keuze); §5 SEC-M2 gedocumenteerd (aangemaakt_op client-side is tijdelijke weergavewaarde); §5 WCAG-3 gedocumenteerd (Escape no-op bij verplicht deelnemen is bewuste keuze) | Low audit-bevindingen 2026-04-13: SEC-L2, SEC-M2, WCAG-3 gedocumenteerd |

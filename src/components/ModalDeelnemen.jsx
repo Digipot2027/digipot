@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
 import { valideerDeelnemerNaam } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { MAX_NAAM, MAX_DEELNEMERS } from '../constants'
 
 function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profielNaam = '' }) {
   const [naam, setNaam] = useState(profielNaam)
@@ -9,8 +10,8 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
 
-  const MAX_NAAM = 30
-  const MAX_DEELNEMERS = 20
+  // SEC-M1 fix (2026-04-13): gebruik constanten uit constants.js i.p.v. hardcoded waarden.
+  // Bij een toekomstige wijziging in de limieten worden alle validaties automatisch bijgewerkt.
   const heeftProfielNaam = profielNaam.length > 0
 
   useEffect(() => {
@@ -22,7 +23,11 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
   }, [heeftProfielNaam])
 
   // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
-  // onAnnuleer kan undefined zijn als de modal niet sluitbaar is — gebruik no-op als fallback
+  // onAnnuleer kan undefined zijn als de modal niet sluitbaar is (deelnemen
+  // is verplicht voor verdere interactie). In dat geval is Escape een bewuste
+  // no-op: de gebruiker moet een naam invullen voordat de app verder kan.
+  // WCAG-3 bewuste keuze (2026-04-13): geen Escape-sluiting als onAnnuleer
+  // niet meegegeven is — dit is geen omissie maar een expliciete keuze.
   useFocusTrap(panelRef, onAnnuleer ?? (() => {}))
 
   async function handleSubmit(e) {

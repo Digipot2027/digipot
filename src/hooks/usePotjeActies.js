@@ -90,6 +90,12 @@ export function usePotjeActies({
     // Construeer het deelnemer-object lokaal — zelfde structuur als wat de DB
     // zou teruggeven. aangemaakt_op wordt hier met now() ingevuld; de DB-waarde
     // kan iets afwijken maar is niet kritisch voor weergave.
+    //
+    // SEC-M2 bewuste keuze (2026-04-13): de client-side aangemaakt_op is een
+    // tijdelijke weergavewaarde totdat de realtime-update de correcte DB-waarde
+    // overschrijft via het deelnemers INSERT-abonnement in usePotje.
+    // De DB-waarde is leidend voor alle berekeningen (berekenSaldi gebruikt
+    // aangemaakt_op niet). Discrepantie is maximaal enkele honderden milliseconden.
     setDeelnemer({
       id: nieuweDeelnemerId,
       potje_id: potjeId,

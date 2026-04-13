@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PROFIEL_NAAM_KEY, TEKSTGROOTTE_KEY, MAX_NAAM } from '../constants'
+import { valideerProfielNaam, heeftProfielWijziging } from '../utils/tijdUtils'
 
 const TEKSTGROOTTES = [
   { waarde: 'normaal', label: 'Normaal' },
@@ -40,10 +41,9 @@ function PaginaProfiel() {
     e.preventDefault()
     setFout('')
 
-    const naamTrimmed = naam.trim()
-
-    if (naamTrimmed.length > MAX_NAAM) {
-      setFout(`Je naam mag maximaal ${MAX_NAAM} tekens zijn.`)
+    const { geldig, naamTrimmed, fout: validatieFout } = valideerProfielNaam(naam, MAX_NAAM)
+    if (!geldig) {
+      setFout(validatieFout)
       return
     }
 
@@ -66,7 +66,7 @@ function PaginaProfiel() {
     setOpgeslagen(false)
   }
 
-  const heeftWijziging = naam.trim() !== opgeslagenNaamState
+  const heeftWijziging = heeftProfielWijziging(naam, opgeslagenNaamState)
 
   return (
     <div className="pagina">

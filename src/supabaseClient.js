@@ -19,6 +19,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * De header wordt bij elke request dynamisch opgehaald uit localStorage
  * zodat een device_id die na initialisatie wordt aangemaakt alsnog correct
  * wordt meegestuurd.
+ *
+ * SEC-L2 bewuste keuze (2026-04-13): de getter leest localStorage direct,
+ * zonder de UUID-validatie van useDeviceId(). Dit is intentioneel:
+ * - useDeviceId() is een React hook en kan hier niet worden gebruikt.
+ * - De RLS-policies zijn de primaire verdedigingslinie: een gemanipuleerde
+ *   device_id in localStorage levert op zijn best toegang tot data die
+ *   al via de RLS-policy bereikbaar is — niet méér.
+ * - De validatie in useDeviceId() beschermt de React-state, niet de
+ *   netwerklaag. De Supabase-backend valideert eigenaarschap zelf.
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {

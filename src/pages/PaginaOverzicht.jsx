@@ -156,9 +156,16 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <button
                 className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
-                style={{ minWidth: 0, fontSize: '0.85rem' }}
+                style={{
+                  minWidth: 0,
+                  fontSize: '0.85rem',
+                  // UX-1 fix (2026-04-13): afgemelde gebruiker ziet duidelijk dat de knop
+                  // niet klikbaar is via cursor en aria-disabled (WCAG 4.1.2).
+                  ...(!ikBenActief ? { cursor: 'not-allowed', opacity: 0.6 } : {}),
+                }}
                 onClick={() => ikBenActief && setAfmeldenModaal(true)}
                 disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
+                aria-disabled={!ikBenActief || undefined}
               >
                 {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Jezelf afmelden' : '✅ Afgemeld'}
               </button>

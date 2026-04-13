@@ -1,18 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { formatBedrag } from '../utils/formatBedrag'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-
-// Formatteert timestamp naar "uu:mm" of "dag maand uu:mm" als ouder dan vandaag
-function volledigTijdLabel(iso) {
-  const d = new Date(iso)
-  const nu = new Date()
-  const ouderDanVandaag = d.toDateString() !== nu.toDateString()
-  if (ouderDanVandaag) {
-    return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) +
-      ' ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-}
+import { volledigTijdLabel } from '../utils/tijdUtils'
 
 function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
   const panelRef = useRef(null)

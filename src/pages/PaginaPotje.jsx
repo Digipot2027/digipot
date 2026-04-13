@@ -195,8 +195,8 @@ function PaginaPotje() {
         <div
           className={`toast ${toast.type}${toast.actie ? ' toast--heeft-undo' : ''}`}
           style={toast.actie ? { '--toast-duur': `${toast.duur}ms` } : undefined}
-          role="status"
-          aria-live="polite"
+          role={toast.type === 'fout' ? 'alert' : 'status'}
+          aria-live={toast.type === 'fout' ? 'assertive' : 'polite'}
           aria-atomic="true"
         >
           <div className="toast-inhoud">

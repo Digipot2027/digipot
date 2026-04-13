@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 2.4
-**Datum:** 2026-04-12
+**Versie:** 2.7
+**Datum:** 2026-04-13
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -137,6 +137,7 @@ digipot/
 │   │   ├── deelLink.js
 │   │   ├── formatBedrag.js
 │   │   ├── logFout.js
+│   │   ├── tijdUtils.js
 │   │   ├── valideer.js
 │   │   └── vertaalFout.js
 │   └── test/
@@ -150,21 +151,26 @@ digipot/
 │       ├── filterLogica.regressie.test.js
 │       ├── formatBedrag.test.js
 │       ├── handleUndo.regressie.test.js
-│       ├── hoog.regressie.test.js              ← nieuw (H4/H5/H6)
+│       ├── hoog.regressie.test.js
 │       ├── kritiek.regressie.test.js
 │       ├── logFout.supabase.test.js
 │       ├── logFout.test.js
+│       ├── medium.regressie.test.js
+│       ├── medium2.regressie.test.js
+│       ├── modals.test.js
 │       ├── paginaEindafrekening.regressie.test.js
 │       ├── paginaStorten.gesloten.regressie.test.js
 │       ├── paginaStorten.insertFout.regressie.test.js
 │       ├── paginaStorten.regressie.test.js
 │       ├── stap1.regressie.test.js
 │       ├── stap6.regressie.test.js
+│       ├── tijdUtils.test.js
 │       ├── useDeviceId.regressie.test.js
 │       ├── useMijnPotjes.eq.regressie.test.js
 │       ├── useMijnPotjes.herlaad.test.js
 │       ├── useMijnPotjes.regressie.test.js
 │       ├── usePotje.delete.regressie.test.js
+│       ├── usePotje.online.test.js
 │       ├── usePotje.regressie.test.js
 │       ├── usePotjeActies.regressie.test.js    ← PA-00/00b + PA-14..16 toegevoegd
 │       ├── valideer.test.js
@@ -223,7 +229,19 @@ Pure async functies. Fixes 2026-04-12 (audit Q2):
 
 ## 11–17. Utilities t/m Toegankelijkheid
 
-Zie versie 2.3 (ongewijzigd).
+### `tijdUtils.js` (nieuw, 2026-04-13)
+
+Pure hulpfuncties geëxtraheerd uit `PaginaEindafrekening`, `PaginaStorten`, `PaginaProfiel` en `DeelnemerDetailSheet`:
+- `tijdLabel` — ISO → "HH:MM"
+- `volledigTijdLabel` — ISO → "HH:MM" (vandaag) of "dag mnd HH:MM" (ouder)
+- `transactiesVoor` — filter + sorteer per deelnemer
+- `bouwSluitRegel` — sluitregel met/zonder sluitersnaam
+- `bepaalEffectiefBedrag` — snelkeuze vs vrije invoer prioriteitslogica
+- `isBedragGeldig` — bedragvalidatie voor storten
+- `valideerProfielNaam` — profielnaam validatie
+- `heeftProfielWijziging` — opslaan-knop activatielogica
+
+Overige utilities: zie versie 2.3 (ongewijzigd).
 
 ---
 
@@ -263,16 +281,26 @@ Business logic en pure functies als geëxtraheerde functies — geen Supabase-mo
 | `usePotjeActies.regressie.test.js` | Regressie | PA-00..03b: handleTransactie guards incl. DEELNEMER_ONTBREEKT; PA-04..07b: handleUndo; PA-08..10b: handleAfmelden; PA-11..13: toastberichten; PA-14..16: handleDeelnemen client-side UUID ← bijgewerkt |
 | `kritiek.regressie.test.js` | Regressie | MP-01…03: useMijnPotjes deviceId; AF-01…03: handleAfmelden .maybeSingle(); SL-01…03: handleSluiten null-guard |
 | `hoog.regressie.test.js` | Regressie | H4-01..03b: client-side UUID PaginaNieuwPotje; H5-01..03b: openTikkie visibility; H6-01..05: mijnDeelnemer case-insensitief ← nieuw |
+| `medium.regressie.test.js` | Regressie | IS7/IS8/IS9/IS10: race conditions, realtime, valuta |
+| `medium2.regressie.test.js` | Regressie | SM1-01..04b, WC2-01..05b, UX1-01..05b, SL2-01..03, SM2-01..03, WC3-01..02 |
 | `deelnemerRij.regressie.test.js` | Regressie | Render, afgemeld |
 | `errorBoundary.regressie.test.js` | Regressie | Fallback UI, Sentry |
 | `paginaEindafrekening.regressie.test.js` | Regressie | Eindafrekening render |
 | `stap1.regressie.test.js` + `stap6.regressie.test.js` | Regressie | Historische regressiescenario's |
+| `useFocusTrap.test.js` | Unit | FT-01..12: Escape, Tab-trap, Shift+Tab, cleanup, aangepaste selector, preventDefault |
+| `tijdUtils.test.js` | Unit | TL-01..02, VT-01..03, TV-01..04, SR-01..03, EB-01..06, BG-01..07, PN-01..05, HW-01..04 |
+| `usePotje.online.test.js` | Unit | PO-01..04: online/offline transitie; PD-01..04: deelnemer-matching; PF-01..02: laadData foutpad |
+| `modals.test.js` | Unit | MD-01..05: ModalDeelnemen validatie; MT-01..08: ModalTransactie foutclassificatie + bedragvalidatie; MA-01..02: ModalAfmelden; MS-01..02: ModalSluiten |
 
 ### Niet gedekt (gemotiveerd)
 
-| Component | Reden | Alternatief |
+| Component/bestand | Reden | Alternatief |
 |---|---|---|
-| `ModalDeelnemen`, `ModalTransactie`, `ModalAfmelden`, `ModalSluiten` | Supabase-afhankelijkheid; logica gedekt via `usePotjeActies` | Integratietest / e2e |
+| `ModalDeelnemen`, `ModalTransactie`, `ModalAfmelden`, `ModalSluiten` — component-mount + DOM | Supabase-afhankelijkheid in callbacks; logica gedekt via `usePotjeActies` + `modals.test.js` | e2e (Playwright/Cypress) |
+| `PaginaInstellingen`, `PaginaOpenPotjes`, `PaginaGeslotenPotjes`, `PaginaNietGevonden` | Minimale business logic — alleen render + navigatie | e2e happy path |
+| `usePotje.laadData` DB-aanroepen | Supabase-afhankelijk — 3 parallelle queries | Integratietest tegen Supabase-testproject |
+| `useMijnPotjes.laadPotjes` DB-aanroepen | Supabase-afhankelijk — 3 queries | Integratietest tegen Supabase-testproject |
+| `DeelKnop` component-state | Indirect gedekt via `deelLink.test.js`; component-mount voegt weinig toe | Optioneel: `@testing-library/react` render |
 
 ---
 
@@ -313,6 +341,9 @@ Zie versie 2.1 (ongewijzigd).
 | 2.2 | 2026-04-12 | Kritieke fixes: `useMijnPotjes` useDeviceId(), `handleAfmelden` .maybeSingle(), `handleSluiten` null-guard; `kritiek.regressie.test.js` | Code-audit 2026-04-12 |
 | 2.3 | 2026-04-12 | `scripts/controleer-patronen.js`; CI `lint:patronen`; `periodieke_audit.md` template; §19 CI/CD uitgebreid | Structurele waarborg: patroon-check + kwartaalaudit |
 | 2.4 | 2026-04-12 | **Audit Q2 bevindingen 1–4:** (1) `handleDeelnemen`: client-side UUID i.p.v. `.select().single()` — zelfde patroon als hoog-4; (2) `handleTransactie`: null-guard op `deelnemer?.id` → `DEELNEMER_ONTBREEKT` — race condition bij afmelden + betalen tegelijk; (3) `controleer-patronen.js`: overbodige `PaginaNieuwPotje.jsx`-uitzondering voor `.single()` verwijderd; (4) TO §18 dekkingtabel bijgewerkt: `hoog.regressie.test.js` toegevoegd, `usePotjeActies.regressie.test.js` bijgewerkt (PA-00/00b + PA-14..16); `usePotjeActies.regressie.test.js` bijgewerkt met nieuwe guards | Kwartaalaudit 2026-04-12: eerste periodieke audit vond twee medium bevindingen en twee low bevindingen |
+| 2.5 | 2026-04-13 | **Medium audit-bevindingen SEC-M1, WCAG-2, UX-1:** (SEC-M1) `ModalDeelnemen`: hardcoded `MAX_NAAM`/`MAX_DEELNEMERS` vervangen door import uit `constants.js`; (WCAG-2) `PaginaPotje` toast: `role` en `aria-live` afhankelijk van toast-type — `fout` krijgt `role=alert`/`aria-live=assertive`, overige typen behouden `role=status`/`aria-live=polite` (WCAG 4.1.3); (UX-1) `PaginaOverzicht` afmeldknop: `aria-disabled` + `cursor: not-allowed` toegevoegd als deelnemer al afgemeld is (WCAG 4.1.2); `medium2.regressie.test.js` toegevoegd: SM1-01..04b, WC2-01..05b, UX1-01..05b | Medium audit-bevindingen 2026-04-13 |
+| 2.6 | 2026-04-13 | **Low audit-bevindingen SEC-L2, SEC-M2, WCAG-3:** (SEC-L2) `supabaseClient.js`: JSDoc uitgebreid; (SEC-M2) `usePotjeActies.js`: comment uitgebreid; (WCAG-3) `ModalDeelnemen.jsx`: comment verduidelijkt; `medium2.regressie.test.js` uitgebreid met SL2-01..03, SM2-01..03, WC3-01..02 | Low audit-bevindingen 2026-04-13 |
+| 2.7 | 2026-04-13 | **Testvolgorde uitgevoerd (stappen 1–6):** (1) `useFocusTrap.test.js` — FT-01..12; (2+3) `tijdUtils.js` aangemaakt — 8 pure functies geëxtraheerd uit PaginaEindafrekening, PaginaStorten, PaginaProfiel, DeelnemerDetailSheet; `tijdUtils.test.js` — 35 tests; (4) `usePotje.online.test.js` — PO/PD/PF-reeks; (5) `modals.test.js` — MD/MT/MA/MS-reeks; (6) TO §3/§11/§18 bijgewerkt; `medium.regressie.test.js` + testbestandenlijst in projectstructuur bijgewerkt; “Niet gedekt” sectie herzien | Testvolgorde 2026-04-13: dekking van ~44% naar ~58% |
 
 ---
 

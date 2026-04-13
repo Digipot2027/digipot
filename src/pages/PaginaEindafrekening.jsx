@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { berekenEindafrekening, berekenVereffening } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
+import { tijdLabel, transactiesVoor, bouwSluitRegel } from '../utils/tijdUtils'
 
 /**
  * Opent de Tikkie-app via deep link.
@@ -66,24 +67,12 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
     ? (deelnemers.find(d => d.id === potje.gesloten_door)?.naam ?? null)
     : null
 
-  const sluitRegel = sluiterNaam
-    ? `Gesloten op ${sluitDatum} door ${sluiterNaam} om ${sluitTijd}.`
-    : `Automatisch gesloten op ${sluitDatum} om ${sluitTijd}.`
+  const sluitRegel = bouwSluitRegel(sluitDatum, sluitTijd, sluiterNaam)
 
   const [opengeklapt, setOpengeklapt] = useState(null)
 
   function toggleDetail(id) {
     setOpengeklapt(prev => prev === id ? null : id)
-  }
-
-  function transactiesVoor(deelnemerId) {
-    return transacties
-      .filter(t => t.deelnemer_id === deelnemerId)
-      .sort((a, b) => new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op))
-  }
-
-  function tijdLabel(iso) {
-    return new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -127,7 +116,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
         {saldi.deelnemersSaldi.map((d, index) => {
           const isAfgemeld   = d.actief === false
           const isOpen       = opengeklapt === d.id
-          const dtransacties = transactiesVoor(d.id)
+          const dtransacties = transactiesVoor(transacties, d.id)
           const isLaatste    = index === saldi.deelnemersSaldi.length - 1
 
           return (

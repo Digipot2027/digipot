@@ -5,6 +5,7 @@ import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
+import { bepaalEffectiefBedrag, isBedragGeldig } from '../utils/tijdUtils'
 
 // Standaardbedragen — primaire keuzemethode
 const SNELBEDRAGEN = [5, 10, 20, 50]
@@ -37,16 +38,10 @@ function PaginaStorten() {
     }
   }, [vrijeInvoerActief])
 
-  // Bepaal het te storten bedrag: snelkeuze heeft prioriteit, anders vrije invoer
+  // Bepaal het te storten bedrag via util — snelkeuze heeft prioriteit
   const vrijeInvoerNum = parseBedrag(vrijeInvoer)
-  const effectiefBedrag = gekozenBedrag !== null
-    ? gekozenBedrag
-    : (vrijeInvoerActief && vrijeInvoer.trim() ? vrijeInvoerNum : null)
-
-  const bedragGeldig = effectiefBedrag !== null
-    && !isNaN(effectiefBedrag)
-    && effectiefBedrag > 0
-    && effectiefBedrag <= MAX
+  const effectiefBedrag = bepaalEffectiefBedrag(gekozenBedrag, vrijeInvoerNum, vrijeInvoerActief, vrijeInvoer)
+  const bedragGeldig = isBedragGeldig(effectiefBedrag, MAX)
 
   function handleSnelkeuze(bedrag) {
     setGekozenBedrag(bedrag)
