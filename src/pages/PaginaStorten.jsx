@@ -24,6 +24,13 @@ function PaginaStorten() {
   const [bezig, setBezig] = useState(false)
   const vrijeInvoerRef = useRef(null)
 
+  // Dubbele-submit-guard (fix dubbelstorten 2026-04-13):
+  // setBezig(true) is asynchroon — React batcht de re-render, waardoor een
+  // tweede klik de knop nog enabled treft vóórdat bezig=true zichtbaar is.
+  // useRef is synchroon: bezigRef.current = true is onmiddellijk zichtbaar
+  // voor elke volgende aanroep in dezelfde event-loop.
+  const bezigRef = useRef(false)
+
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
 
@@ -86,22 +93,33 @@ function PaginaStorten() {
     // Door hier opnieuw te controleren en de id direct vast te leggen in een
     // lokale const, vermijden we dat deelnemer.id crasht met TypeError ook al
     // is de initiële guard gepasseerd.
+    // Dubbele-submit-guard — synchroon, niet afhankelijk van render-cyclus
+    if (bezigRef.current) return
+    bezigRef.current = true
+
     const deelnemerId = deelnemer?.id
     if (!deelnemerId) {
+      bezigRef.current = false
       setInvoerFout('Je bent geen deelnemer van dit potje.')
       return
     }
 
     if (potje?.status === 'gesloten') {
+      bezigRef.current = false
       setInvoerFout('Dit potje is gesloten.')
       return
     }
 
     setBezig(true)
     try {
+      // Idempotency-token (fix dubbelstorten 2026-04-13):
+      // Second-line defense achter de ref-guard. DB-constraint blokkeert
+      // een duplicate insert op (deelnemer_id, idempotency_key).
+      const idempotencyKey = crypto.randomUUID()
+
       const { error } = await supabase
         .from('transacties')
-        .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag })
+        .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey })
       if (error) throw error
 
       navigate(`/potje/${id}`, {
@@ -113,6 +131,7 @@ function PaginaStorten() {
         },
       })
     } catch (e) {
+      bezigRef.current = false
       setInvoerFout(logFout(e, { component: 'PaginaStorten', actie: 'storten' }))
     } finally {
       setBezig(false)
