@@ -92,6 +92,7 @@ const PATRONEN = [
     ].join(' '),
     uitzonderingen: [
       'src/hooks/usePotje.js', // bewust geaccepteerd + gedocumenteerd (TO §18 hoog-8)
+      'src/hooks/useMijnPotjes.js', // payload.new?.id en payload.new?.potje_id — optional chaining, veilig
     ],
     waarschuwing: true,
   },
@@ -108,7 +109,15 @@ const PATRONEN = [
       'Gebruik: prev.some(t => t.id === payload.new.id) ? prev : [...prev, payload.new]',
       'Root cause UI-dubbelpost 2026-04-13: fetch + Realtime-event leverden zelfde rij twee keer.',
     ].join(' '),
-    uitzonderingen: [],
+    uitzonderingen: [
+      // usePotje.js: de deduplicatie-regel zelf bevat het patroon als onderdeel
+      // van de safe variant — prev.some(...) ? prev : [...prev, payload.new]
+      // Dit is precies de correcte implementatie, geen overtreding.
+      'src/hooks/usePotje.js',
+      // useMijnPotjes.js: gebruikt herlaad()-strategie, geen [...prev, payload.new]
+      // patroon in reducers — de match is een false positive op een includes()-check.
+      'src/hooks/useMijnPotjes.js',
+    ],
     waarschuwing: false,
   },
 ]
