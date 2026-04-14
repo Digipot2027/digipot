@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 2.4
-**Datum:** 2026-04-12
+**Versie:** 2.6
+**Datum:** 2026-04-14
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -313,6 +313,9 @@ Zie versie 2.1 (ongewijzigd).
 | 2.2 | 2026-04-12 | Kritieke fixes: `useMijnPotjes` useDeviceId(), `handleAfmelden` .maybeSingle(), `handleSluiten` null-guard; `kritiek.regressie.test.js` | Code-audit 2026-04-12 |
 | 2.3 | 2026-04-12 | `scripts/controleer-patronen.js`; CI `lint:patronen`; `periodieke_audit.md` template; §19 CI/CD uitgebreid | Structurele waarborg: patroon-check + kwartaalaudit |
 | 2.4 | 2026-04-12 | **Audit Q2 bevindingen 1–4:** (1) `handleDeelnemen`: client-side UUID i.p.v. `.select().single()` — zelfde patroon als hoog-4; (2) `handleTransactie`: null-guard op `deelnemer?.id` → `DEELNEMER_ONTBREEKT` — race condition bij afmelden + betalen tegelijk; (3) `controleer-patronen.js`: overbodige `PaginaNieuwPotje.jsx`-uitzondering voor `.single()` verwijderd; (4) TO §18 dekkingtabel bijgewerkt: `hoog.regressie.test.js` toegevoegd, `usePotjeActies.regressie.test.js` bijgewerkt (PA-00/00b + PA-14..16); `usePotjeActies.regressie.test.js` bijgewerkt met nieuwe guards | Kwartaalaudit 2026-04-12: eerste periodieke audit vond twee medium bevindingen en twee low bevindingen |
+| 2.5 | 2026-04-13 | **S1/S2 fix:** secrets uit `cron.job` plaintext naar Supabase Vault; wrapper-functie `digipot_roep_lifecycle_aan()` (SECURITY DEFINER); Supabase API keys geroteerd naar `sb_secret_`/`sb_publishable_` formaat; legacy JWT-based API keys uitgeschakeld; legacy HS256 signing key gerevoked; §23 herschreven | Kritieke bevindingen Q2 audit |
+| 2.5b | 2026-04-13 | **Dubbelstorten fix:** `bezigRef` (useRef) synchroon submit-guard in `PaginaStorten`; `idempotency_key` UUID per submit + UNIQUE INDEX op `(deelnemer_id, idempotency_key)` (migratie stap 24); UI-dubbelpost Realtime deduplicatie in `usePotje` INSERT-reducer; patroon-checker uitgebreid met `[...prev, payload.new]` als blokkerend patroon; regressietests DS-01..07 + UP-09a..e | Productiemelding dubbelstorten deelnemer iMac |
+| 2.6 | 2026-04-14 | **S3 fix:** `transacties_insert` RLS device-ID check toegevoegd — voorkomt cross-deelnemer inserts (migratie stap 25); **S4 fix:** `wrangler-action` gepind op SHA `da0e0df` (v3.14.1); **S5 fix:** `actions/checkout` en `actions/setup-node` gecorrigeerd van niet-bestaand `@v6` naar `@v4`; **S6:** Sentry-init geverifieerd — `enabled: import.meta.env.PROD` correct aanwezig in `main.jsx` | Resterende bevindingen Q2 audit 2026 afgerond |
 
 ---
 
