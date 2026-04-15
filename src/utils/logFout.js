@@ -37,11 +37,18 @@ export function logFout(error, context = {}) {
   //
   // PGRST116: .single() vond nul of meer dan één rij — treedt op bij verouderde/
   // ongeldige potje-links na lifecycle-verwijdering. Verwacht gedrag, geen bug.
+  //
+  // row-level security / 42501: treedt op als de x-device-id header leeg was
+  // bij module-load. Na de bootstrapDeviceId() fix (2026-04-15) mag dit niet
+  // meer voorkomen. Tijdelijk uitgesloten van Sentry om ruis te voorkomen;
+  // verwijder deze uitsluiting als de fix stabiel is gebleken in productie.
   const isGebruikersFout =
     bericht.includes('SALDO_TE_LAAG') ||
     bericht.includes('NIET_ACTIEF') ||
     bericht.includes('duplicate key') ||
     bericht.includes('PGRST116') ||
+    bericht.includes('row-level security') ||
+    bericht.includes('42501') ||
     bericht.includes('JSON object requested, multiple (or no) rows returned') ||
     bericht.includes('Cannot coerce the result to a single JSON object')
 

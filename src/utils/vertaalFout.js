@@ -58,5 +58,11 @@ export function vertaalFout(error) {
   if (bericht.includes('PGRST') || bericht.includes('406') || bericht.includes('400'))
     return 'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
 
+  // BUG-FIX (Sentry REACT-8 / REACT-9, 2026-04-15):
+  // RLS-blokkade op transacties INSERT — device-id niet herkend door de DB.
+  // Treedt op als de x-device-id header leeg was bij de request.
+  if (bericht.includes('row-level security') || bericht.includes('42501'))
+    return 'Je sessie is niet herkend. Ververs de pagina en probeer opnieuw.'
+
   return 'Er is iets misgegaan. Probeer het opnieuw.'
 }
