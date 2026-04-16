@@ -81,6 +81,8 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
               onChange={e => { setNaam(e.target.value); setFout('') }}
               maxLength={MAX_NAAM}
               autoComplete="nickname"
+              aria-describedby={fout ? 'naam-deelnemen-fout' : undefined}
+              aria-invalid={fout ? 'true' : undefined}
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
             {heeftProfielNaam && !fout && (
@@ -88,7 +90,8 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
                 Uit je profiel. Je kunt de naam aanpassen.
               </div>
             )}
-            {fout && <div className="fout-tekst">{fout}</div>}
+            {/* WCAG 1.3.1 / 4.1.3: id koppelt foutmelding aan invoerveld via aria-describedby */}
+            {fout && <div id="naam-deelnemen-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>

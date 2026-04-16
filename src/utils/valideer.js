@@ -5,12 +5,38 @@
  * zonder React, zonder DOM en zonder Supabase.
  *
  * Gebruik:
- *   import { valideerDeelnemerNaam, valideerTransactieBedrag } from '../utils/valideer'
+ *   import { valideerDeelnemerNaam, valideerTransactieBedrag, valideerPotjeNaam } from '../utils/valideer'
  *
- * Beide functies retourneren:
+ * Alle functies retourneren:
  *   - null   → invoer is geldig, geen fout
  *   - string → foutmelding voor de gebruiker
  */
+
+/**
+ * Valideert de naam van een nieuw potje.
+ *
+ * Volgorde van checks (identiek aan de volgorde in PaginaNieuwPotje):
+ *   1. Naam mag niet leeg zijn (na trim)
+ *   2. Naam mag maximaal maxNaam tekens zijn (na trim)
+ *
+ * @param {string} naam - De ingevoerde naam (nog niet getrimd)
+ * @param {Object} [opties]
+ * @param {number} [opties.maxNaam=30] - Maximale naamlengte
+ * @returns {string|null} Foutmelding of null bij geldige invoer
+ */
+export function valideerPotjeNaam(naam, { maxNaam = 30 } = {}) {
+  const naamTrimmed = naam.trim()
+
+  if (!naamTrimmed) {
+    return 'Geef het potje een naam.'
+  }
+
+  if (naamTrimmed.length > maxNaam) {
+    return `De naam van het potje mag maximaal ${maxNaam} tekens zijn.`
+  }
+
+  return null
+}
 
 /**
  * Valideert de naam die een deelnemer invoert bij het meedoen aan een potje.

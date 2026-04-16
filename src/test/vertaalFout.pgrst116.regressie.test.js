@@ -23,6 +23,18 @@
  *   LF-116-02  "Cannot coerce..." wordt als gebruikersfout behandeld — niet naar Sentry
  *   LF-116-03  een echte onbekende fout gaat WEL naar Sentry (controle)
  *   LF-116-04  SALDO_TE_LAAG gaat nog steeds niet naar Sentry (geen regressie)
+ *   LF-116-05  PGRST116 geeft de juiste gebruikerstekst terug
+ *
+ * RLS/42501 (Sentry REACT-8 / REACT-9, 2026-04-15):
+ *   VF-RLS-01  "row-level security" → sessie-niet-herkend melding
+ *   VF-RLS-02  "42501" → sessie-niet-herkend melding
+ *   VF-RLS-03  RLS gaat NIET naar fallback
+ *   VF-RLS-04  RLS gaat NIET naar generieke PGRST-melding
+ *   VF-RLS-05  42501 gaat vóór fallback
+ *   LF-RLS-01  "row-level security" wordt als gebruikersfout behandeld — niet naar Sentry
+ *   LF-RLS-02  "42501" wordt als gebruikersfout behandeld — niet naar Sentry
+ *   LF-RLS-03  RLS geeft de juiste gebruikerstekst terug
+ *   LF-RLS-04  geen regressie: SALDO_TE_LAAG gaat nog steeds niet naar Sentry
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -46,7 +58,6 @@ describe('vertaalFout — VF-116: PGRST116 niet-gevonden herkenning', () => {
   })
 
   it('VF-116-03: Sentry-titeltekst "Cannot coerce the result to a single JSON object"', () => {
-    // Dit is de letterlijke foutmelding die in Sentry als titel verscheen.
     const fout = new Error('Cannot coerce the result to a single JSON object')
     expect(vertaalFout(fout)).toBe(
       'Dit potje bestaat niet of is verwijderd. Controleer de link.'
@@ -67,8 +78,6 @@ describe('vertaalFout — VF-116: PGRST116 niet-gevonden herkenning', () => {
   })
 
   it('VF-116-06: PGRST301 (andere code) gaat nog steeds naar verbindingsfout (geen over-match)', () => {
-    // PGRST116-matcher is specifiek genoeg — andere PGRST-codes vallen door
-    // naar de generieke PGRST-catch.
     const fout = new Error('PGRST301: role not found')
     expect(vertaalFout(fout)).toBe(
       'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
@@ -76,25 +85,50 @@ describe('vertaalFout — VF-116: PGRST116 niet-gevonden herkenning', () => {
   })
 })
 
+// ── vertaalFout: RLS/42501-matcher (Sentry REACT-8 / REACT-9) ────────────────
+
+describe('vertaalFout — VF-RLS: row-level security / 42501 herkenning', () => {
+  it('VF-RLS-01: "row-level security" → sessie-niet-herkend melding', () => {
+    const fout = new Error('new row violates row-level security policy for table "transacties"')
+    expect(vertaalFout(fout)).toBe('Je sessie is niet herkend. Ververs de pagina en probeer opnieuw.')
+  })
+
+  it('VF-RLS-02: "42501" alleen → sessie-niet-herkend melding', () => {
+    const fout = new Error('42501')
+    expect(vertaalFout(fout)).toBe('Je sessie is niet herkend. Ververs de pagina en probeer opnieuw.')
+  })
+
+  it('VF-RLS-03: RLS gaat NIET naar de algemene fallback', () => {
+    const fout = new Error('row-level security policy violated')
+    expect(vertaalFout(fout)).not.toBe('Er is iets misgegaan. Probeer het opnieuw.')
+  })
+
+  it('VF-RLS-04: RLS gaat NIET naar de generieke PGRST-verbindingsfout', () => {
+    const fout = new Error('new row violates row-level security policy for table "transacties"')
+    expect(vertaalFout(fout)).not.toBe(
+      'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
+    )
+  })
+
+  it('VF-RLS-05: "42501" in samengesteld bericht → sessie-melding vóór fallback', () => {
+    // Supabase stuurt de PostgreSQL-foutcode soms als onderdeel van een groter bericht
+    const fout = new Error('ERROR: 42501: permission denied for table transacties')
+    expect(vertaalFout(fout)).toBe('Je sessie is niet herkend. Ververs de pagina en probeer opnieuw.')
+  })
+})
+
 // ── logFout: PGRST116 niet naar Sentry ───────────────────────────────────────
-//
-// We mocken @sentry/react zodat we kunnen verifiëren of captureException
-// wordt aangeroepen of niet.
 
 vi.mock('@sentry/react', () => ({
   captureException: vi.fn(),
   init: vi.fn(),
 }))
 
-// logFout importeren NA de mock zodat de mock actief is.
-// Dynamic import nodig omdat top-level imports al geresolved zijn.
-// Alternatief: importeer logFout als eerste en vertrouw op vi.mock hoisting.
 import { logFout } from '../utils/logFout'
 import * as Sentry from '@sentry/react'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // Simuleer productieomgeving zodat Sentry-aanroepen plaatsvinden
   vi.stubGlobal('import.meta', { env: { PROD: true, DEV: false } })
 })
 
@@ -137,5 +171,38 @@ describe('logFout — LF-116: PGRST116 als gebruikersfout', () => {
       actie: 'laadData',
     })
     expect(bericht).toBe('Dit potje bestaat niet of is verwijderd. Controleer de link.')
+  })
+})
+
+// ── logFout: RLS/42501 niet naar Sentry (Sentry REACT-8 / REACT-9) ───────────
+
+describe('logFout — LF-RLS: row-level security / 42501 als gebruikersfout', () => {
+  it('LF-RLS-01: "row-level security" wordt NIET naar Sentry gestuurd', () => {
+    logFout(
+      new Error('new row violates row-level security policy for table "transacties"'),
+      { component: 'PaginaStorten', actie: 'storten' }
+    )
+    expect(Sentry.captureException).not.toHaveBeenCalled()
+  })
+
+  it('LF-RLS-02: "42501" wordt NIET naar Sentry gestuurd', () => {
+    logFout(
+      new Error('ERROR: 42501: permission denied'),
+      { component: 'ModalTransactie', actie: 'betaling' }
+    )
+    expect(Sentry.captureException).not.toHaveBeenCalled()
+  })
+
+  it('LF-RLS-03: RLS-fout geeft de juiste gebruikerstekst terug', () => {
+    const bericht = logFout(
+      new Error('new row violates row-level security policy for table "transacties"'),
+      { component: 'PaginaStorten', actie: 'storten' }
+    )
+    expect(bericht).toBe('Je sessie is niet herkend. Ververs de pagina en probeer opnieuw.')
+  })
+
+  it('LF-RLS-04: geen regressie — NIET_ACTIEF gaat nog steeds niet naar Sentry', () => {
+    logFout(new Error('NIET_ACTIEF'), { component: 'ModalTransactie', actie: 'betaling' })
+    expect(Sentry.captureException).not.toHaveBeenCalled()
   })
 })

@@ -7,6 +7,19 @@
  * @module constants
  */
 
+// ── UUID-validatie ───────────────────────────────────────────────────────────
+
+/**
+ * UUID v4 validatiepatroon.
+ * Gebruikt door bootstrapDeviceId (supabaseClient.js) en useDeviceId (hook).
+ * Eén definitie — wijzigingen worden automatisch doorgevoerd in beide.
+ *
+ * Formaat: 8-4-4-4-12 hexadecimale tekens.
+ * Derde groep begint met 4 (versie), vierde groep begint met 8, 9, a of b (variant).
+ * De /i flag maakt het patroon hoofdletterongevoelig.
+ */
+export const UUID_V4_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 // ── localStorage-sleutels ────────────────────────────────────────────────────
 
 /** Uniek device-identificatienummer (UUID). Aangemaakt bij eerste bezoek. */

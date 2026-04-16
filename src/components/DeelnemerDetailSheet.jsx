@@ -1,26 +1,19 @@
 import { useRef, useEffect } from 'react'
 import { formatBedrag } from '../utils/formatBedrag'
+import { volledigTijdLabel } from '../utils/tijdUtils'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { STANDAARD_VALUTA } from '../constants'
 
-// Formatteert timestamp naar "uu:mm" of "dag maand uu:mm" als ouder dan vandaag
-function volledigTijdLabel(iso) {
-  const d = new Date(iso)
-  const nu = new Date()
-  const ouderDanVandaag = d.toDateString() !== nu.toDateString()
-  if (ouderDanVandaag) {
-    return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) +
-      ' ' + d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-  }
-  return d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-}
-
-function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
+/**
+ * BUG-1 fix (2026-04-16): valuta-prop toegevoegd.
+ * BUG-2 fix (2026-04-16): volledigTijdLabel geïmporteerd uit tijdUtils.js
+ *   i.p.v. lokaal gedefinieerd. Eén bron van waarheid voor tijdformattering.
+ */
+function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten, valuta = STANDAARD_VALUTA }) {
   const panelRef = useRef(null)
 
-  // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
   useFocusTrap(panelRef, onSluiten)
 
-  // WCAG-6 / 2.4.3: initiële focus op de sluitknop bij openen.
   useEffect(() => {
     panelRef.current?.querySelector('button')?.focus()
   }, [])
@@ -61,10 +54,6 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
             <h2 id="detail-titel" style={{ fontSize: 18, fontWeight: 700 }}>{deelnemer.naam}</h2>
             {isAfgemeld && <span className="badge badge-afgemeld">Afgemeld</span>}
           </div>
-          {/*
-            WCAG 2.5.5: sluitknop min-width/min-height 44px voor touch target.
-            WCAG-6: ontvangt initiële focus bij openen (zie useEffect boven).
-          */}
           <button
             onClick={onSluiten}
             style={{
@@ -87,7 +76,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
               In de pot gestort
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--groen)' }}>
-              {formatBedrag(totaalGestort)}
+              {formatBedrag(totaalGestort, valuta)}
             </div>
           </div>
           <div style={{ background: 'var(--rood-licht)', borderRadius: 10, padding: '14px 16px' }}>
@@ -95,12 +84,12 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
               Betaald aan horeca
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--rood)' }}>
-              {formatBedrag(totaalBetaald)}
+              {formatBedrag(totaalBetaald, valuta)}
             </div>
           </div>
         </div>
 
-        {/* Stortingen uitgesplitst */}
+        {/* Stortingen */}
         {stortingen.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--grijs-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
@@ -112,13 +101,13 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
                   <span>🟢</span>
                   <span style={{ fontSize: 13, color: 'var(--grijs-600)' }}>{volledigTijdLabel(t.aangemaakt_op)}</span>
                 </div>
-                <span style={{ fontWeight: 600, color: 'var(--groen)' }}>+{formatBedrag(t.bedrag)}</span>
+                <span style={{ fontWeight: 600, color: 'var(--groen)' }}>+{formatBedrag(t.bedrag, valuta)}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Betalingen uitgesplitst */}
+        {/* Betalingen */}
         {betalingen.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--grijs-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
@@ -130,7 +119,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten }) {
                   <span>🔴</span>
                   <span style={{ fontSize: 13, color: 'var(--grijs-600)' }}>{volledigTijdLabel(t.aangemaakt_op)}</span>
                 </div>
-                <span style={{ fontWeight: 600, color: 'var(--rood)' }}>-{formatBedrag(t.bedrag)}</span>
+                <span style={{ fontWeight: 600, color: 'var(--rood)' }}>-{formatBedrag(t.bedrag, valuta)}</span>
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { DEVICE_ID_KEY } from './constants'
+import { DEVICE_ID_KEY, UUID_V4_PATROON } from './constants'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -7,8 +7,6 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase omgevingsvariabelen ontbreken. Controleer je .env.local bestand.')
 }
-
-const UUID_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 /**
  * Initialiseert de device-id synchroon bij module-load.
@@ -21,10 +19,13 @@ const UUID_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0
  * → 401 op alle INSERT-calls naar transacties.
  *
  * Oplossing: device-id synchroon ophalen/aanmaken vóór createClient().
+ *
+ * Validatie via UUID_V4_PATROON uit constants.js — zelfde patroon als
+ * useDeviceId(). Eén bron van waarheid; geen duplicatie meer (SEC-1 fix).
  */
 function bootstrapDeviceId() {
   const opgeslagen = localStorage.getItem(DEVICE_ID_KEY)
-  if (opgeslagen && UUID_PATROON.test(opgeslagen)) return opgeslagen
+  if (opgeslagen && UUID_V4_PATROON.test(opgeslagen)) return opgeslagen
   const nieuw = crypto.randomUUID()
   localStorage.setItem(DEVICE_ID_KEY, nieuw)
   return nieuw

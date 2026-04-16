@@ -1,9 +1,4 @@
-/**
- * Standaard valuta voor nieuwe potjes (ISO 4217).
- * Wordt gebruikt als default bij aanmaken en als fallback bij weergave.
- * Bij de refactoring naar multi-currency wordt dit vervangen door potje.valuta.
- */
-export const STANDAARD_VALUTA = 'EUR'
+import { STANDAARD_VALUTA } from '../constants'
 
 /**
  * Standaard locale voor valuta-opmaak.
@@ -15,8 +10,8 @@ export const STANDAARD_LOCALE = 'nl-NL'
 /**
  * Formatteert een bedrag als valuta.
  *
- * Nu: altijd EUR, altijd nl-NL (gedrag ongewijzigd t.o.v. vorige versie).
- * Na refactoring: valuta en locale komen uit potje-context of gebruikersinstelling.
+ * TECH-1 fix (2026-04-16): STANDAARD_VALUTA niet meer lokaal gedefinieerd —
+ * geïmporteerd uit constants.js. Eén bron van waarheid.
  *
  * @param {number|string|null} bedrag - Het te formatteren bedrag
  * @param {string} [valuta=STANDAARD_VALUTA] - ISO 4217 valutacode (bijv. 'EUR', 'USD', 'GBP')

@@ -5,6 +5,7 @@ import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
+import { STANDAARD_VALUTA } from '../constants'
 
 // Standaardbedragen — primaire keuzemethode
 const SNELBEDRAGEN = [5, 10, 20, 50]
@@ -13,10 +14,8 @@ function PaginaStorten() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  // Data via usePotje — eigen formulierlogica blijft in deze component
   const { potje, deelnemers, transacties, deelnemer, laden, fout } = usePotje(id)
 
-  // Bedragselectie
   const [gekozenBedrag, setGekozenBedrag] = useState(null)
   const [vrijeInvoer, setVrijeInvoer] = useState('')
   const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false)
@@ -24,27 +23,22 @@ function PaginaStorten() {
   const [bezig, setBezig] = useState(false)
   const vrijeInvoerRef = useRef(null)
 
-  // Dubbele-submit-guard (fix dubbelstorten 2026-04-13):
-  // setBezig(true) is asynchroon — React batcht de re-render, waardoor een
-  // tweede klik de knop nog enabled treft vóórdat bezig=true zichtbaar is.
-  // useRef is synchroon: bezigRef.current = true is onmiddellijk zichtbaar
-  // voor elke volgende aanroep in dezelfde event-loop.
+  // Dubbele-submit-guard (fix dubbelstorten 2026-04-13)
   const bezigRef = useRef(false)
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
 
   const MAX = 999.99
-  const valuta = potje?.valuta ?? 'EUR'
+  // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
+  const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
-  // Focus vrij invoerveld zodra het zichtbaar wordt
   useEffect(() => {
     if (vrijeInvoerActief) {
       setTimeout(() => vrijeInvoerRef.current?.focus(), 50)
     }
   }, [vrijeInvoerActief])
 
-  // Bepaal het te storten bedrag: snelkeuze heeft prioriteit, anders vrije invoer
   const vrijeInvoerNum = parseBedrag(vrijeInvoer)
   const effectiefBedrag = gekozenBedrag !== null
     ? gekozenBedrag
@@ -86,14 +80,6 @@ function PaginaStorten() {
       return
     }
 
-    // Issue 7 fix (2026-04-12): null-guard op deelnemer.id vlak vóór gebruik.
-    // De eerdere `if (!deelnemer)` guard vóór de validatie is correct, maar
-    // tussen die check en de async INSERT-aanroep kan de deelnemer-state in
-    // theorie null worden door een realtime-update of race condition.
-    // Door hier opnieuw te controleren en de id direct vast te leggen in een
-    // lokale const, vermijden we dat deelnemer.id crasht met TypeError ook al
-    // is de initiële guard gepasseerd.
-    // Dubbele-submit-guard — synchroon, niet afhankelijk van render-cyclus
     if (bezigRef.current) return
     bezigRef.current = true
 
@@ -112,11 +98,7 @@ function PaginaStorten() {
 
     setBezig(true)
     try {
-      // Idempotency-token (fix dubbelstorten 2026-04-13):
-      // Second-line defense achter de ref-guard. DB-constraint blokkeert
-      // een duplicate insert op (deelnemer_id, idempotency_key).
       const idempotencyKey = crypto.randomUUID()
-
       const { error } = await supabase
         .from('transacties')
         .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey })
@@ -138,7 +120,6 @@ function PaginaStorten() {
     }
   }
 
-  // ── Skeleton loader ───────────────────────────────────────────────────────────
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
@@ -160,11 +141,7 @@ function PaginaStorten() {
     <div className="pagina">
       <div className="kaart">
         <p style={{ color: 'var(--rood)' }}>{fout}</p>
-        <button
-          className="knop knop-secundair"
-          style={{ marginTop: 16 }}
-          onClick={() => navigate(`/potje/${id}`)}
-        >
+        <button className="knop knop-secundair" style={{ marginTop: 16 }} onClick={() => navigate(`/potje/${id}`)}>
           ← Terug
         </button>
       </div>
@@ -178,7 +155,6 @@ function PaginaStorten() {
   return (
     <div className="pagina">
 
-      {/* Header */}
       <div className="kaart">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
           <button
@@ -195,7 +171,6 @@ function PaginaStorten() {
         </p>
       </div>
 
-      {/* Al gestort */}
       {reedGestort > 0 && (
         <div className="kaart" style={{ background: 'var(--groen-licht)', border: '1px solid #bbf7d0' }}>
           <p style={{ fontSize: '0.8125rem', color: 'var(--groen)', fontWeight: 500 }}>
@@ -204,11 +179,9 @@ function PaginaStorten() {
         </div>
       )}
 
-      {/* Bedragkeuze */}
       <div className="kaart">
         <p className="label" style={{ marginBottom: 12 }}>Kies een bedrag</p>
 
-        {/* Snelknoppen — primaire methode */}
         <div
           role="group"
           aria-label="Standaardbedragen"
@@ -242,7 +215,6 @@ function PaginaStorten() {
           })}
         </div>
 
-        {/* Vrij bedrag — aanvulling */}
         {!vrijeInvoerActief ? (
           <button
             type="button"
@@ -267,6 +239,8 @@ function PaginaStorten() {
               value={vrijeInvoer}
               onChange={handleVrijeInvoerWijziging}
               autoComplete="off"
+              aria-describedby={invoerFout && vrijeInvoerActief ? 'vrij-bedrag-fout' : undefined}
+              aria-invalid={invoerFout && vrijeInvoerActief ? 'true' : undefined}
             />
             {vrijeInvoerActief && vrijeInvoerNum > 0 && !invoerFout && (
               <div className="teller" style={{ color: 'var(--groen)' }}>
@@ -277,26 +251,25 @@ function PaginaStorten() {
         )}
 
         {invoerFout && (
-          <div className="fout-tekst" style={{ marginTop: 8 }}>{invoerFout}</div>
+          <div
+            id={vrijeInvoerActief ? 'vrij-bedrag-fout' : undefined}
+            className="fout-tekst"
+            style={{ marginTop: 8 }}
+            role="alert"
+          >
+            {invoerFout}
+          </div>
         )}
       </div>
 
-      {/* Samenvatting + bevestigen */}
       <div className="kaart">
         {bedragGeldig && (
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 14px',
-            background: 'var(--groen-licht)',
-            borderRadius: 8,
-            marginBottom: 14,
-            border: '1px solid #bbf7d0',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '12px 14px', background: 'var(--groen-licht)', borderRadius: 8,
+            marginBottom: 14, border: '1px solid #bbf7d0',
           }}>
-            <span style={{ fontSize: '0.875rem', color: 'var(--groen)', fontWeight: 500 }}>
-              Jouw storting
-            </span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--groen)', fontWeight: 500 }}>Jouw storting</span>
             <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--groen)' }}>
               {formatBedrag(effectiefBedrag, valuta)}
             </span>
@@ -304,12 +277,7 @@ function PaginaStorten() {
         )}
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            type="button"
-            className="knop knop-secundair"
-            style={{ flex: 1 }}
-            onClick={() => navigate(`/potje/${id}`)}
-          >
+          <button type="button" className="knop knop-secundair" style={{ flex: 1 }} onClick={() => navigate(`/potje/${id}`)}>
             Annuleren
           </button>
           <button
@@ -324,7 +292,6 @@ function PaginaStorten() {
         </div>
       </div>
 
-      {/* Pot info */}
       <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
           <span style={{ color: 'var(--grijs-600)' }}>Huidig potsaldo</span>

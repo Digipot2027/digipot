@@ -11,9 +11,17 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * - Escape of "Annuleren" sluit de modal zonder actie
  * - "Ja, afmelden" roept onBevestig() aan
  * - Tab-trap binnen het panel (WCAG 2.1.1)
+ *
+ * BUG-3 fix (2026-04-16): catch-blok toegevoegd aan handleBevestig.
+ * Zonder catch verdween een exception uit onBevestig() stil — geen fout
+ * getoond aan de gebruiker, geen Sentry-logging. De fout wordt nu getoond
+ * in de modal zelf via lokale fout-state. De outer handler (usePotjeActies
+ * handleAfmelden) vangt DB-fouten al op via toonToast; deze catch dekt
+ * onverwachte bugs in de aanroepketen die de outer handler niet bereiken.
  */
 function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
   const [laden, setLaden] = useState(false)
+  const [fout, setFout] = useState('')
   const panelRef = useRef(null)
 
   // Focus eerste knop bij openen
@@ -25,9 +33,14 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
   useFocusTrap(panelRef, onAnnuleer, { selector: 'button:not([disabled])' })
 
   async function handleBevestig() {
+    setFout('')
     setLaden(true)
     try {
       await onBevestig()
+    } catch (e) {
+      // Onverwachte fout in de aanroepketen — toon in de modal zodat de
+      // gebruiker feedback krijgt en de modal niet stil blijft hangen.
+      setFout('Er is iets misgegaan. Probeer het opnieuw.')
     } finally {
       setLaden(false)
     }
@@ -63,6 +76,13 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
             <li>• Je inleg blijft zichtbaar in de eindafrekening</li>
           </ul>
         </div>
+
+        {/* BUG-3 fix: fout zichtbaar in de modal */}
+        {fout && (
+          <div className="fout-tekst" style={{ marginBottom: 12 }} role="alert">
+            {fout}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button

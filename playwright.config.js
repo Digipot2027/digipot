@@ -3,18 +3,24 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Playwright configuratie — Digipot e2e tests
  *
- * Vijf projecten:
- * - chromium      : Desktop Chrome/Edge/Brave
- * - webkit        : Desktop Safari (macOS)
- * - mobile-safari : iPhone 14 — iOS Safari (bron van Sentry REACT-8/9)
- * - android-chrome: Pixel 7 — Android Chrome (grootste Android-browser)
- * - firefox       : Desktop Firefox
+ * Vijf projecten lokaal, één project in CI:
+ * - chromium      : Desktop Chrome/Edge/Brave (ook CI)
+ * - webkit        : Desktop Safari (macOS) — alleen lokaal
+ * - mobile-safari : iPhone 14 — iOS Safari (bron van Sentry REACT-8/9) — alleen lokaal
+ * - android-chrome: Pixel 7 — Android Chrome (grootste Android-browser) — alleen lokaal
+ * - firefox       : Desktop Firefox — alleen lokaal
+ *
+ * In CI (process.env.CI === 'true') draait alleen het 'chromium'-project.
+ * De volledige 5-browsers suite draait lokaal via `npm run e2e`.
  */
+
+const isCI = !!process.env.CI
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  forbidOnly: isCI,
+  retries: isCI ? 1 : 0,
   workers: 1,
   reporter: [
     ['html', { open: 'never' }],
@@ -30,33 +36,42 @@ export default defineConfig({
     locale: 'nl-NL',
   },
 
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'mobile-safari',
-      use: { ...devices['iPhone 14'] },
-    },
-    {
-      name: 'android-chrome',
-      use: { ...devices['Pixel 7'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-  ],
+  projects: isCI
+    ? [
+        // CI: alleen Chromium — snel, deterministisch, geen browser-installatie overhead
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+      ]
+    : [
+        // Lokaal: volledige 5-browsers suite
+        {
+          name: 'chromium',
+          use: { ...devices['Desktop Chrome'] },
+        },
+        {
+          name: 'webkit',
+          use: { ...devices['Desktop Safari'] },
+        },
+        {
+          name: 'mobile-safari',
+          use: { ...devices['iPhone 14'] },
+        },
+        {
+          name: 'android-chrome',
+          use: { ...devices['Pixel 7'] },
+        },
+        {
+          name: 'firefox',
+          use: { ...devices['Desktop Firefox'] },
+        },
+      ],
 
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 30_000,
+    reuseExistingServer: !isCI,
+    timeout: 60_000,
   },
 })

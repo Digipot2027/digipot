@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 3.0
-**Datum:** 2026-04-15
+**Versie:** 3.3
+**Datum:** 2026-04-16
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -190,12 +190,24 @@ Alle 5 browsers gedekt. Totaal 230 tests (46 per browser) + 25 nieuwe scenario's
 
 ```bash
 npm run test:run      # Vitest CI (668 unit tests)
-npm run e2e           # Alle 5 browsers
+npm run e2e           # Alle 5 browsers (lokaal)
 npm run e2e:chromium  # Chromium only — snelste feedback
 npm run e2e:webkit    # WebKit/Safari
 npm run e2e:mobile    # iPhone 14
 npm run e2e:report    # HTML rapport
 ```
+
+### CI-gedrag (`process.env.CI === 'true'`)
+
+In de GitHub Actions e2e-job draait Playwright in CI-modus:
+- **Alleen Chromium** — `playwright.config.js` selecteert op basis van `isCI` automatisch één project
+- **`--project=chromium`** wordt ook expliciet meegegeven aan `npx playwright test` als vangnet
+- **`reuseExistingServer: false`** — in CI start de webServer altijd opnieuw (dev-server `npm run dev` met Supabase-env)
+- **`retries: 1`** — flakiness-buffer; mislukte test krijgt één herkansing
+- **`forbidOnly: true`** — `test.only()` blokkeert de CI-run
+- **Browser-cache:** `~/.cache/ms-playwright` gecached op Playwright-versie + OS; bij cache miss volgt `npx playwright install --with-deps chromium`
+- **`install-deps chromium`** draait altijd — systeem-libraries (libglib etc.) zijn niet gecached
+- **Artifact bij falen:** het HTML-rapport (`playwright-report/`) wordt 14 dagen bewaard als GitHub Actions artifact
 
 ### Niet gedekt door unit tests (gemotiveerd)
 
@@ -208,7 +220,13 @@ npm run e2e:report    # HTML rapport
 
 ## 19. Build en deployment
 
-**CI:** `npm ci` → `lint` → `lint:patronen` → `npm audit` → `test:run`
+**CI-pipeline:** Drie jobs in volgorde:
+
+1. **`test`** — `npm ci` → `lint` → `lint:patronen` → `npm audit` → `test:run` (Vitest)
+2. **`e2e`** — draait na `test`; Chromium only; Playwright browser gecached; HTML-rapport als artifact bij falen
+3. **`deploy`** — draait na `test` én `e2e`; alleen op `main` bij push
+
+Deploy naar Cloudflare Pages vereist dat zowel unit tests als e2e slagen.
 
 **Health check:** `.github/workflows/health.yml` draait dagelijks om 08:00 UTC en verifieert:
 - App bereikbaar op Cloudflare Pages
@@ -218,7 +236,7 @@ npm run e2e:report    # HTML rapport
 
 GitHub stuurt automatisch een email bij een mislukte workflow.
 
-E2e-tests draaien niet in CI — vereisen actieve Supabase + dev-server. Lokaal uitvoeren vóór release.
+E2e-tests draaien in CI via de `e2e`-job. De dev-server (`npm run dev`) start automatisch via de `webServer`-configuratie in `playwright.config.js`. Supabase-verbinding loopt via repository secrets (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) die als env-variabelen worden doorgegeven aan zowel de dev-server als de Playwright-process.
 
 **Pre-push hook (lokaal):** Blokkeert een push naar `main` als e2e-tests niet succesvol en recent (< 24 uur) zijn gedraaid. Installatie éénmalig per developer:
 
@@ -243,4 +261,6 @@ Zie versie 2.6 (ongewijzigd).
 |---|---|---|---|
 | 1.0–2.9 | 2026-03-01–15 | Zie eerdere versies | — |
 | 3.0 | 2026-04-15 | **Android Chrome + Firefox toegevoegd:** `playwright.config.js` uitgebreid met `android-chrome` (Pixel 7) en `firefox` (Desktop Firefox); `npx playwright install firefox` uitgevoerd; 230 tests (227 passed, 3 skipped); §18 browsers-tabel bijgewerkt; platform-skip PW-5c uitgebreid met Android Chrome | Volledige browser-dekking: Chrome desktop + Android + Firefox ontbraken nog |
-| 3.1 | 2026-04-16 | **PW-9 t/m PW-13 toegevoegd:** 5 nieuwe e2e-specs die de ontbrekende scenario's uit de meerdaagse testperiode afdekken — terugkerende deelnemer, naambotsing, realtime sluiting, twee devices, undo en afmelden; unit tests uitgebreid van 571 naar 668 | Gap-analyse na meerdaagse praktijktest; unit-gaten #2/#6/#7/#8/#11/#12 gedekt |
+| 3.1 | 2026-04-16 | **PW-9 t/m PW-13 toegevoegd:** 5 nieuwe e2e-specs; unit tests uitgebreid van 571 naar 668 | Gap-analyse na meerdaagse praktijktest |
+| 3.2 | 2026-04-16 | **§19 monitoring uitgebreid:** UptimeRobot, Sentry alerts en GitHub Actions health check gedocumenteerd; TO-versie bijgewerkt | Monitoring-stack volledig opgezet |
+| 3.3 | 2026-04-16 | **§18 CI-gedrag toegevoegd:** Playwright e2e in CI-pipeline gedocumenteerd (Chromium only, browser-cache, artifact-upload, `isCI`-logica in config); **§19 CI-pipeline** bijgewerkt naar 3-jobs structuur (test → e2e → deploy) | E2e-tests opgenomen in GitHub Actions CI |

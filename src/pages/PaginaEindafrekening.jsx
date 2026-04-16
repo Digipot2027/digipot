@@ -2,22 +2,20 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { berekenEindafrekening, berekenVereffening } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
+import { tijdLabel } from '../utils/tijdUtils'
+import { STANDAARD_VALUTA } from '../constants'
 
 /**
+ * BUG-2 fix (2026-04-16): tijdLabel geïmporteerd uit tijdUtils.js
+ *   i.p.v. lokaal gedefinieerd. Eén bron van waarheid voor tijdformattering.
+ *
  * Opent de Tikkie-app via deep link.
  * Fallback naar tikkie.me als de app niet geïnstalleerd is.
  *
  * SEC-FIX (2026-04-04): window.open krijgt 'noopener,noreferrer' als derde
  * argument om tab-napping te voorkomen.
  *
- * Hoog-5 fix (2026-04-12): de timing-conditie `Date.now() - start < 2000`
- * was na 1500ms altijd waar (elapsed ≈ 1500ms < 2000ms), waardoor de fallback
- * altijd opende — ook als Tikkie wél geïnstalleerd was.
- *
- * Nieuwe aanpak: gebruik het Page Visibility API. Als Tikkie de deep link
- * afhandelt, schakelt de browser naar de Tikkie-app en wordt de pagina
- * verborgen (document.visibilityState === 'hidden'). Als de pagina na 1500ms
- * nog steeds zichtbaar is, is Tikkie niet geïnstalleerd en openen we de fallback.
+ * Hoog-5 fix (2026-04-12): Page Visibility API i.p.v. timing-conditie.
  * Cleanup: de listener wordt altijd verwijderd om geheugenlekken te voorkomen.
  */
 function openTikkie() {
@@ -32,7 +30,6 @@ function openTikkie() {
 
   function handleVisibilityChange() {
     if (document.visibilityState === 'hidden') {
-      // Tikkie is geïnstalleerd en heeft de deep link overgenomen — geen fallback nodig
       cleanup()
     }
   }
@@ -40,7 +37,6 @@ function openTikkie() {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 
   fallbackTimer = setTimeout(() => {
-    // Na 1500ms nog steeds zichtbaar → Tikkie niet geïnstalleerd → open fallback
     cleanup()
     window.open('https://tikkie.me', '_blank', 'noopener,noreferrer')
   }, 1500)
@@ -48,20 +44,14 @@ function openTikkie() {
 
 function PaginaEindafrekening({ potje, deelnemers, transacties }) {
   const navigate    = useNavigate()
-  const valuta      = potje.valuta ?? 'EUR'
+  const valuta      = potje.valuta ?? STANDAARD_VALUTA
   const saldi       = berekenEindafrekening(deelnemers, transacties, potje.gesloten_op)
   const vereffening = berekenVereffening(saldi.deelnemersSaldi)
 
-  // Datum en tijd van sluiting
   const sluitMoment = new Date(potje.gesloten_op)
-  const sluitDatum = sluitMoment.toLocaleDateString('nl-NL', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-  const sluitTijd = sluitMoment.toLocaleTimeString('nl-NL', {
-    hour: '2-digit', minute: '2-digit',
-  })
+  const sluitDatum = sluitMoment.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })
+  const sluitTijd  = sluitMoment.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
 
-  // Naam van de sluiter opzoeken via gesloten_door (UUID → deelnemer.naam)
   const sluiterNaam = potje.gesloten_door
     ? (deelnemers.find(d => d.id === potje.gesloten_door)?.naam ?? null)
     : null
@@ -80,10 +70,6 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
     return transacties
       .filter(t => t.deelnemer_id === deelnemerId)
       .sort((a, b) => new Date(a.aangemaakt_op) - new Date(b.aangemaakt_op))
-  }
-
-  function tijdLabel(iso) {
-    return new Date(iso).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -129,6 +115,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
           const isOpen       = opengeklapt === d.id
           const dtransacties = transactiesVoor(d.id)
           const isLaatste    = index === saldi.deelnemersSaldi.length - 1
+          const detailId     = `detail-inhoud-${d.id}`
 
           return (
             <div
@@ -142,6 +129,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
               <button
                 onClick={() => toggleDetail(d.id)}
                 aria-expanded={isOpen}
+                aria-controls={detailId}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
                   width: '100%', background: 'none', border: 'none',
@@ -175,10 +163,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                       ? `+${formatBedrag(d.verrekening, valuta)}`
                       : `-${formatBedrag(Math.abs(d.verrekening), valuta)}`}
                   </span>
-                  <span style={{
-                    fontSize: 11, color: 'var(--grijs-500)',
-                    display: 'flex', alignItems: 'center', gap: 3,
-                  }}>
+                  <span style={{ fontSize: 11, color: 'var(--grijs-500)', display: 'flex', alignItems: 'center', gap: 3 }}>
                     details
                     <span style={{
                       fontSize: 12, color: 'var(--grijs-400)', lineHeight: 1,
@@ -193,45 +178,47 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                 {d.verrekening >= 0 ? '✅ Ontvangt geld terug' : '⚠️ Moet bijbetalen'}
               </div>
 
-              {isOpen && (
-                <div style={{
-                  background: 'var(--grijs-50)', borderRadius: 8,
-                  padding: '12px 14px', marginTop: 10, fontSize: 13,
-                }}>
-                  {dtransacties.length === 0 ? (
-                    <p style={{ color: 'var(--grijs-500)', margin: 0 }}>Geen transacties.</p>
-                  ) : (
-                    <>
-                      {dtransacties.filter(t => t.type === 'storting').length > 0 && (
-                        <>
-                          <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            In de pot gestort
-                          </p>
-                          {dtransacties.filter(t => t.type === 'storting').map(t => (
-                            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>
-                              <span>{tijdLabel(t.aangemaakt_op)}</span>
-                              <span style={{ fontWeight: 500 }}>{formatBedrag(t.bedrag, valuta)}</span>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                      {dtransacties.filter(t => t.type === 'betaling').length > 0 && (
-                        <>
-                          <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, marginTop: 10, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            Betalingen aan horeca
-                          </p>
-                          {dtransacties.filter(t => t.type === 'betaling').map(t => (
-                            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>
-                              <span>{tijdLabel(t.aangemaakt_op)}</span>
-                              <span style={{ fontWeight: 500, color: 'var(--groen)' }}>{formatBedrag(t.bedrag, valuta)}</span>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+              <div id={detailId}>
+                {isOpen && (
+                  <div style={{
+                    background: 'var(--grijs-50)', borderRadius: 8,
+                    padding: '12px 14px', marginTop: 10, fontSize: 13,
+                  }}>
+                    {dtransacties.length === 0 ? (
+                      <p style={{ color: 'var(--grijs-500)', margin: 0 }}>Geen transacties.</p>
+                    ) : (
+                      <>
+                        {dtransacties.filter(t => t.type === 'storting').length > 0 && (
+                          <>
+                            <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              In de pot gestort
+                            </p>
+                            {dtransacties.filter(t => t.type === 'storting').map(t => (
+                              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>
+                                <span>{tijdLabel(t.aangemaakt_op)}</span>
+                                <span style={{ fontWeight: 500 }}>{formatBedrag(t.bedrag, valuta)}</span>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        {dtransacties.filter(t => t.type === 'betaling').length > 0 && (
+                          <>
+                            <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, marginTop: 10, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Betalingen aan horeca
+                            </p>
+                            {dtransacties.filter(t => t.type === 'betaling').map(t => (
+                              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>
+                                <span>{tijdLabel(t.aangemaakt_op)}</span>
+                                <span style={{ fontWeight: 500, color: 'var(--groen)' }}>{formatBedrag(t.bedrag, valuta)}</span>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
@@ -262,7 +249,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                 className="knop knop-secundair"
                 style={{ fontSize: '0.875rem', minHeight: 40 }}
                 onClick={openTikkie}
-                aria-label={`Stuur een Tikkie van ${formatBedrag(v.bedrag, valuta)} aan ${v.van}`}
+                aria-label={`Stuur Tikkie naar ${v.van} voor ${formatBedrag(v.bedrag, valuta)}`}
               >
                 💸 {v.aan}: stuur Tikkie naar {v.van}
               </button>

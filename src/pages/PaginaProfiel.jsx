@@ -8,6 +8,12 @@ const TEKSTGROOTTES = [
   { waarde: 'extra-groot', label: 'Extra groot' },
 ]
 
+/**
+ * BUG-5 fix (2026-04-16): lege naam na trim leidt niet meer tot stille verwijdering.
+ * Vóór de fix kon een gebruiker een spatie invullen, op Opslaan klikken, en werd
+ * de profielnaam zonder bevestiging verwijderd. Nu toont het formulier een
+ * informatieve melding en behandelt leegmaken via de expliciete "Naam verwijderen"-knop.
+ */
 function PaginaProfiel() {
   const navigate = useNavigate()
   const opgeslagenNaam = localStorage.getItem(PROFIEL_NAAM_KEY) || ''
@@ -17,22 +23,16 @@ function PaginaProfiel() {
   const [tekstgrootte, setTekstgrootte] = useState(opgeslagenTekstgrootte)
   const [opgeslagen, setOpgeslagen] = useState(false)
   const [fout, setFout] = useState('')
-
-  // WCAG 2.4.2: unieke paginatitel
-  useEffect(() => { document.title = 'Profiel — Digipot' }, [])
-
-  // Bijgehouden als state zodat heeftWijziging correct reageert na opslaan/verwijderen.
   const [opgeslagenNaamState, setOpgeslagenNaamState] = useState(opgeslagenNaam)
 
-  // WCAG-7: refs voor roving tabindex — alleen actieve radio in tabvolgorde
+  useEffect(() => { document.title = 'Profiel — Digipot' }, [])
+
   const radioRefs = useRef([])
 
   function handleTekstgrootte(waarde, index) {
     setTekstgrootte(waarde)
     localStorage.setItem(TEKSTGROOTTE_KEY, waarde)
     document.documentElement.setAttribute('data-tekstgrootte', waarde)
-    // Focus de nieuw geselecteerde radio zodat de toetsenbordgebruiker niet
-    // de focus kwijtraakt na wijziging via pijltjestoets.
     radioRefs.current[index]?.focus()
   }
 
@@ -47,12 +47,14 @@ function PaginaProfiel() {
       return
     }
 
-    if (naamTrimmed) {
-      localStorage.setItem(PROFIEL_NAAM_KEY, naamTrimmed)
-    } else {
-      localStorage.removeItem(PROFIEL_NAAM_KEY)
+    // BUG-5 fix: lege naam via het formulier wordt geblokkeerd met een
+    // informatieve melding. Leegmaken verloopt via de expliciete knop.
+    if (!naamTrimmed) {
+      setFout('Vul een naam in of gebruik "Naam verwijderen" om je naam te wissen.')
+      return
     }
 
+    localStorage.setItem(PROFIEL_NAAM_KEY, naamTrimmed)
     setOpgeslagenNaamState(naamTrimmed)
     setNaam(naamTrimmed)
     setOpgeslagen(true)
@@ -64,6 +66,7 @@ function PaginaProfiel() {
     setOpgeslagenNaamState('')
     setNaam('')
     setOpgeslagen(false)
+    setFout('')
   }
 
   const heeftWijziging = naam.trim() !== opgeslagenNaamState
@@ -103,9 +106,11 @@ function PaginaProfiel() {
               maxLength={MAX_NAAM}
               autoComplete="nickname"
               autoFocus
+              aria-describedby={fout ? 'profiel-naam-fout' : undefined}
+              aria-invalid={fout ? 'true' : undefined}
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
-            {fout && <div className="fout-tekst">{fout}</div>}
+            {fout && <div id="profiel-naam-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
 
           <button
@@ -125,12 +130,6 @@ function PaginaProfiel() {
           De instelling wordt direct toegepast en onthouden.
         </p>
 
-        {/*
-          WCAG-7 / 4.1.2: roving tabindex patroon voor radiogroup.
-          - Alleen de geselecteerde optie heeft tabIndex={0}; de rest tabIndex={-1}.
-          - Pijltjestoetsen navigeren tussen opties en verplaatsen focus + selectie.
-          - Dit is het correcte ARIA-patroon voor role="radiogroup" (APG).
-        */}
         <div
           role="radiogroup"
           aria-label="Tekstgrootte kiezen"
@@ -146,7 +145,6 @@ function PaginaProfiel() {
                 aria-checked={actief}
                 tabIndex={actief ? 0 : -1}
                 onKeyDown={e => {
-                  // WCAG 4.1.2: pijltjestoets-navigatie binnen radiogroup
                   const richtingen = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp']
                   if (!richtingen.includes(e.key)) return
                   e.preventDefault()

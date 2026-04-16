@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { valideerPotjeNaam } from '../utils/valideer'
 import { MAX_NAAM, STANDAARD_VALUTA } from '../constants'
 
 // MULTICURRENCY: valutakeuze tijdelijk verborgen.
@@ -23,13 +24,10 @@ function PaginaNieuwPotje() {
     e.preventDefault()
     setFout('')
 
-    const naamTrimmed = naam.trim()
-    if (!naamTrimmed) {
-      setFout('Geef het potje een naam.')
-      return
-    }
-    if (naamTrimmed.length > MAX_NAAM) {
-      setFout(`De naam van het potje mag maximaal ${MAX_NAAM} tekens zijn.`)
+    // Validatie via geëxtraheerde pure functie — unit-testbaar zonder React
+    const validatieFout = valideerPotjeNaam(naam, { maxNaam: MAX_NAAM })
+    if (validatieFout) {
+      setFout(validatieFout)
       return
     }
 
@@ -51,7 +49,7 @@ function PaginaNieuwPotje() {
 
       const { error } = await supabase
         .from('potjes')
-        .insert({ id: nieuweId, naam: naamTrimmed, valuta })
+        .insert({ id: nieuweId, naam: naam.trim(), valuta })
 
       if (error) throw error
       navigate(`/potje/${nieuweId}`)

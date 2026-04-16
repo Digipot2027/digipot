@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { usePotje } from '../hooks/usePotje'
 import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
-import { PROFIEL_NAAM_KEY } from '../constants'
+import { PROFIEL_NAAM_KEY, STANDAARD_VALUTA } from '../constants'
 import ModalDeelnemen from '../components/ModalDeelnemen.jsx'
 import ModalTransactie from '../components/ModalTransactie.jsx'
 import ModalSluiten from '../components/ModalSluiten.jsx'
@@ -85,9 +85,8 @@ function PaginaPotje() {
 
   const saldi = berekenSaldi(deelnemers, transacties)
   const ikBenActief = deelnemer?.actief !== false
-  // Issue 10 fix: valuta uit potje lezen en doorgeven aan ModalTransactie.
-  // Voorheen gebruikte ModalTransactie de default 'EUR' van formatBedrag.
-  const valuta = potje?.valuta ?? 'EUR'
+  // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
+  const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
   useEffect(() => {
     if (!potje) return

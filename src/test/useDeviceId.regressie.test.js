@@ -7,6 +7,10 @@
  * gemanipuleerde waarde in localStorage als device-identiteit wordt
  * geaccepteerd. De validatielogica is extracteerbaar als pure functie.
  *
+ * SEC-1 fix (2026-04-16): UUID_V4_PATROON geïmporteerd uit constants.js
+ * i.p.v. lokaal gedefinieerd. Test valideert nu exact het patroon dat ook
+ * bootstrapDeviceId() en useDeviceId() gebruiken — één bron van waarheid.
+ *
  * Gedekte scenario's:
  *   UID-01  geldige UUID v4 wordt geaccepteerd
  *   UID-02  lege string → nieuw UUID genereren
@@ -20,14 +24,13 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { UUID_V4_PATROON } from '../constants'
 
-// ── Geëxtraheerde validatielogica uit useDeviceId ─────────────────────────────
-
-const UUID_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+// ── Hulpfuncties die de hook-logica spiegelen ─────────────────────────────────
 
 function isGeldigeUuid(waarde) {
   if (!waarde) return false
-  return UUID_PATROON.test(waarde)
+  return UUID_V4_PATROON.test(waarde)
 }
 
 // Simuleert de volledige hook-logica zonder localStorage

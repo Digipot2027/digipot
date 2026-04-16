@@ -1,9 +1,19 @@
 /**
  * valideer.js — unit tests
  *
- * Dekt alle validatielogica die eerder inline stond in ModalDeelnemen
- * en ModalTransactie. Nu getest als pure functies, zonder React, DOM
- * of Supabase.
+ * Dekt alle validatielogica die eerder inline stond in ModalDeelnemen,
+ * ModalTransactie en PaginaNieuwPotje. Nu getest als pure functies,
+ * zonder React, DOM of Supabase.
+ *
+ * valideerPotjeNaam (geëxtraheerd uit PaginaNieuwPotje, 2026-04-15):
+ *   VP-01  lege naam → fout
+ *   VP-02  naam met alleen spaties → fout (trim)
+ *   VP-03  naam exact 30 tekens → geldig (grenswaarde)
+ *   VP-04  naam 31 tekens → fout met het juiste maximum
+ *   VP-05  naam 1 teken → geldig (minimum)
+ *   VP-06  naam met voorloop-/naspaties → trim, geldig
+ *   VP-07  foutmelding bevat het geconfigureerde maximum (dynamisch)
+ *   VP-08  volgorde: leeg gaat vóór te lang
  *
  * valideerDeelnemerNaam:
  *   VD-01  lege naam → fout
@@ -32,7 +42,7 @@
  *   VT-05  bedrag = 0.01 → geldig (minimum)
  *   VT-06  bedrag = 999.99 → geldig (maximum)
  *   VT-07  bedrag = 1000 → fout (boven maximum)
- *   VT-08  bedrag = 999.999 → fout (boven maximum)
+ *   VT-08  bedrag = 999,99 met komma → geldig (Nederlandse invoer)
  *   VT-09  storting boven saldo → geldig (geen saldocheck bij storting)
  *   VT-10  betaling exact gelijk aan saldo → geldig (grenswaarde)
  *   VT-11  betaling één cent boven saldo → fout
@@ -44,15 +54,13 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { valideerDeelnemerNaam, valideerTransactieBedrag } from '../utils/valideer'
+import { valideerPotjeNaam, valideerDeelnemerNaam, valideerTransactieBedrag } from '../utils/valideer'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const maakDeelnemers = (namen) => namen.map((naam, i) => ({ id: String(i), naam }))
 
-// Wrapper die parseBedrag + valideerTransactieBedrag combineert,
-// identiek aan het gebruik in ModalTransactie
 function valideerBedrag(invoer, { isStorting, potSaldo, max = 999.99 } = {}) {
   const bedragNum = parseBedrag(invoer)
   return valideerTransactieBedrag(invoer, bedragNum, {
@@ -62,6 +70,47 @@ function valideerBedrag(invoer, { isStorting, potSaldo, max = 999.99 } = {}) {
     max,
   })
 }
+
+// ─── valideerPotjeNaam ────────────────────────────────────────────────────────
+
+describe('valideerPotjeNaam — VP-01 t/m VP-06: naam-inhoud', () => {
+  it('VP-01: lege naam geeft foutmelding', () => {
+    expect(valideerPotjeNaam('')).toBe('Geef het potje een naam.')
+  })
+
+  it('VP-02: naam met alleen spaties geeft foutmelding (trim)', () => {
+    expect(valideerPotjeNaam('   ')).toBe('Geef het potje een naam.')
+  })
+
+  it('VP-03: naam van exact 30 tekens is geldig (grenswaarde)', () => {
+    expect(valideerPotjeNaam('a'.repeat(30))).toBeNull()
+  })
+
+  it('VP-04: naam van 31 tekens geeft foutmelding', () => {
+    expect(valideerPotjeNaam('a'.repeat(31)))
+      .toBe('De naam van het potje mag maximaal 30 tekens zijn.')
+  })
+
+  it('VP-05: naam van 1 teken is geldig (minimum)', () => {
+    expect(valideerPotjeNaam('a')).toBeNull()
+  })
+
+  it('VP-06: naam met voorloop- en naspaties wordt getrimd en is geldig', () => {
+    expect(valideerPotjeNaam('  vrijmibo  ')).toBeNull()
+  })
+})
+
+describe('valideerPotjeNaam — VP-07 t/m VP-08: dynamisch maximum en volgorde', () => {
+  it('VP-07: foutmelding bevat het geconfigureerde maximum', () => {
+    const fout = valideerPotjeNaam('a'.repeat(26), { maxNaam: 25 })
+    expect(fout).toBe('De naam van het potje mag maximaal 25 tekens zijn.')
+  })
+
+  it('VP-08: lege naam gaat vóór te-lang-check', () => {
+    // Lege naam retourneert altijd de lege-naam-fout
+    expect(valideerPotjeNaam('')).toBe('Geef het potje een naam.')
+  })
+})
 
 // ─── valideerDeelnemerNaam ────────────────────────────────────────────────────
 
@@ -149,23 +198,20 @@ describe('valideerDeelnemerNaam — VD-13 t/m VD-14: overige gevallen', () => {
 })
 
 describe('valideerDeelnemerNaam — VD-15 t/m VD-17: volgorde van checks', () => {
-  it('VD-15: lege naam gaat vóór te-lang-check (naam is leeg én te lang is onmogelijk, maar volgorde telt)', () => {
-    // Lege naam retourneert altijd de lege-naam-fout, niet de te-lang-fout
+  it('VD-15: lege naam gaat vóór te-lang-check', () => {
     expect(valideerDeelnemerNaam('', [])).toBe('Vul je naam in om deel te nemen.')
   })
 
   it('VD-16: te-lange naam gaat vóór potje-vol-check', () => {
-    // Naam is 31 tekens én potje is vol — eerste fout wint
     const deelnemers = maakDeelnemers(Array(20).fill('').map((_, i) => `D${i}`))
     const fout = valideerDeelnemerNaam('a'.repeat(31), deelnemers)
     expect(fout).toBe('Je naam mag maximaal 30 tekens zijn.')
   })
 
   it('VD-17: potje-vol-check gaat vóór duplicate-check', () => {
-    // Potje is vol én naam is duplicate — potje-vol wint
     const namen = Array(20).fill('').map((_, i) => `D${i}`)
     const deelnemers = maakDeelnemers(namen)
-    const fout = valideerDeelnemerNaam('D0', deelnemers) // D0 is duplicate
+    const fout = valideerDeelnemerNaam('D0', deelnemers)
     expect(fout).toBe('Dit potje heeft het maximum van 20 deelnemers bereikt.')
   })
 })
@@ -238,8 +284,6 @@ describe('valideerTransactieBedrag — VT-09 t/m VT-14: saldocheck bij betaling'
 
   it('VT-14: foutmelding saldo-check bevat het geformatteerde saldo', () => {
     const fout = valideerBedrag('100', { isStorting: false, potSaldo: 25.5 })
-    // formatBedrag('nl-NL') geeft '€\u00a025,50' (non-breaking space na €-teken).
-    // Test op de numerieke waarde i.p.v. het exacte symbool om locale-variaties te vermijden.
     expect(fout).toContain('25,50')
     expect(fout).toContain('niet genoeg saldo')
   })
@@ -247,13 +291,11 @@ describe('valideerTransactieBedrag — VT-09 t/m VT-14: saldocheck bij betaling'
 
 describe('valideerTransactieBedrag — VT-15 t/m VT-16: volgorde van checks', () => {
   it('VT-15: leeg bedrag gaat vóór boven-max-check', () => {
-    // Leeg bedrag EN boven max zijn tegelijk onmogelijk, maar de lege-check staat eerst
     const fout = valideerBedrag('', { isStorting: true, potSaldo: 0 })
     expect(fout).toBe('Voer een bedrag in van minimaal €0,01.')
   })
 
   it('VT-16: boven-max gaat vóór saldo-check bij betaling', () => {
-    // Bedrag boven MAX én boven saldo — MAX-fout wint
     const fout = valideerBedrag('1000', { isStorting: false, potSaldo: 500 })
     expect(fout).toBe('Het maximale bedrag per transactie is €999,99.')
   })

@@ -69,7 +69,7 @@ export function berekenSaldi(deelnemers, transacties) {
       ...d,
       gestort: g,
       betaald: b,
-      aandeel: g, // tijdens lopend potje: aandeel = ingelegd (voor weergave)
+      aandeel: g,
       verrekening,
     }
   })
@@ -83,6 +83,22 @@ export function berekenSaldi(deelnemers, transacties) {
 }
 
 /**
+ * Bepaalt of een deelnemer heeft gestort op basis van saldi.
+ *
+ * TECH-3 fix (2026-04-16): de check `(mijnSaldi?.gestort ?? 0) > 0` was
+ * gedupliceerd in PaginaOverzicht en usePotjeActies. Eén gedeelde functie
+ * voorkomt dat een drempelwijziging op meerdere plekken moet worden doorgevoerd.
+ *
+ * @param {Array} deelnemersSaldi - Resultaat van berekenSaldi().deelnemersSaldi
+ * @param {string} deelnemerId - ID van de te checken deelnemer
+ * @returns {boolean}
+ */
+export function heeftGestort(deelnemersSaldi, deelnemerId) {
+  const saldi = deelnemersSaldi.find(s => s.id === deelnemerId)
+  return (saldi?.gestort ?? 0) > 0
+}
+
+/**
  * Bepaalt of een deelnemer actief was op een gegeven tijdstip.
  *
  * Regels bij gelijke tijdstippen:
@@ -93,35 +109,11 @@ function wasActiefOp(deelnemer, tijdstipMs) {
   const aangemeldMs = new Date(deelnemer.aangemaakt_op).getTime()
   if (aangemeldMs > tijdstipMs) return false
   if (!deelnemer.afgemeld_op) return true
-  // Afmelden op zelfde moment → niet actief
   return new Date(deelnemer.afgemeld_op).getTime() > tijdstipMs
 }
 
 /**
  * Berekent de eindafrekening bij het sluiten van een potje.
- *
- * Rekenmodel:
- *
- *   Actief/afgemeld wordt bepaald op het moment van sluiting (sluitTijdstip):
- *   - Aangemeld op of vóór sluiting, en niet afgemeld (of afgemeld ná sluiting) → actief
- *   - Aangemeld op zelfde moment als sluiting → actief (telt mee)
- *   - Afgemeld op zelfde moment als sluiting → afgemeld (telt niet mee)
- *
- *   Afgemelde deelnemers:
- *     Netto bijdrage = volledige inleg (vast)
- *     Verrekening    = betaald − ingelegd
- *
- *   Actieve deelnemers:
- *     Netto bijdrage = ingelegd × (resterend voor actieven ÷ totaal ingelegd actieven)
- *     Verrekening    = betaald − netto bijdrage
- *
- *     Resterend voor actieven = totaal betaald aan horeca − bijdrage afgemelde deelnemers
- *
- *   Cap: verrekening nooit lager dan −ingelegd
- *     (je betaalt nooit meer bij dan je hebt ingelegd)
- *
- *   Tekorten boven de cap verdwijnen — worden NIET doorgeschoven.
- *   Het resterende virtuele saldo verdwijnt bij sluiting.
  *
  * @param {Array} deelnemers
  * @param {Array} transacties
@@ -151,17 +143,14 @@ export function berekenEindafrekening(deelnemers, transacties, sluitTijdstip = n
 
   const { gestort, betaald } = verzamelPerDeelnemer(deelnemers, transacties)
 
-  // Actief/afgemeld bepaald op het moment van sluiting
   const actieveIds = new Set(
     deelnemers.filter(d => wasActiefOp(d, sluitMs)).map(d => d.id)
   )
 
-  // Stap 1: bijdrage afgemelde deelnemers = volledige inleg (vast)
   const totaalBijdrageAfgemelden = deelnemers
     .filter(d => !actieveIds.has(d.id))
     .reduce((sum, d) => sum + rond(gestort[d.id]), 0)
 
-  // Stap 2: factor voor actieve deelnemers
   const totaalIngelegdActieven = deelnemers
     .filter(d => actieveIds.has(d.id))
     .reduce((sum, d) => sum + rond(gestort[d.id]), 0)
@@ -172,40 +161,20 @@ export function berekenEindafrekening(deelnemers, transacties, sluitTijdstip = n
     ? resterendVoorActieven / totaalIngelegdActieven
     : 0
 
-  // Stap 3: verrekening per deelnemer
   const deelnemersSaldi = deelnemers.map(d => {
     const g = rond(gestort[d.id])
     const b = rond(betaald[d.id])
     const isActief = actieveIds.has(d.id)
-
     const nettoBijdrage = isActief ? rond(g * factor) : g
     const verrekening = rond(Math.max(b - nettoBijdrage, -g))
-
-    return {
-      ...d,
-      gestort: g,
-      betaald: b,
-      aandeel: nettoBijdrage,
-      verrekening,
-    }
+    return { ...d, gestort: g, betaald: b, aandeel: nettoBijdrage, verrekening }
   })
 
-  return {
-    potTotaal,
-    potUitgaven,
-    potSaldo,
-    deelnemersSaldi,
-  }
+  return { potTotaal, potUitgaven, potSaldo, deelnemersSaldi }
 }
 
 /**
  * Berekent de minimale vereffening tussen crediteuren en debiteuren.
- *
- * Algoritme: greedy — grootste debiteur koppelen aan grootste crediteur.
- * Resultaat: maximaal n−1 transacties voor n deelnemers.
- *
- * Verplaatst vanuit PaginaEindafrekening zodat de functie unit-testbaar is
- * via een directe import (zie berekenVereffening.test.js).
  *
  * @param {Array<{naam: string, verrekening: number}>} deelnemersSaldi
  * @returns {Array<{van: string, aan: string, bedrag: number}>}

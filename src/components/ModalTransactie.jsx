@@ -11,6 +11,11 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * zonder valuta-parameter. formatBedrag gebruikt dan de default 'EUR', waardoor
  * de weergave incorrect is zodra multicurrency wordt geactiveerd.
  * Fix: valuta-prop toegevoegd en doorgegeven aan alle formatBedrag-aanroepen.
+ *
+ * WCAG-3 fix (2026-04-16): aria-describedby + aria-invalid toegevoegd aan
+ * het bedrag-invoerveld. Screenreaders kondigen de foutmelding nu automatisch
+ * aan zodra het veld focus heeft. role="alert" op de fout-div zorgt voor
+ * directe aankondiging bij verschijnen.
  */
 function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
@@ -52,7 +57,6 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
     } catch (error) {
       if (error.message?.includes('SALDO_TE_LAAG')) {
         const saldo = error.message.split(':')[1]
-        // Issue 10 fix: valuta meegeven zodat het juiste valutasymbool getoond wordt
         setFout(`Het potje heeft niet genoeg saldo. Maximaal beschikbaar: ${formatBedrag(saldo, valuta)}.`)
       } else if (error.message?.includes('NIET_ACTIEF')) {
         setFout('Je hebt je afgemeld en kunt geen transacties meer invoeren.')
@@ -87,7 +91,6 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
 
         {!isStorting && ikBenActief && (
           <p style={{ fontSize: 14, color: 'var(--grijs-600)', marginBottom: 16 }}>
-            {/* Issue 10 fix: valuta meegeven */}
             Beschikbaar saldo: <strong>{formatBedrag(potSaldo, valuta)}</strong>
           </p>
         )}
@@ -105,12 +108,14 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
               onChange={e => { setBedrag(e.target.value); setFout('') }}
               disabled={!ikBenActief}
               autoFocus
+              aria-describedby={fout ? 'bedrag-invoer-fout' : undefined}
+              aria-invalid={fout ? 'true' : undefined}
             />
-            {/* Issue 10 fix: valuta meegeven aan live preview */}
             {bedragGeldig && !fout && (
               <div className="teller" style={{ color: 'var(--groen)' }}>= {formatBedrag(bedragNum, valuta)}</div>
             )}
-            {fout && <div className="fout-tekst">{fout}</div>}
+            {/* WCAG 1.3.1 / 4.1.3: id koppelt foutmelding aan invoerveld via aria-describedby */}
+            {fout && <div id="bedrag-invoer-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>

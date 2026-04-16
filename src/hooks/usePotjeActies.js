@@ -2,9 +2,10 @@ import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
-import { berekenSaldi } from '../utils/berekenSaldi'
+import { berekenSaldi, heeftGestort } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { useDeviceId } from './useDeviceId'
+import { STANDAARD_VALUTA } from '../constants'
 
 /**
  * usePotjeActies — alle schrijf-acties voor één potje.
@@ -12,40 +13,28 @@ import { useDeviceId } from './useDeviceId'
  * Pure async functies, geen JSX, geen eigen useState — direct unit-testbaar.
  * State-updates lopen via de setters die usePotje teruggaf.
  *
- * Acties:
- *   handleDeelnemen  — schrijft nieuwe deelnemer, navigeert naar storten
- *   handleTransactie — registreert storting of betaling, toont toast + undo
- *   handleUndo       — verwijdert eigen transactie na veiligheidscheck
- *   handleSluiten    — sluit het potje (status → 'gesloten')
- *   handleAfmelden   — meldt huidige deelnemer af (actief → false)
- *
  * Fixes (2026-04-12):
  *   - handleAfmelden: .single() vervangen door .maybeSingle() (kritiek-2).
  *   - handleSluiten: null-guard op deelnemer toegevoegd (kritiek-3).
+ *   - handleDeelnemen: deelnemer-ID client-side genereren (audit bevinding 1).
+ *   - handleTransactie: null-guard op deelnemer toegevoegd (audit bevinding 2).
  *
- * Fixes (2026-04-12 / audit bevinding 1 & 2):
- *   - handleDeelnemen: deelnemer-ID client-side genereren zodat .select().single()
- *     na de INSERT niet meer nodig is. Zelfde patroon als hoog-4 fix in
- *     PaginaNieuwPotje. Bij RLS-blokkade van de SELECT gooide .single() PGRST116
- *     met een misleidende "potje bestaat niet"-melding.
- *   - handleTransactie: null-guard op deelnemer toegevoegd vóór deelnemer.id.
- *     De NIET_ACTIEF-check (`deelnemer?.actief === false`) gaat ervan uit dat
- *     deelnemer bestaat — maar bij een race condition (afmelden + betalen tegelijk)
- *     kan deelnemer null zijn. Zonder guard crasht deelnemer.id met TypeError.
+ * Fix (2026-04-16 / SEC-3):
+ *   - handleUndo: saldocheck afgerond via rond() voor vergelijking met transactie.bedrag.
  *
- * @param {Object} params
- * @param {string}   params.potjeId       - UUID van het potje
- * @param {object}   params.potje         - potje-record (incl. valuta)
- * @param {Array}    params.deelnemers    - huidig deelnemers-array
- * @param {Array}    params.transacties   - huidig transacties-array
- * @param {object}   params.deelnemer     - huidig device's deelnemer, of null
- * @param {Function} params.setDeelnemer  - state-setter uit usePotje
- * @param {Function} params.setDeelnemers - state-setter uit usePotje
- * @param {Function} params.setTransacties- state-setter uit usePotje
- * @param {Function} params.toonToast     - toast-callback (bericht, type, actie?)
- * @param {Function} params.setModaal     - modaal-state-setter uit PaginaPotje
- * @param {Function} params.setAfmeldenLaden - laden-state-setter uit PaginaPotje
+ * Fix (2026-04-16 / SEC-4):
+ *   - valuta fallback gebruikt nu STANDAARD_VALUTA uit constants.js.
+ *
+ * Fix (2026-04-16 / TECH-3):
+ *   - handleAfmelden: heeftGestort() uit berekenSaldi.js i.p.v. inline check.
+ *     Eén bron van waarheid voor de afmeld-drempel.
  */
+
+function rond(waarde) {
+  const afgerond = Math.round(waarde * 100) / 100
+  return afgerond === 0 ? 0 : afgerond
+}
+
 export function usePotjeActies({
   potjeId,
   potje,
@@ -61,22 +50,9 @@ export function usePotjeActies({
 }) {
   const navigate = useNavigate()
   const deviceId = useDeviceId()
-  const valuta = potje?.valuta ?? 'EUR'
+  const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
   // ── handleDeelnemen ──────────────────────────────────────────────────────────
-  //
-  // Audit bevinding 1 (2026-04-12): deelnemer-ID client-side genereren.
-  //
-  // Oud gedrag: .insert(...).select().single() — als de RLS-policy de SELECT
-  // na de INSERT blokkeerde, gooide .single() PGRST116. Die fout werd vertaald
-  // als "Dit potje bestaat niet of is verwijderd" — terwijl de deelnemer net
-  // succesvol was aangemaakt. Zelfde patroon als hoog-4 (PaginaNieuwPotje).
-  //
-  // Nieuw gedrag: deelnemer-ID client-side genereren via crypto.randomUUID().
-  // De ID wordt meegegeven in de INSERT en direct gebruikt voor setDeelnemer
-  // en navigatie — geen .select().single() meer nodig.
-  //
-  // Voordeel: robuuster bij RLS-variaties + consistent met hoog-4.
 
   const handleDeelnemen = useCallback(async (naam) => {
     const nieuweDeelnemerId = crypto.randomUUID()
@@ -87,9 +63,6 @@ export function usePotjeActies({
 
     if (error) throw error
 
-    // Construeer het deelnemer-object lokaal — zelfde structuur als wat de DB
-    // zou teruggeven. aangemaakt_op wordt hier met now() ingevuld; de DB-waarde
-    // kan iets afwijken maar is niet kritisch voor weergave.
     setDeelnemer({
       id: nieuweDeelnemerId,
       potje_id: potjeId,
@@ -104,16 +77,8 @@ export function usePotjeActies({
   }, [potjeId, deviceId, setDeelnemer, navigate])
 
   // ── handleTransactie ─────────────────────────────────────────────────────────
-  //
-  // Audit bevinding 2 (2026-04-12): null-guard op deelnemer vóór deelnemer.id.
-  //
-  // De NIET_ACTIEF-check (`deelnemer?.actief === false`) laat deelnemer null
-  // doorvallen — null is niet false, dus de check passeert stil. Vervolgens
-  // crasht `deelnemer.id` met TypeError.
-  // Fix: expliciete null-guard vóór alle deelnemer-toegangen.
 
   const handleTransactie = useCallback(async (type, bedrag) => {
-    // Null-guard — kan optreden bij race condition (afmelden + betalen tegelijk)
     if (!deelnemer?.id) throw new Error('DEELNEMER_ONTBREEKT')
     if (deelnemer.actief === false) throw new Error('NIET_ACTIEF')
 
@@ -129,9 +94,6 @@ export function usePotjeActies({
       .single()
     if (error) throw error
 
-    // Snapshot de huidige deelnemer op het moment van de transactie.
-    // handleUndo ontvangt het volledige transactie-object + de deelnemer-snapshot
-    // zodat de eigenaarschaps-check nooit afhankelijk is van een verouderde closure.
     const deelnemerSnapshot = deelnemer
 
     setModaal(null)
@@ -157,7 +119,8 @@ export function usePotjeActies({
 
     if (transactie.type === 'storting') {
       const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
-      if (huidigSaldo < Number(transactie.bedrag)) {
+      // SEC-3 fix: rond() beide zijden — Supabase NUMERIC kan residuen geven
+      if (rond(huidigSaldo) < rond(Number(transactie.bedrag))) {
         toonToast(
           'Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag.',
           'fout'
@@ -205,8 +168,8 @@ export function usePotjeActies({
     if (!deelnemer) return
 
     const saldi = berekenSaldi(deelnemers, transacties)
-    const mijnSaldi = saldi.deelnemersSaldi.find(s => s.id === deelnemer.id)
-    if ((mijnSaldi?.gestort ?? 0) === 0) {
+    // TECH-3 fix: heeftGestort() i.p.v. inline check — eén bron van waarheid
+    if (!heeftGestort(saldi.deelnemersSaldi, deelnemer.id)) {
       toonToast('Je kunt je pas afmelden als je hebt gestort.', 'fout')
       return
     }

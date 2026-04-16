@@ -1,24 +1,33 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { berekenSaldi } from '../utils/berekenSaldi'
+import { berekenSaldi, heeftGestort } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
+import { STANDAARD_VALUTA } from '../constants'
 import DeelnemerRij from '../components/DeelnemerRij.jsx'
 import DeelnemerDetailSheet from '../components/DeelnemerDetailSheet.jsx'
 import DeelKnop from '../components/DeelKnop.jsx'
 import ModalAfmelden from '../components/ModalAfmelden.jsx'
 
+/**
+ * TECH-3 fix (2026-04-16): ikBenGestort gebruikt nu heeftGestort() uit
+ * berekenSaldi.js i.p.v. een inline check. Eén bron van waarheid voor
+ * de afmeld-drempel.
+ *
+ * UX-1 fix (2026-04-16): helptekst "Iedereen kan het potje afsluiten"
+ * toegevoegd onder de Pot afsluiten-knop.
+ */
 function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, onStorten, onBetalen, onSluiten, onAfmelden, afmeldenLaden }) {
   const navigate = useNavigate()
   const [gekozenDeelnemer, setGekozenDeelnemer] = useState(null)
   const [afmeldenModaal, setAfmeldenModaal] = useState(false)
 
-  const valuta = potje?.valuta ?? 'EUR'
+  const valuta = potje?.valuta ?? STANDAARD_VALUTA
   const saldi = berekenSaldi(deelnemers, transacties)
   const actieveDeelnemers = deelnemers.filter(d => d.actief !== false)
   const ikBenActief = ikzelf?.actief !== false
   const heeftTransacties = transacties.length > 0
-  const mijnSaldi = saldi.deelnemersSaldi.find(s => s.id === ikzelf?.id)
-  const ikBenGestort = (mijnSaldi?.gestort ?? 0) > 0
+  // TECH-3 fix: heeftGestort() uit berekenSaldi.js i.p.v. inline check
+  const ikBenGestort = heeftGestort(saldi.deelnemersSaldi, ikzelf?.id)
 
   return (
     <>
@@ -48,14 +57,12 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </div>
           </div>
 
-          {/* Afgemeld badge */}
           {!ikBenActief && (
             <div style={{ marginTop: 12 }}>
               <span className="badge badge-afgemeld">Afgemeld</span>
             </div>
           )}
 
-          {/* Nodig vrienden uit */}
           <DeelKnop
             potjeNaam={potje?.naam}
             variant="secundair"
@@ -63,12 +70,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           />
         </div>
 
-        {/* Deelnemers — klikbaar
-             WCAG 1.3.1: echte <table> met <th scope="col"> zodat screenreaders
-             kolomhoofden koppelen aan celwaarden.
-             WCAG 1.4.3: kolomhoofden gebruiken grijs-600 (#4b5563, contrast 7.4:1 op wit).
-             Mobiel: tabel gebruikt table-layout:fixed + overflow-x:auto zodat
-             lange namen de bedragkolommen niet wegdrukken op smalle schermen (320px). */}
+        {/* Deelnemers */}
         <div className="kaart">
           <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
             Deelnemers ({actieveDeelnemers.length}/{deelnemers.length})
@@ -110,30 +112,18 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           </div>
         </div>
 
-        {/* Actieknoppen — hiërarchisch: primaire acties boven, beheer gescheiden */}
+        {/* Actieknoppen */}
         <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Rij 1: In pot storten + Betaling registreren — gelijke breedte, primaire laag */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <button
-              className="knop knop-primair"
-              style={{ minWidth: 0 }}
-              onClick={onStorten}
-              disabled={!ikBenActief}
-            >
+            <button className="knop knop-primair" style={{ minWidth: 0 }} onClick={onStorten} disabled={!ikBenActief}>
               💰 In pot storten
             </button>
-            <button
-              className="knop knop-secundair"
-              style={{ minWidth: 0 }}
-              onClick={onBetalen}
-              disabled={!ikBenActief || saldi.potSaldo === 0}
-            >
+            <button className="knop knop-secundair" style={{ minWidth: 0 }} onClick={onBetalen} disabled={!ikBenActief || saldi.potSaldo === 0}>
               🍺 Betaling registreren
             </button>
           </div>
 
-          {/* Saldo hint */}
           {ikBenActief && saldi.potSaldo === 0 && (
             <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'center', marginTop: -4 }}>
               Geen saldo beschikbaar. Voeg eerst een storting toe.
@@ -146,13 +136,11 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </p>
           )}
 
-          {/* Scheiding beheer — visueel onderscheid van dagelijkse acties */}
           <div style={{ borderTop: '1px solid var(--grijs-200)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <p style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--grijs-400)', marginBottom: 0 }}>
               Beheer
             </p>
 
-            {/* Rij 2: Jezelf afmelden + Pot afsluiten — ghost-stijl, kleinere visuele impact */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <button
                 className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
@@ -172,10 +160,15 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               </button>
             </div>
 
-            {/* Helpteksten onder beheer */}
             {ikBenActief && !ikBenGestort && (
               <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
                 Eerst storten om je te kunnen afmelden.
+              </p>
+            )}
+            {/* UX-1 fix (2026-04-16): uitleg dat iedereen het potje kan afsluiten */}
+            {heeftTransacties && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'right', marginTop: -4 }}>
+                Iedereen kan het potje afsluiten.
               </p>
             )}
             {!heeftTransacties && (
@@ -195,6 +188,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           deelnemer={gekozenDeelnemer}
           transacties={transacties}
           onSluiten={() => setGekozenDeelnemer(null)}
+          valuta={valuta}
         />
       )}
 

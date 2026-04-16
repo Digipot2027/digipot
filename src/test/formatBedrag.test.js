@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { formatBedrag, parseBedrag, STANDAARD_VALUTA, STANDAARD_LOCALE } from '../utils/formatBedrag'
+import { formatBedrag, parseBedrag, STANDAARD_LOCALE } from '../utils/formatBedrag'
+import { STANDAARD_VALUTA } from '../constants'
+
+// TECH-1 fix (2026-04-16): STANDAARD_VALUTA geïmporteerd uit constants.js
+// i.p.v. formatBedrag.js. formatBedrag.js exporteert STANDAARD_VALUTA niet meer.
 
 // Intl.NumberFormat voor EUR/nl-NL produceert een non-breaking space (\u00a0)
 // tussen het euroteken en het getal: "€\u00a010,00"
 // De tests normaliseren daarom de output zodat ze leesbaar blijven
 // en niet breken als de Node/V8 ICU-data minimaal verschilt per omgeving.
-//
-// Hulpfunctie: verwijdert non-breaking spaces voor vergelijking
 function normaliseer(str) {
   return str.replace(/\u00a0/g, ' ').trim()
 }
