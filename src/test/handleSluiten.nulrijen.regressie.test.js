@@ -153,7 +153,7 @@ describe('handleSluiten — HS-04: DB-error wordt doorgegoooid', () => {
     const setModaal = vi.fn()
     try {
       verwerkSluitenResultaat({ error: new Error('timeout') }, { setModaal })
-    } catch (_) { /* verwacht */ }
+    } catch { /* verwacht */ }
     expect(setModaal).not.toHaveBeenCalled()
   })
 })

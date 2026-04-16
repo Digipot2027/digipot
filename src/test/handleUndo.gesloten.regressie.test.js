@@ -135,7 +135,6 @@ describe('handleUndo — UG-02: open potje, onveranderd gedrag', () => {
 
 describe('handleUndo — UG-03: andermans transactie op gesloten potje', () => {
   it('andermans transactie → eigenaarschapsfout, niet potje-status-fout', () => {
-    const anderDeelnemer = { id: 'd2', naam: 'Bob' }
     const transacties = [storting('tx-1', 25)]
     const andermansStorting = { ...storting('tx-1', 25), deelnemer_id: 'd2' }
     const { toegestaan, reden } = bepaalUndoToegestaan({

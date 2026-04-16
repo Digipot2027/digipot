@@ -32,7 +32,28 @@ if [ -z "$PUSH_NAAR_MAIN" ]; then
 fi
 
 echo ""
-echo "🔍 E2e-testcontrole vóór push naar main..."
+echo "🔍 Kwaliteitscontrole vóór push naar main..."
+echo ""
+
+# ── 0. Lint + unit tests ─────────────────────────────────────────────────────
+
+echo "⏳ Lint..."
+if ! npm run lint --silent; then
+  echo ""
+  echo "❌ Lint mislukt. Los de fouten op vóór je pusht."
+  echo ""
+  exit 1
+fi
+
+echo "⏳ Unit tests..."
+if ! npm run test:run --silent; then
+  echo ""
+  echo "❌ Unit tests mislukt. Los de fouten op vóór je pusht."
+  echo ""
+  exit 1
+fi
+
+echo "✅ Lint en unit tests geslaagd"
 echo ""
 
 # ── 1. Bestand aanwezig? ──────────────────────────────────────────────────────

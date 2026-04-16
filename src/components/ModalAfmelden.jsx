@@ -37,7 +37,7 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
     setLaden(true)
     try {
       await onBevestig()
-    } catch (e) {
+    } catch {
       // Onverwachte fout in de aanroepketen — toon in de modal zodat de
       // gebruiker feedback krijgt en de modal niet stil blijft hangen.
       setFout('Er is iets misgegaan. Probeer het opnieuw.')
