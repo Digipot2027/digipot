@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PROFIEL_NAAM_KEY, TEKSTGROOTTE_KEY, MAX_NAAM } from '../constants'
+import { getItem, setItem, removeItem } from '../utils/storage'
 
 const TEKSTGROOTTES = [
   { waarde: 'normaal', label: 'Normaal' },
@@ -16,8 +17,8 @@ const TEKSTGROOTTES = [
  */
 function PaginaProfiel() {
   const navigate = useNavigate()
-  const opgeslagenNaam = localStorage.getItem(PROFIEL_NAAM_KEY) || ''
-  const opgeslagenTekstgrootte = localStorage.getItem(TEKSTGROOTTE_KEY) || 'normaal'
+  const opgeslagenNaam = getItem(PROFIEL_NAAM_KEY) || ''
+  const opgeslagenTekstgrootte = getItem(TEKSTGROOTTE_KEY) || 'normaal'
 
   const [naam, setNaam] = useState(opgeslagenNaam)
   const [tekstgrootte, setTekstgrootte] = useState(opgeslagenTekstgrootte)
@@ -31,7 +32,7 @@ function PaginaProfiel() {
 
   function handleTekstgrootte(waarde, index) {
     setTekstgrootte(waarde)
-    localStorage.setItem(TEKSTGROOTTE_KEY, waarde)
+    setItem(TEKSTGROOTTE_KEY, waarde)
     document.documentElement.setAttribute('data-tekstgrootte', waarde)
     radioRefs.current[index]?.focus()
   }
@@ -54,7 +55,7 @@ function PaginaProfiel() {
       return
     }
 
-    localStorage.setItem(PROFIEL_NAAM_KEY, naamTrimmed)
+    setItem(PROFIEL_NAAM_KEY, naamTrimmed)
     setOpgeslagenNaamState(naamTrimmed)
     setNaam(naamTrimmed)
     setOpgeslagen(true)
@@ -62,7 +63,7 @@ function PaginaProfiel() {
   }
 
   function handleVerwijderen() {
-    localStorage.removeItem(PROFIEL_NAAM_KEY)
+    removeItem(PROFIEL_NAAM_KEY)
     setOpgeslagenNaamState('')
     setNaam('')
     setOpgeslagen(false)

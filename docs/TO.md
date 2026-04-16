@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 3.3
+**Versie:** 3.5
 **Datum:** 2026-04-16
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -89,7 +89,12 @@ digipot/
 │   ├── pw5-keyboard-focus.spec.js
 │   ├── pw6-responsive.spec.js
 │   ├── pw7-profiel-instellingen.spec.js
-│   └── pw8-potjeslijsten-en-routing.spec.js
+│   ├── pw8-potjeslijsten-en-routing.spec.js
+│   ├── pw9-terugkerende-deelnemer.spec.js
+│   ├── pw10-naambotsing.spec.js
+│   ├── pw11-realtime-sluiting.spec.js
+│   ├── pw12-twee-devices.spec.js
+│   └── pw13-undo-en-afmelden.spec.js
 ├── scripts/
 │   └── controleer-patronen.js
 ├── smoke/
@@ -100,9 +105,40 @@ digipot/
 │   └── TO.md
 ├── src/
 │   ├── components/
+│   │   ├── DeelKnop.jsx
+│   │   ├── DeelnemerDetailSheet.jsx
+│   │   ├── DeelnemerRij.jsx
+│   │   ├── ErrorBoundary.jsx
+│   │   ├── ModalAfmelden.jsx
+│   │   ├── ModalDeelnemen.jsx
+│   │   ├── ModalSluiten.jsx
+│   │   └── ModalTransactie.jsx
 │   ├── hooks/
+│   │   ├── useDeviceId.js
+│   │   ├── useFocusTrap.js
+│   │   ├── useMijnPotjes.js
+│   │   ├── usePotje.js
+│   │   └── usePotjeActies.js
 │   ├── pages/
+│   │   ├── PaginaEindafrekening.jsx
+│   │   ├── PaginaGeslotenPotjes.jsx
+│   │   ├── PaginaInstellingen.jsx
+│   │   ├── PaginaNietGevonden.jsx
+│   │   ├── PaginaNieuwPotje.jsx
+│   │   ├── PaginaOpenPotjes.jsx
+│   │   ├── PaginaOverzicht.jsx
+│   │   ├── PaginaPotje.jsx
+│   │   ├── PaginaProfiel.jsx
+│   │   └── PaginaStorten.jsx
 │   ├── utils/
+│   │   ├── berekenSaldi.js
+│   │   ├── deelLink.js
+│   │   ├── formatBedrag.js
+│   │   ├── logFout.js
+│   │   ├── storage.js          ← localStorage-abstractielaag (2026-04-16)
+│   │   ├── tijdUtils.js        ← tijdformattering-utilities (2026-04-16)
+│   │   ├── valideer.js
+│   │   └── vertaalFout.js
 │   └── test/
 ├── playwright.config.js
 ├── vite.config.js
@@ -130,7 +166,7 @@ Business logic en pure functies via unit tests — geen Supabase-mock, geen comp
 E2e-tests draaien tegen echte Supabase met `[E2E]`-prefix en cleanup via `afterEach`.
 Testprioriteit op basis van risico, niet op regelcoverage.
 
-### Unit/regressie — 571 tests
+### Unit/regressie — 728 tests
 
 | Categorie | Wat gedekt |
 |---|---|
@@ -138,9 +174,10 @@ Testprioriteit op basis van risico, niet op regelcoverage.
 | Validatie | `valideerPotjeNaam`, `valideerDeelnemerNaam`, `valideerTransactieBedrag` — alle paden en grenzen |
 | Foutvertaling | Alle matchers incl. RLS/42501, PGRST116, JWT, netwerk |
 | Foutlogging | Sentry-routing, plain objects, gebruikersfout-uitsluitingen incl. RLS |
-| Tijdlabel | `volledigTijdLabel()` vandaag/eerder |
+| Tijdlabel | `tijdLabel()` en `volledigTijdLabel()` — vandaag/eerder, uit `tijdUtils.js` |
 | Hooks logica | Guards, reducers, filter-opbouw, UUID-validatie |
-| Regressie fixes | Kritiek-1/2/3, Hoog-4/5/6, Issue 7/8/9/10 |
+| Storage | `getItem`, `setItem`, `removeItem` — happy path, foutpaden, QuotaExceededError |
+| Regressie fixes | Kritiek-1/2/3, Hoog-4/5/6, Issue 7/8/9/10, medium- en lage bevindingen 2026-04-16 |
 
 ### E2e — 230 tests (227 passed, 3 skipped)
 
@@ -170,9 +207,19 @@ Testprioriteit op basis van risico, niet op regelcoverage.
 | Android Chrome | `android-chrome` | Pixel 7 (Android Chrome) |
 | Firefox | `firefox` | Desktop Firefox |
 
-Alle 5 browsers gedekt. Totaal 230 tests (46 per browser) + 25 nieuwe scenario's in PW-9 t/m PW-13.
+Alle 5 browsers gedekt. Totaal 230 tests (46 per browser).
 
-**Platform-skip:** PW-5c (Tab-focus op knoppen) is geskipped op WebKit, Mobile Safari en Android Chrome. Safari en Android focussen standaard geen `<button>`-elementen via Tab — dit is een OS-platformbeperking, geen codebug. Chromium en Firefox implementeren Tab-focus op knoppen wel conform de WCAG-spec.
+**Platform-skip:** PW-5c (Tab-focus op knoppen) is geskipped op WebKit, Mobile Safari en Android Chrome. Safari en Android focussen standaard geen `<button>`-elementen via Tab — dit is een OS-platformbeperking, geen codebug.
+
+### CI-gedrag (`process.env.CI === 'true'`)
+
+In de GitHub Actions e2e-job draait Playwright in CI-modus:
+- **Alleen Chromium** — `playwright.config.js` selecteert op basis van `isCI` automatisch één project
+- **`reuseExistingServer: false`** — dev-server start altijd opnieuw in CI
+- **`retries: 1`** — flakiness-buffer
+- **`forbidOnly: true`** — `test.only()` blokkeert de CI-run
+- **Browser-cache:** `~/.cache/ms-playwright` gecached op Playwright-versie + OS
+- **Artifact bij falen:** HTML-rapport (`playwright-report/`) bewaard 14 dagen
 
 ### Helpers (`e2e/helpers.js`)
 
@@ -189,25 +236,13 @@ Alle 5 browsers gedekt. Totaal 230 tests (46 per browser) + 25 nieuwe scenario's
 ### Testcommando's
 
 ```bash
-npm run test:run      # Vitest CI (668 unit tests)
+npm run test:run      # Vitest CI (728 unit tests)
 npm run e2e           # Alle 5 browsers (lokaal)
 npm run e2e:chromium  # Chromium only — snelste feedback
 npm run e2e:webkit    # WebKit/Safari
 npm run e2e:mobile    # iPhone 14
 npm run e2e:report    # HTML rapport
 ```
-
-### CI-gedrag (`process.env.CI === 'true'`)
-
-In de GitHub Actions e2e-job draait Playwright in CI-modus:
-- **Alleen Chromium** — `playwright.config.js` selecteert op basis van `isCI` automatisch één project
-- **`--project=chromium`** wordt ook expliciet meegegeven aan `npx playwright test` als vangnet
-- **`reuseExistingServer: false`** — in CI start de webServer altijd opnieuw (dev-server `npm run dev` met Supabase-env)
-- **`retries: 1`** — flakiness-buffer; mislukte test krijgt één herkansing
-- **`forbidOnly: true`** — `test.only()` blokkeert de CI-run
-- **Browser-cache:** `~/.cache/ms-playwright` gecached op Playwright-versie + OS; bij cache miss volgt `npx playwright install --with-deps chromium`
-- **`install-deps chromium`** draait altijd — systeem-libraries (libglib etc.) zijn niet gecached
-- **Artifact bij falen:** het HTML-rapport (`playwright-report/`) wordt 14 dagen bewaard als GitHub Actions artifact
 
 ### Niet gedekt door unit tests (gemotiveerd)
 
@@ -234,18 +269,12 @@ Deploy naar Cloudflare Pages vereist dat zowel unit tests als e2e slagen.
 - INSERT + DELETE werken (mini smoke test)
 - Lifecycle Edge Function bereikbaar
 
-GitHub stuurt automatisch een email bij een mislukte workflow.
-
-E2e-tests draaien in CI via de `e2e`-job. De dev-server (`npm run dev`) start automatisch via de `webServer`-configuratie in `playwright.config.js`. Supabase-verbinding loopt via repository secrets (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) die als env-variabelen worden doorgegeven aan zowel de dev-server als de Playwright-process.
-
-**Pre-push hook (lokaal):** Blokkeert een push naar `main` als e2e-tests niet succesvol en recent (< 24 uur) zijn gedraaid. Installatie éénmalig per developer:
+**Pre-push hook (lokaal):** Blokkeert een push naar `main` als e2e-tests niet succesvol en recent (< 24 uur) zijn gedraaid.
 
 ```bash
 cp scripts/pre-push-hook.sh .git/hooks/pre-push
 chmod +x .git/hooks/pre-push
 ```
-
-De hook leest `test-results/e2e-resultaat.json` — gegenereerd door `npm run e2e`. Bij 0 mislukte tests en tijdstempel < 24 uur wordt de push toegelaten. Overslaan bij noodgeval: `git push --no-verify` (documenteer waarom in de commit).
 
 ---
 
@@ -260,7 +289,9 @@ Zie versie 2.6 (ongewijzigd).
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
 | 1.0–2.9 | 2026-03-01–15 | Zie eerdere versies | — |
-| 3.0 | 2026-04-15 | **Android Chrome + Firefox toegevoegd:** `playwright.config.js` uitgebreid met `android-chrome` (Pixel 7) en `firefox` (Desktop Firefox); `npx playwright install firefox` uitgevoerd; 230 tests (227 passed, 3 skipped); §18 browsers-tabel bijgewerkt; platform-skip PW-5c uitgebreid met Android Chrome | Volledige browser-dekking: Chrome desktop + Android + Firefox ontbraken nog |
-| 3.1 | 2026-04-16 | **PW-9 t/m PW-13 toegevoegd:** 5 nieuwe e2e-specs; unit tests uitgebreid van 571 naar 668 | Gap-analyse na meerdaagse praktijktest |
-| 3.2 | 2026-04-16 | **§19 monitoring uitgebreid:** UptimeRobot, Sentry alerts en GitHub Actions health check gedocumenteerd; TO-versie bijgewerkt | Monitoring-stack volledig opgezet |
-| 3.3 | 2026-04-16 | **§18 CI-gedrag toegevoegd:** Playwright e2e in CI-pipeline gedocumenteerd (Chromium only, browser-cache, artifact-upload, `isCI`-logica in config); **§19 CI-pipeline** bijgewerkt naar 3-jobs structuur (test → e2e → deploy) | E2e-tests opgenomen in GitHub Actions CI |
+| 3.0 | 2026-04-15 | **Android Chrome + Firefox toegevoegd** | Volledige browser-dekking |
+| 3.1 | 2026-04-16 | **PW-9 t/m PW-13 toegevoegd;** unit tests 571 → 668 | Gap-analyse na praktijktest |
+| 3.2 | 2026-04-16 | **§19 monitoring uitgebreid:** UptimeRobot, Sentry alerts, health check | Monitoring-stack opgezet |
+| 3.3 | 2026-04-16 | **§18 CI-gedrag + §19 3-jobs pipeline:** Playwright e2e in CI gedocumenteerd | E2e in GitHub Actions |
+| 3.4 | 2026-04-16 | **localStorage-abstractielaag:** `src/utils/storage.js` geïntroduceerd; `controleer-patronen.js` uitgebreid met `localStorage.`-patroon; unit tests storage.test.js toegevoegd (10 tests); TEKSTGROOTTE_KEY bugfix in `main.jsx` via `getItem()` | Technische schuld: directe localStorage-aanroepen gesaneerd |
+| 3.5 | 2026-04-16 | **Audit-fix:** 2 gemiste overtredingen alsnog gemigreerd (`useMijnPotjes.js` r57, `PaginaPotje.jsx` r162); §3 projectstructuur bijgewerkt met `storage.js` en `tijdUtils.js` en pw9–pw13; §18 testcount bijgewerkt naar 728 | Naverificatie na storage-abstractie audit |

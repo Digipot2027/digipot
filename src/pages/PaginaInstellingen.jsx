@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PROFIEL_NAAM_KEY } from '../constants'
+import { getItem } from '../utils/storage'
 
 function PaginaInstellingen() {
   const navigate = useNavigate()
-  const profielNaam = localStorage.getItem(PROFIEL_NAAM_KEY)
+  const profielNaam = getItem(PROFIEL_NAAM_KEY)
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Instellingen — Digipot' }, [])

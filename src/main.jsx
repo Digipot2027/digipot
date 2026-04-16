@@ -4,9 +4,12 @@ import { BrowserRouter } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import App from './App.jsx'
 import './index.css'
+import { TEKSTGROOTTE_KEY } from './constants'
+import { getItem } from './utils/storage'
 
 // Tekstgrootte herstellen uit localStorage bij opstarten (WCAG 1.4.4)
-const tekstgrootte = localStorage.getItem('digipot_tekstgrootte') || 'normaal'
+// Bug-fix: was een literal string 'digipot_tekstgrootte' — nu via TEKSTGROOTTE_KEY + storage-abstractie.
+const tekstgrootte = getItem(TEKSTGROOTTE_KEY) || 'normaal'
 document.documentElement.setAttribute('data-tekstgrootte', tekstgrootte)
 
 Sentry.init({

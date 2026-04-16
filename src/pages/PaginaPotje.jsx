@@ -4,6 +4,7 @@ import { usePotje } from '../hooks/usePotje'
 import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { PROFIEL_NAAM_KEY, STANDAARD_VALUTA } from '../constants'
+import { getItem } from '../utils/storage'
 import ModalDeelnemen from '../components/ModalDeelnemen.jsx'
 import ModalTransactie from '../components/ModalTransactie.jsx'
 import ModalSluiten from '../components/ModalSluiten.jsx'
@@ -33,7 +34,7 @@ function PaginaPotje() {
     online,
   } = usePotje(id)
 
-  const [modaal, setModaal] = useState(null) // 'betaling' | 'sluiten'
+  const [modaal, setModaal] = useState(null)
   const [toast, setToast] = useState(null)
   const [afmeldenLaden, setAfmeldenLaden] = useState(false)
   const toastTimerRef = useRef(null)
@@ -85,7 +86,6 @@ function PaginaPotje() {
 
   const saldi = berekenSaldi(deelnemers, transacties)
   const ikBenActief = deelnemer?.actief !== false
-  // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
   const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
   useEffect(() => {
@@ -139,7 +139,7 @@ function PaginaPotje() {
           potjeNaam={potje?.naam}
           deelnemers={deelnemers}
           onDeelnemen={handleDeelnemen}
-          profielNaam={localStorage.getItem(PROFIEL_NAAM_KEY)?.trim() || ''}
+          profielNaam={getItem(PROFIEL_NAAM_KEY)?.trim() || ''}
         />
       </>
     )

@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 2.1
+**Versie:** 2.2
 **Datum:** 2026-04-16
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -119,3 +119,4 @@ Zie versie 1.8 (ongewijzigd).
 | 1.9 | 2026-04-15 | **§14 uitgebreid:** bootstrapDeviceId gedocumenteerd als fix voor Sentry REACT-8/9; e2e-testdekking (PW-1/2/3) toegevoegd aan §14 dwarsdoorsnijdende functionaliteit | Playwright e2e-infrastructuur opgezet; 27/27 tests groen op Chromium, WebKit, Mobile Safari |
 | 2.0 | 2026-04-16 | **§14 monitoring toegevoegd:** UptimeRobot, Sentry alerts, GitHub Actions health check gedocumenteerd; e2e-testoverzicht bijgewerkt naar 13 specs / 342 tests op 5 browsers | Monitoring-stack opgezet; e2e-suite uitgebreid met PW-9 t/m PW-13 |
 | 2.1 | 2026-04-16 | **§14 kwaliteitswaarborg bijgewerkt:** e2e-testoverzicht gecorrigeerd naar 230 tests (227 passed, 3 skipped); CI-context toegevoegd (Chromium only in CI, 5 browsers lokaal) | E2e-tests opgenomen in GitHub Actions CI |
+| 2.2 | 2026-04-16 | **§14 apparaatidentificatie aangevuld:** centrale localStorage-abstractielaag gedocumenteerd (`src/utils/storage.js`); bug-fix `main.jsx` literal string → `TEKSTGROOTTE_KEY` gedocumenteerd | Storage-abstractielaag geïntroduceerd voor onderhoudbaarheid en testbaarheid |

@@ -29,6 +29,9 @@
  *                .single() is daar verwijderd na hoog-4 fix (audit bevinding 3)
  *   2026-04-13 — vierde patroon toegevoegd: [...prev, payload.new] zonder deduplicatie
  *                root cause UI-dubbelpost (fetch + Realtime-event race condition)
+ *   2026-04-16 — vijfde patroon toegevoegd: localStorage. (directe aanroep)
+ *                root cause storage-abstractielaag: alle toegang via src/utils/storage.js
+ *                eerste patroon bijgewerkt: uitzonderingen verwijderd na migratie
  */
 
 import { execSync } from 'child_process'
@@ -42,6 +45,8 @@ const PATRONEN = [
     // Root cause van JAVASCRIPT-REACT-6 (null device_id in DB) én kritiek-1
     // (useMijnPotjes stille lege lijst). Direct aanroepen omzeilt de UUID-validatie
     // en fallback-logica in useDeviceId(). Buiten de uitzonderingen altijd verboden.
+    // Na de storage-abstractielaag (2026-04-16) zijn alle directe aanroepen
+    // gemigreerd naar storage.js — dit patroon blijft als extra zekerheidslaag.
     patroon: 'localStorage.getItem(DEVICE_ID_KEY)',
     reden: [
       'Gebruik useDeviceId() in plaats van localStorage.getItem(DEVICE_ID_KEY) direct.',
@@ -49,8 +54,8 @@ const PATRONEN = [
       'Root cause: JAVASCRIPT-REACT-6 (null device_id) + kritiek-1 (stille lege lijst).',
     ].join(' '),
     uitzonderingen: [
-      'src/hooks/useDeviceId.js',   // enige geautoriseerde implementatie van de hook zelf
-      'src/supabaseClient.js',      // legitiem: meesturen als request-header, geen device-ID-logica
+      // Na storage-abstractie (2026-04-16): geen uitzonderingen meer nodig.
+      // useDeviceId.js en supabaseClient.js gebruiken nu getItem() uit storage.js.
     ],
     waarschuwing: false,
   },
@@ -95,6 +100,23 @@ const PATRONEN = [
       'src/hooks/useMijnPotjes.js', // payload.new?.id en payload.new?.potje_id — optional chaining, veilig
     ],
     waarschuwing: true,
+  },
+
+  {
+    // Centrale localStorage-abstractielaag (2026-04-16): alle toegang tot
+    // localStorage verloopt via src/utils/storage.js (getItem/setItem/removeItem).
+    // Direct aanroepen omzeilt de foutafhandeling en maakt mocking in tests
+    // onmogelijk. Enige uitzondering: de abstractielaag zelf.
+    patroon: 'localStorage.',
+    reden: [
+      'Gebruik getItem/setItem/removeItem uit src/utils/storage.js.',
+      'Direct localStorage aanroepen omzeilt foutafhandeling en is niet mockbaar.',
+      'Zie TO §storage-abstractie (2026-04-16).',
+    ].join(' '),
+    uitzonderingen: [
+      'src/utils/storage.js', // enige geautoriseerde implementatie
+    ],
+    waarschuwing: false,
   },
 
   {

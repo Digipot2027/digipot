@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { DEVICE_ID_KEY, UUID_V4_PATROON } from '../constants'
+import { getItem, setItem } from '../utils/storage'
 
 /**
  * Levert het unieke device-ID voor dit apparaat.
@@ -24,13 +25,13 @@ import { DEVICE_ID_KEY, UUID_V4_PATROON } from '../constants'
  */
 export function useDeviceId() {
   return useMemo(() => {
-    const opgeslagen = localStorage.getItem(DEVICE_ID_KEY)
+    const opgeslagen = getItem(DEVICE_ID_KEY)
     if (opgeslagen && UUID_V4_PATROON.test(opgeslagen)) {
       return opgeslagen
     }
     // Geen of ongeldige UUID: genereer nieuw en sla op
     const nieuw = crypto.randomUUID()
-    localStorage.setItem(DEVICE_ID_KEY, nieuw)
+    setItem(DEVICE_ID_KEY, nieuw)
     return nieuw
   }, [])
 }

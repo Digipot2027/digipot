@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { DEVICE_ID_KEY, UUID_V4_PATROON } from './constants'
+import { getItem, setItem } from './utils/storage'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -24,10 +25,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * useDeviceId(). Eén bron van waarheid; geen duplicatie meer (SEC-1 fix).
  */
 function bootstrapDeviceId() {
-  const opgeslagen = localStorage.getItem(DEVICE_ID_KEY)
+  const opgeslagen = getItem(DEVICE_ID_KEY)
   if (opgeslagen && UUID_V4_PATROON.test(opgeslagen)) return opgeslagen
   const nieuw = crypto.randomUUID()
-  localStorage.setItem(DEVICE_ID_KEY, nieuw)
+  setItem(DEVICE_ID_KEY, nieuw)
   return nieuw
 }
 
@@ -43,7 +44,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       get 'x-device-id'() {
-        return localStorage.getItem(DEVICE_ID_KEY) ?? ''
+        return getItem(DEVICE_ID_KEY) ?? ''
       },
     },
   },
