@@ -98,16 +98,18 @@ jobs:
       - name: Lifecycle Edge Functions bereikbaarheid
         # Verifieert dat de Edge Function URL reageert (niet dat hij draait)
         # Zonder cron-secret krijgen we een 401 — dat is correct gedrag
+        # GET gebruiken want HEAD wordt niet ondersteund door Edge Functions (405)
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET \
             "${{ secrets.VITE_SUPABASE_URL }}/functions/v1/lifecycle-keepalive")
 
           echo "Lifecycle Edge Function status: $STATUS"
 
           # 401 = bereikbaar maar niet geautoriseerd (correct — secret ontbreekt)
           # 200 = bereikbaar en reageert (ook correct)
+          # 405 = method not allowed (endpoint bestaat maar accepteert HEAD niet)
           # Alles anders = probleem
-          if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ]; then
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "401" ] && [ "$STATUS" != "405" ]; then
             echo "❌ Lifecycle Edge Function niet bereikbaar (status $STATUS)"
             exit 1
           fi
