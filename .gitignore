@@ -26,3 +26,9 @@ dist-ssr
 
 # Smoke test output logs — gegenereerd, niet in versiebeheer
 smoke/*-output.log
+
+# Playwright test-resultaten — gegenereerd, niet in versiebeheer
+# Uitzondering: e2e-resultaat.json wordt door de pre-push hook gebruikt
+playwright-report/
+test-results/*
+!test-results/e2e-resultaat.json
