@@ -12,7 +12,27 @@ npm run preview   # Preview production build locally
 npm run test      # Run tests in watch mode (Vitest)
 npm run test:run  # Run tests once (CI-mode)
 npm run test:ui   # Run tests with Vitest UI
+npm run e2e           # Alle 5 browsers (lokaal)
+npm run e2e:chromium  # Chromium only — snelste feedback
+npm run e2e:report    # HTML rapport openen
 ```
+
+## Lokale kwaliteitswaarborg
+
+Vóór elke push naar `main` moeten de volgende checks slagen — identiek aan CI:
+
+```bash
+npm run lint && npm run test:run && npm run e2e:chromium
+```
+
+De pre-push hook (`.git/hooks/pre-push`) doet dit automatisch bij `git push`. Installatie éénmalig per developer:
+
+```bash
+cp scripts/pre-push-hook.sh .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
+
+Overslaan bij noodgeval: `git push --no-verify` (documenteer waarom in de commit).
 
 **Test framework: Vitest + @testing-library/react + @testing-library/jest-dom** (`jsdom` environment, setup in `src/test/setup.js`).
 
