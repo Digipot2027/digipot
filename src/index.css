@@ -559,3 +559,30 @@ tr[role="button"]:focus-visible,
 .tekstgrootte-knop__letter--normaal { font-size: 1rem; margin-bottom: 4px; }
 .tekstgrootte-knop__letter--groot   { font-size: 1.25rem; margin-bottom: 4px; }
 .tekstgrootte-knop__letter--extra   { font-size: 1.5rem; margin-bottom: 4px; }
+
+/* Potjeslijst — rij-item in open/gesloten potjeslijst */
+.potje-rij {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.potje-rij__info   { flex: 1; min-width: 0; }
+.potje-rij__naam   { font-size: 0.9375rem; font-weight: 600; color: var(--grijs-900); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.potje-rij__sub    { font-size: 0.8125rem; color: var(--grijs-600); }
+.potje-rij__rechts { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-left: 12px; }
+.potje-rij__saldo  { text-align: right; }
+.potje-rij__saldo-bedrag         { font-size: 1rem; font-weight: 700; }
+.potje-rij__saldo-bedrag--positief { color: var(--groen); }
+.potje-rij__saldo-bedrag--nul      { color: var(--grijs-400); }
+.potje-rij__saldo-bedrag--rood     { color: var(--rood); }
+.potje-rij__saldo-label { font-size: 0.75rem; color: var(--grijs-500); }
+.potje-rij__scheiding { border-bottom: 1px solid var(--grijs-100); }
+
+/* Fout-kaart in potjeslijst */
+.fout-kaart { outline: none; }
