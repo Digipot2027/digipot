@@ -281,3 +281,167 @@ tr[role="button"]:focus-visible,
   outline-offset: -2px; /* naar binnen zodat de tabelrij niet uitsteekt */
   border-radius: 4px;
 }
+
+
+/* ── Utility-klassen ──────────────────────────────────────────────────────────
+   Alleen klassen die daadwerkelijk in de codebase voorkomen.
+   Toegevoegd bij CSS-migratie fase 1 (2026-04-17).
+   Naamgeving: beschrijvend Nederlands waar het de app-context betreft,
+   Engels voor universele layout-concepten.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Layout — flex */
+.flex           { display: flex; }
+.flex-col       { display: flex; flex-direction: column; }
+.items-center   { align-items: center; }
+.items-start    { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center  { justify-content: center; }
+.justify-end     { justify-content: flex-end; }
+.flex-1         { flex: 1; }
+.shrink-0       { flex-shrink: 0; }
+.min-w-0        { min-width: 0; }
+
+/* Layout — gap */
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+
+/* Layout — grid */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Layout — overflow */
+.overflow-hidden { overflow: hidden; }
+.truncate        { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Spacing — margin-bottom */
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+.mb-6 { margin-bottom: 24px; }
+
+/* Spacing — margin-top */
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+
+/* Spacing — padding */
+.p-0  { padding: 0; }
+
+/* Tekst — grootte */
+.text-xs  { font-size: 0.75rem; }    /* 12px */
+.text-sm  { font-size: 0.875rem; }   /* 14px */
+.text-base { font-size: 1rem; }      /* 16px */
+.text-lg  { font-size: 1.125rem; }   /* 18px */
+.text-xl  { font-size: 1.25rem; }    /* 20px */
+
+/* Tekst — gewicht */
+.font-normal   { font-weight: 400; }
+.font-semibold { font-weight: 600; }
+.font-bold     { font-weight: 700; }
+
+/* Tekst — uitlijning */
+.text-left   { text-align: left; }
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+
+/* Tekst — transformatie */
+.uppercase { text-transform: uppercase; letter-spacing: 0.05em; }
+.nowrap    { white-space: nowrap; }
+
+/* Tekst — kleur (WCAG-gecontroleerde waarden, zie :root commentaar) */
+.tekst-groen  { color: var(--groen); }
+.tekst-rood   { color: var(--rood); }
+.tekst-grijs-4 { color: var(--grijs-400); }  /* decoratief only */
+.tekst-grijs-5 { color: var(--grijs-500); }  /* informatief, contrast 4.6:1 */
+.tekst-grijs-6 { color: var(--grijs-600); }  /* subtekst, contrast 7.4:1 */
+.tekst-grijs-9 { color: var(--grijs-900); }  /* primaire tekst */
+
+/* Icoon-knop — terugknop, tandwiel, sluiten (background/border/cursor reset) */
+.knop-icoon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--grijs-600);
+}
+.knop-icoon:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skeleton-varianten — veelgebruikte laad-placeholders */
+.skeleton-titel    { height: 28px; width: 60%; margin-bottom: 12px; }
+.skeleton-subtitel { height: 16px; width: 40%; margin-bottom: 8px; }
+.skeleton-smal     { height: 16px; width: 30%; }
+.skeleton-knop     { height: 48px; }
+.skeleton-rij      { height: 40px; margin-bottom: 8px; }
+.skeleton-kaart    { height: 20px; width: 60%; margin-bottom: 10px; }
+.skeleton-kaart-sub { height: 14px; width: 40%; }
+
+/* Lege-staat kaart — gecentreerd blok met emoji, kop en tekst */
+.lege-staat {
+  text-align: center;
+  padding: 32px 24px;
+}
+.lege-staat__emoji { font-size: 40px; margin-bottom: 12px; }
+
+/* Navigatierij — in PaginaInstellingen, PaginaOpenPotjes, PaginaGeslotenPotjes */
+.nav-rij {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.nav-rij__links  { display: flex; align-items: center; gap: 14px; }
+.nav-rij__titel  { font-size: 15px; font-weight: 600; color: var(--grijs-900); margin-bottom: 2px; }
+.nav-rij__sub    { font-size: 13px; color: var(--grijs-600); }
+.nav-rij__pijl   { font-size: 20px; color: var(--grijs-400); line-height: 1; }
+.nav-rij__scheiding { height: 1px; background: var(--grijs-100); margin: 0 20px; }
+
+/* Kaart-header — flex-rij met terugknop + titel */
+.kaart-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+/* Sectie-label — uppercase kopje boven een groep knoppen of items */
+.sectie-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--grijs-400);
+  margin-bottom: 0;
+}
+
+/* DeelKnop in kaart-header — kleinere variant voor binnen een kaart */
+.deelknop-in-kaart {
+  margin-top: 10px;
+  font-size: 14px;
+  padding: 8px 14px;
+  width: auto;
+}
+.saldo-display { text-align: right; }
+.saldo-display__bedrag {
+  font-size: 22px;
+  font-weight: 700;
+}
+.saldo-display__bedrag--positief { color: var(--groen); }
+.saldo-display__bedrag--nul      { color: var(--grijs-600); }
+.saldo-display__label { font-size: 12px; color: var(--grijs-500); }
