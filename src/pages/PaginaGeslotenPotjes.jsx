@@ -24,12 +24,12 @@ function PaginaGeslotenPotjes() {
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
-        <div className="skeleton" style={{ height: 28, width: '50%', marginBottom: 12 }} />
+        <div className="skeleton skeleton-titel" />
       </div>
       {[1, 2, 3].map(i => (
         <div key={i} className="kaart">
-          <div className="skeleton" style={{ height: 20, width: '60%', marginBottom: 10 }} />
-          <div className="skeleton" style={{ height: 14, width: '40%' }} />
+          <div className="skeleton skeleton-kaart" />
+          <div className="skeleton skeleton-kaart-sub" />
         </div>
       ))}
     </div>
@@ -40,10 +40,11 @@ function PaginaGeslotenPotjes() {
 
       {/* Header */}
       <div className="kaart">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="kaart-header" style={{ marginBottom: 0 }}>
           <button
             onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
+            className="knop-icoon"
+            style={{ fontSize: '1.25rem', padding: '4px 0' }}
             aria-label="Terug"
           >
             ←
@@ -54,9 +55,9 @@ function PaginaGeslotenPotjes() {
 
       {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
-        <div ref={foutRef} role="alert" tabIndex={-1} className="kaart" style={{ outline: 'none' }}>
-          <p style={{ color: 'var(--rood)', fontSize: '0.875rem', marginBottom: 12 }}>{fout}</p>
-          <button className="knop knop-secundair" onClick={herlaad} style={{ marginTop: 4 }}>
+        <div ref={foutRef} role="alert" tabIndex={-1} className="kaart fout-kaart">
+          <p className="text-sm tekst-rood mb-3">{fout}</p>
+          <button className="knop knop-secundair mt-2" onClick={herlaad}>
             Opnieuw proberen
           </button>
         </div>
@@ -64,10 +65,10 @@ function PaginaGeslotenPotjes() {
 
       {/* Lege staat */}
       {!fout && potjes.length === 0 && (
-        <div className="kaart" style={{ textAlign: 'center', padding: '32px 24px' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-          <p style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>Geen gesloten potjes</p>
-          <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 20 }}>
+        <div className="kaart lege-staat">
+          <div className="lege-staat__emoji">🔒</div>
+          <p className="text-base font-semibold mb-2">Geen gesloten potjes</p>
+          <p className="text-sm tekst-grijs-6 mb-5">
             Je hebt nog geen afgeronde potjes op dit apparaat.
           </p>
           <button className="knop knop-primair" onClick={() => navigate('/')}>
@@ -80,35 +81,29 @@ function PaginaGeslotenPotjes() {
           WCAG 21: <ul>/<li> zodat screenreaders het aantal items aankondigen. */}
       {potjes.length > 0 && (
         <ul
-          className="kaart"
-          style={{ padding: 0, overflow: 'hidden', listStyle: 'none' }}
+          className="kaart p-0 overflow-hidden"
+          style={{ listStyle: 'none' }}
           aria-label="Gesloten potjes"
         >
           {potjes.map((potje, index) => (
             <li
               key={potje.id}
-              style={{ borderBottom: index < potjes.length - 1 ? '1px solid var(--grijs-100)' : 'none' }}
+              className={index < potjes.length - 1 ? 'potje-rij__scheiding' : ''}
             >
               <button
                 onClick={() => navigate(`/potje/${potje.id}`)}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '16px 20px', width: '100%', background: 'transparent',
-                  border: 'none', cursor: 'pointer', textAlign: 'left',
-                }}
+                className="potje-rij"
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {potje.naam}
-                  </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
+                <div className="potje-rij__info">
+                  <div className="potje-rij__naam">{potje.naam}</div>
+                  <div className="potje-rij__sub">
                     Gesloten op {datumLabel(potje.gesloten_op)}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
+                <div className="potje-rij__rechts">
                   {potje.mijnVerrekening !== null && (
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: potje.mijnVerrekening >= 0 ? 'var(--groen)' : 'var(--rood)' }}>
+                    <div className="potje-rij__saldo">
+                      <div className={`potje-rij__saldo-bedrag ${potje.mijnVerrekening >= 0 ? 'potje-rij__saldo-bedrag--positief' : 'potje-rij__saldo-bedrag--rood'}`}>
                         {potje.mijnVerrekening >= 0
                           ? `+${formatBedrag(potje.mijnVerrekening, potje.valuta)}`
                           : `-${formatBedrag(Math.abs(potje.mijnVerrekening), potje.valuta)}`}
@@ -118,12 +113,12 @@ function PaginaGeslotenPotjes() {
                         dat de vereffening al heeft plaatsgevonden.
                         Correcte labels zijn 'te ontvangen' / 'bij te betalen'.
                       */}
-                      <div style={{ fontSize: '0.75rem', color: 'var(--grijs-500)' }}>
+                      <div className="potje-rij__saldo-label">
                         {potje.mijnVerrekening >= 0 ? 'te ontvangen' : 'bij te betalen'}
                       </div>
                     </div>
                   )}
-                  <span style={{ fontSize: '1.25rem', color: 'var(--grijs-400)', lineHeight: 1 }}>›</span>
+                  <span className="nav-rij__pijl">›</span>
                 </div>
               </button>
             </li>
