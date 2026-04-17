@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 2.2
-**Datum:** 2026-04-16
+**Versie:** 2.4
+**Datum:** 2026-04-17
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -120,3 +120,5 @@ Zie versie 1.8 (ongewijzigd).
 | 2.0 | 2026-04-16 | **§14 monitoring toegevoegd:** UptimeRobot, Sentry alerts, GitHub Actions health check gedocumenteerd; e2e-testoverzicht bijgewerkt naar 13 specs / 342 tests op 5 browsers | Monitoring-stack opgezet; e2e-suite uitgebreid met PW-9 t/m PW-13 |
 | 2.1 | 2026-04-16 | **§14 kwaliteitswaarborg bijgewerkt:** e2e-testoverzicht gecorrigeerd naar 230 tests (227 passed, 3 skipped); CI-context toegevoegd (Chromium only in CI, 5 browsers lokaal) | E2e-tests opgenomen in GitHub Actions CI |
 | 2.2 | 2026-04-16 | **§14 apparaatidentificatie aangevuld:** centrale localStorage-abstractielaag gedocumenteerd (`src/utils/storage.js`); bug-fix `main.jsx` literal string → `TEKSTGROOTTE_KEY` gedocumenteerd | Storage-abstractielaag geïntroduceerd voor onderhoudbaarheid en testbaarheid |
+| 2.3 | 2026-04-17 | **Technische schuld afgelost (3 items):** E2e in CI, `berekenSaldi.js` gesplitst in vier modules (`berekenSaldi`, `berekenEindafrekening`, `berekenVereffening`, `berekenHelpers`), localStorage-abstractielaag volledig doorgevoerd | Technische schuld items 1/5/6 uit schuldenlijst |
+| 2.4 | 2026-04-17 | **CSS-migratie fase 1:** utility-klassen en component-specifieke klassen toegevoegd aan `index.css` (`.flex`, `.grid-2`, `.truncate`, `.knop-icoon`, `.nav-rij`, `.kaart-header`, `.skeleton-*`, `.lege-staat`, `.saldo-display`, e.a.); dit is de eerste stap van de gefaseerde migratie van inline `style={{}}` naar CSS | Technische schuld: inline stijlen (hoog volume) — fase 1 van 10 |
