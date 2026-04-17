@@ -123,16 +123,16 @@ function PaginaStorten() {
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
-        <div className="skeleton" style={{ height: 28, width: '60%', marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 16, width: '40%' }} />
+        <div className="skeleton skeleton-titel" />
+        <div className="skeleton skeleton-subtitel" />
       </div>
       <div className="kaart">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        <div className="snelkeuze-grid">
           {SNELBEDRAGEN.map(b => (
-            <div key={b} className="skeleton" style={{ height: 64 }} />
+            <div key={b} className="skeleton skeleton-knop" />
           ))}
         </div>
-        <div className="skeleton" style={{ height: 48 }} />
+        <div className="skeleton skeleton-knop" />
       </div>
     </div>
   )
@@ -140,9 +140,9 @@ function PaginaStorten() {
   if (fout) return (
     <div className="pagina">
       <div className="kaart">
-        <p style={{ color: 'var(--rood)' }}>{fout}</p>
-        <button className="knop knop-secundair" style={{ marginTop: 16 }} onClick={() => navigate(`/potje/${id}`)}>
-          ← Terug
+        <p className="tekst-rood">{fout}</p>
+        <button className="knop knop-secundair mt-4" onClick={() => navigate(`/potje/${id}`)}>
+          {'\u2190'} Terug
         </button>
       </div>
     </div>
@@ -156,36 +156,37 @@ function PaginaStorten() {
     <div className="pagina">
 
       <div className="kaart">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <div className="kaart-header">
           <button
             onClick={() => navigate(`/potje/${id}`)}
-            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', padding: '4px 0', color: 'var(--grijs-600)', lineHeight: 1 }}
+            className="knop-icoon"
+            style={{ fontSize: '1.25rem', padding: '4px 0' }}
             aria-label="Terug naar overzicht"
           >
-            ←
+            {'\u2190'}
           </button>
-          <h1 className="titel" style={{ marginBottom: 0 }}>💰 Storten</h1>
+          <h1 className="titel mb-0">{'\ud83d\udcb0'} Storten</h1>
         </div>
-        <p className="subtitel" style={{ marginBottom: 0, paddingLeft: 36 }}>
-          {potje?.naam} · {deelnemer?.naam}
+        <p className="subtitel subtitel-ingesprongen">
+          {potje?.naam} {'\u00b7'} {deelnemer?.naam}
         </p>
       </div>
 
       {reedGestort > 0 && (
-        <div className="kaart" style={{ background: 'var(--groen-licht)', border: '1px solid #bbf7d0' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--groen)', fontWeight: 500 }}>
+        <div className="kaart storten-al-gestort">
+          <p className="storten-al-gestort__tekst">
             Je hebt tot nu toe <strong>{formatBedrag(reedGestort, valuta)}</strong> ingelegd.
           </p>
         </div>
       )}
 
       <div className="kaart">
-        <p className="label" style={{ marginBottom: 12 }}>Kies een bedrag</p>
+        <p className="label mb-3">Kies een bedrag</p>
 
         <div
           role="group"
           aria-label="Standaardbedragen"
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}
+          className="snelkeuze-grid"
         >
           {SNELBEDRAGEN.map(bedrag => {
             const actief = gekozenBedrag === bedrag
@@ -195,19 +196,7 @@ function PaginaStorten() {
                 type="button"
                 onClick={() => handleSnelkeuze(bedrag)}
                 aria-pressed={actief}
-                style={{
-                  padding: '16px 12px',
-                  borderRadius: 10,
-                  border: actief ? '2px solid var(--groen)' : '1.5px solid var(--grijs-200)',
-                  background: actief ? 'var(--groen-licht)' : 'var(--grijs-50)',
-                  color: actief ? 'var(--groen)' : 'var(--grijs-900)',
-                  fontWeight: actief ? 700 : 500,
-                  fontSize: '1.125rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  textAlign: 'center',
-                  minHeight: 64,
-                }}
+                className={`snelkeuze-knop${actief ? ' snelkeuze-knop--actief' : ''}`}
               >
                 {formatBedrag(bedrag, valuta)}
               </button>
@@ -218,14 +207,13 @@ function PaginaStorten() {
         {!vrijeInvoerActief ? (
           <button
             type="button"
-            className="knop knop-secundair"
-            style={{ fontSize: '0.875rem' }}
+            className="knop knop-secundair text-sm"
             onClick={handleVrijeInvoerToggle}
           >
-            ✏️ Ander bedrag invoeren
+            {'\u270f\ufe0f'} Ander bedrag invoeren
           </button>
         ) : (
-          <div className="veld" style={{ marginBottom: 0 }}>
+          <div className="veld mb-0">
             <label className="label" htmlFor="vrij-bedrag">
               Ander bedrag ({valuta})
             </label>
@@ -243,7 +231,7 @@ function PaginaStorten() {
               aria-invalid={invoerFout && vrijeInvoerActief ? 'true' : undefined}
             />
             {vrijeInvoerActief && vrijeInvoerNum > 0 && !invoerFout && (
-              <div className="teller" style={{ color: 'var(--groen)' }}>
+              <div className="teller tekst-groen">
                 = {formatBedrag(vrijeInvoerNum, valuta)}
               </div>
             )}
@@ -253,8 +241,7 @@ function PaginaStorten() {
         {invoerFout && (
           <div
             id={vrijeInvoerActief ? 'vrij-bedrag-fout' : undefined}
-            className="fout-tekst"
-            style={{ marginTop: 8 }}
+            className="fout-tekst mt-2"
             role="alert"
           >
             {invoerFout}
@@ -264,43 +251,38 @@ function PaginaStorten() {
 
       <div className="kaart">
         {bedragGeldig && (
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 14px', background: 'var(--groen-licht)', borderRadius: 8,
-            marginBottom: 14, border: '1px solid #bbf7d0',
-          }}>
-            <span style={{ fontSize: '0.875rem', color: 'var(--groen)', fontWeight: 500 }}>Jouw storting</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--groen)' }}>
+          <div className="storten-preview">
+            <span className="storten-preview__label">Jouw storting</span>
+            <span className="storten-preview__bedrag">
               {formatBedrag(effectiefBedrag, valuta)}
             </span>
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" className="knop knop-secundair" style={{ flex: 1 }} onClick={() => navigate(`/potje/${id}`)}>
+        <div className="modal-knoppen">
+          <button type="button" className="knop knop-secundair flex-1" onClick={() => navigate(`/potje/${id}`)}>
             Annuleren
           </button>
           <button
             type="button"
-            className="knop knop-primair"
-            style={{ flex: 1 }}
+            className="knop knop-primair flex-1"
             onClick={handleStorten}
             disabled={bezig || !bedragGeldig}
           >
-            {bezig ? 'Bezig...' : 'Storten →'}
+            {bezig ? 'Bezig...' : 'Storten \u2192'}
           </button>
         </div>
       </div>
 
-      <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-          <span style={{ color: 'var(--grijs-600)' }}>Huidig potsaldo</span>
-          <strong style={{ color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
+      <div className="kaart info-kaart">
+        <div className="storten-saldo-rij">
+          <span className="tekst-grijs-6">Huidig potsaldo</span>
+          <strong className={saldi.potSaldo > 0 ? 'tekst-groen' : 'tekst-grijs-6'}>
             {formatBedrag(saldi.potSaldo, valuta)}
           </strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginTop: 8 }}>
-          <span style={{ color: 'var(--grijs-600)' }}>Totaal ingelegd</span>
+        <div className="storten-saldo-rij">
+          <span className="tekst-grijs-6">Totaal ingelegd</span>
           <strong>{formatBedrag(saldi.potTotaal, valuta)}</strong>
         </div>
       </div>
