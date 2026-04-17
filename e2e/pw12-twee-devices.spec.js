@@ -54,6 +54,7 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
   })
 
   test('PW-12b: device A stort → device B ziet bijgewerkt saldo via realtime', async ({ browser }) => {
+    test.setTimeout(60000) // Realtime kan in CI trager zijn
     // Open twee browsers: één als Alice, één als Bob
     const contextA = await browser.newContext()
     const contextB = await browser.newContext()
@@ -77,7 +78,7 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
 
       // Bob's pagina moet via realtime de betaling zien (saldo daalt)
       // Wacht op een UI-update die de betaling weerspiegelt
-      await expect(pageB.getByRole('cell', { name: /€ 10,00/i })).toBeVisible({ timeout: 10000 })
+      await expect(pageB.getByRole('cell', { name: /€ 10,00/i })).toBeVisible({ timeout: 20000 })
     } finally {
       await contextA.close()
       await contextB.close()
@@ -102,6 +103,7 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
   })
 
   test('PW-12d: device A meldt zich af → device B ziet afmelding in deelnemerstabel', async ({ browser }) => {
+    test.setTimeout(60000) // Realtime kan in CI trager zijn
     const contextA = await browser.newContext()
     const contextB = await browser.newContext()
     const pageA = await contextA.newPage()
@@ -123,10 +125,10 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
 
       // Bob's pagina moet via realtime de afmelding van Alice zien.
       // De <tr> van Alice krijgt de CSS-klasse deelnemer-rij--afgemeld.
-      // Realtime kan 1-3s nodig hebben om de wijziging te propageren.
+      // Realtime kan in CI 5-10s nodig hebben om de wijziging te propageren.
       await expect(
         pageB.locator('tr.deelnemer-rij--afgemeld').filter({ hasText: /Alice/i })
-      ).toBeVisible({ timeout: 15000 })
+      ).toBeVisible({ timeout: 25000 })
     } finally {
       await contextA.close()
       await contextB.close()

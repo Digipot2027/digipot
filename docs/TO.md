@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 4.4
+**Versie:** 4.5
 **Datum:** 2026-04-17
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -303,4 +303,5 @@ Zie versie 2.6 (ongewijzigd).
 | 4.1 | 2026-04-17 | **CSS-migratie fase 6:** `PaginaOpenPotjes` en `PaginaGeslotenPotjes` inline-stijl-vrij | CSS-migratie stap 6 van 10 |
 | 4.2 | 2026-04-17 | **CSS-migratie fase 7:** `DeelnemerRij` inline-stijl-vrij | CSS-migratie stap 7 van 10 |
 | 4.3 | 2026-04-17 | **CSS-migratie fase 8:** `DeelnemerDetailSheet` inline-stijl-vrij | CSS-migratie stap 8 van 10 |
-| 4.4 | 2026-04-17 | **CSS-migratie fase 9:** `PaginaStorten` inline-stijl-vrij via `.snelkeuze-knop`, `.storten-preview`, `.storten-saldo-rij`, `.storten-al-gestort`, `.subtitel-ingesprongen`; `.mb-0` toegevoegd aan utility-klassen | CSS-migratie stap 9 van 10 |
+| 4.4 | 2026-04-17 | **CSS-migratie fase 9:** `PaginaStorten` inline-stijl-vrij | CSS-migratie stap 9 van 10 |
+| 4.5 | 2026-04-17 | **CSS-migratie fase 10 (afsluiting):** `PaginaPotje`, `PaginaOverzicht`, `PaginaEindafrekening` inline-stijl-vrij; alle inline stijlen projectbreed gemigreerd naar CSS-klassen | CSS-migratie voltooid |
