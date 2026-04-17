@@ -63,11 +63,12 @@ function PaginaNieuwPotje() {
   return (
     <div className="pagina">
       <div className="kaart">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div className="pagina-header">
           <h1 className="titel" style={{ marginBottom: 0 }}>🍺 Digipot</h1>
           <button
             onClick={() => navigate('/instellingen')}
-            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--grijs-500)', padding: '2px 0 0 0', lineHeight: 1 }}
+            className="knop-icoon"
+            style={{ fontSize: 22, padding: '2px 0 0 0' }}
             aria-label="Instellingen openen"
           >
             ⚙️

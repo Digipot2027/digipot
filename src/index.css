@@ -512,3 +512,50 @@ tr[role="button"]:focus-visible,
   flex-direction: column;
   gap: 4px;
 }
+
+/* Pagina-header met tandwiel of terugknop */
+.pagina-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+/* Info-kaart — lichtgrijze achtergrond met rand */
+.info-kaart {
+  background: var(--grijs-50);
+  border: 1px solid var(--grijs-200);
+}
+
+/* Voorbeeld-blok in PaginaProfiel */
+.voorbeeld-blok {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--grijs-50);
+  border-radius: 8px;
+  border: 1px solid var(--grijs-200);
+}
+
+/* Tekstgrootte-knoppen in PaginaProfiel — conditionele stijlen via BEM */
+.tekstgrootte-knop {
+  flex: 1;
+  padding: 12px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-align: center;
+  transition: all 0.15s;
+  border: 1.5px solid var(--grijs-200);
+  background: var(--grijs-50);
+  color: var(--grijs-900);
+  font-weight: 400;
+}
+.tekstgrootte-knop--actief {
+  border: 2px solid var(--blauw);
+  background: #eff6ff;
+  color: var(--blauw);
+  font-weight: 700;
+}
+.tekstgrootte-knop__letter--normaal { font-size: 1rem; margin-bottom: 4px; }
+.tekstgrootte-knop__letter--groot   { font-size: 1.25rem; margin-bottom: 4px; }
+.tekstgrootte-knop__letter--extra   { font-size: 1.5rem; margin-bottom: 4px; }
