@@ -15,10 +15,11 @@ function PaginaInstellingen() {
 
       {/* Header */}
       <div className="kaart">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <div className="kaart-header">
           <button
             onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
+            className="knop-icoon"
+            style={{ fontSize: 20, padding: '4px 0' }}
             aria-label="Terug"
           >
             ←
@@ -28,50 +29,50 @@ function PaginaInstellingen() {
       </div>
 
       {/* Navigatie-items */}
-      <div className="kaart" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="kaart p-0 overflow-hidden">
 
         {/* Open potjes */}
-        <button onClick={() => navigate('/instellingen/open')} style={rij()}>
-          <div style={rijLinks()}>
+        <button onClick={() => navigate('/instellingen/open')} className="nav-rij">
+          <div className="nav-rij__links">
             <span style={{ fontSize: 20 }}>🟢</span>
             <div>
-              <div style={rijTitel()}>Open potjes</div>
-              <div style={rijSub()}>Potjes waar je actief aan deelneemt</div>
+              <div className="nav-rij__titel">Open potjes</div>
+              <div className="nav-rij__sub">Potjes waar je actief aan deelneemt</div>
             </div>
           </div>
-          <span style={pijl()}>›</span>
+          <span className="nav-rij__pijl">›</span>
         </button>
 
-        <div style={scheiding()} />
+        <div className="nav-rij__scheiding" />
 
         {/* Gesloten potjes */}
-        <button onClick={() => navigate('/instellingen/gesloten')} style={rij()}>
-          <div style={rijLinks()}>
+        <button onClick={() => navigate('/instellingen/gesloten')} className="nav-rij">
+          <div className="nav-rij__links">
             <span style={{ fontSize: 20 }}>🔒</span>
             <div>
-              <div style={rijTitel()}>Gesloten potjes</div>
-              <div style={rijSub()}>Afgeronde potjes en eindafrekelingen</div>
+              <div className="nav-rij__titel">Gesloten potjes</div>
+              <div className="nav-rij__sub">Afgeronde potjes en eindafrekelingen</div>
             </div>
           </div>
-          <span style={pijl()}>›</span>
+          <span className="nav-rij__pijl">›</span>
         </button>
 
-        <div style={scheiding()} />
+        <div className="nav-rij__scheiding" />
 
         {/* Profiel */}
-        <button onClick={() => navigate('/instellingen/profiel')} style={rij()}>
-          <div style={rijLinks()}>
+        <button onClick={() => navigate('/instellingen/profiel')} className="nav-rij">
+          <div className="nav-rij__links">
             <span style={{ fontSize: 20 }}>👤</span>
             <div>
-              <div style={rijTitel()}>Profiel</div>
-              <div style={rijSub()}>
+              <div className="nav-rij__titel">Profiel</div>
+              <div className="nav-rij__sub">
                 {profielNaam
                   ? `Ingesteld als "${profielNaam}"`
                   : 'Nog geen naam ingesteld'}
               </div>
             </div>
           </div>
-          <span style={pijl()}>›</span>
+          <span className="nav-rij__pijl">›</span>
         </button>
 
       </div>
@@ -79,18 +80,5 @@ function PaginaInstellingen() {
     </div>
   )
 }
-
-function rij() {
-  return {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '16px 20px', width: '100%', background: 'transparent',
-    border: 'none', cursor: 'pointer', textAlign: 'left',
-  }
-}
-function rijLinks() { return { display: 'flex', alignItems: 'center', gap: 14 } }
-function rijTitel() { return { fontSize: 15, fontWeight: 600, color: 'var(--grijs-900)', marginBottom: 2 } }
-function rijSub()   { return { fontSize: 13, color: 'var(--grijs-600)' } }
-function pijl()     { return { fontSize: 20, color: 'var(--grijs-400)', lineHeight: 1 } }
-function scheiding(){ return { height: 1, background: 'var(--grijs-100)', margin: '0 20px' } }
 
 export default PaginaInstellingen

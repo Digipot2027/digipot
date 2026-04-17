@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 3.9
+**Versie:** 4.0
 **Datum:** 2026-04-17
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -298,4 +298,5 @@ Zie versie 2.6 (ongewijzigd).
 | 3.6 | 2026-04-17 | **Technische schuld afgelost + CSS-migratie fase 1:** utility-klassen en component-specifieke CSS toegevoegd aan `index.css`; basis gereed voor fasen 2–10 | Technische schuld items 1/5/6; CSS-migratie fase 1 van 10 |
 | 3.7 | 2026-04-17 | **CSS-migratie fase 2:** `DeelKnop` en `PaginaNietGevonden` inline-stijl-vrij | CSS-migratie stap 2 van 10 |
 | 3.8 | 2026-04-17 | **CSS-migratie fase 3:** vier modals inline-stijl-vrij | CSS-migratie stap 3 van 10 |
-| 3.9 | 2026-04-17 | **CSS-migratie fase 4:** `PaginaNieuwPotje` en `PaginaProfiel` inline-stijl-vrij via `.pagina-header`, `.kaart-header`, `.knop-icoon`, `.info-kaart`, `.voorbeeld-blok`, `.tekstgrootte-knop` (BEM conditioneel) | CSS-migratie stap 4 van 10 |
+| 3.9 | 2026-04-17 | **CSS-migratie fase 4:** `PaginaNieuwPotje` en `PaginaProfiel` inline-stijl-vrij | CSS-migratie stap 4 van 10 |
+| 4.0 | 2026-04-17 | **CSS-migratie fase 5:** `PaginaInstellingen` inline-stijl-vrij; stijlfuncties (`rij`, `rijLinks`, etc.) vervangen door `.nav-rij`-klassen uit CSS | CSS-migratie stap 5 van 10 |
