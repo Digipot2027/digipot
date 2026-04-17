@@ -35,21 +35,22 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
         {/* Header */}
         <div className="kaart">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="overzicht-header">
+            <div className="overzicht-header__links">
               <h1 className="titel">🍺 {potje?.naam}</h1>
-              <p className="subtitel" style={{ marginBottom: 0 }}>Welkom, {ikzelf?.naam}</p>
+              <p className="subtitel mb-0">Welkom, {ikzelf?.naam}</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexShrink: 0 }}>
+            <div className="overzicht-header__rechts">
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 22, fontWeight: 700, color: saldi.potSaldo > 0 ? 'var(--groen)' : 'var(--grijs-600)' }}>
+                <div className={`saldo-display${saldi.potSaldo > 0 ? ' saldo-display--positief' : ' saldo-display--nul'}`}>
                   {formatBedrag(saldi.potSaldo, valuta)}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--grijs-500)' }}>nog te besteden</div>
+                <div className="sectie-label">nog te besteden</div>
               </div>
               <button
                 onClick={() => navigate('/instellingen')}
-                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--grijs-500)', padding: '2px 0 0 0', lineHeight: 1 }}
+                className="knop-icoon"
+                style={{ fontSize: 22, padding: '2px 0 0 0' }}
                 aria-label="Instellingen openen"
               >
                 ⚙️
@@ -58,7 +59,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           </div>
 
           {!ikBenActief && (
-            <div style={{ marginTop: 12 }}>
+            <div className="mt-3">
               <span className="badge badge-afgemeld">Afgemeld</span>
             </div>
           )}
@@ -72,16 +73,16 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
         {/* Deelnemers */}
         <div className="kaart">
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+          <h2 className="text-base font-semibold mb-1">
             Deelnemers ({actieveDeelnemers.length}/{deelnemers.length})
           </h2>
-          <p style={{ fontSize: 12, color: 'var(--grijs-500)', marginBottom: 12 }}>
+          <p className="text-xs tekst-grijs-5 mb-3">
             Tik op een naam voor details
           </p>
 
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div className="deelnemers-tabel-wrapper">
             <table
-              style={{ width: '100%', minWidth: 260, borderCollapse: 'collapse', tableLayout: 'fixed' }}
+              className="deelnemers-tabel"
               aria-label="Deelnemersoverzicht"
             >
               <colgroup>
@@ -90,10 +91,10 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 <col style={{ width: 72 }} />
               </colgroup>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--grijs-200)' }}>
-                  <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left', padding: '4px 6px 8px' }}>Naam</th>
-                  <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>In de pot</th>
-                  <th scope="col" style={{ fontSize: 11, color: 'var(--grijs-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', padding: '4px 6px 8px' }}>Betaald</th>
+                <tr>
+                  <th scope="col">Naam</th>
+                  <th scope="col">In de pot</th>
+                  <th scope="col">Betaald</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,9 +114,9 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
         </div>
 
         {/* Actieknoppen */}
-        <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="kaart actie-kaart">
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="grid-2">
             <button className="knop knop-primair" style={{ minWidth: 0 }} onClick={onStorten} disabled={!ikBenActief}>
               💰 In pot storten
             </button>
@@ -125,23 +126,21 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           </div>
 
           {ikBenActief && saldi.potSaldo === 0 && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'center', marginTop: -4 }}>
+            <p className="text-xs tekst-grijs-5 text-center" style={{ marginTop: -4 }}>
               Geen saldo beschikbaar. Voeg eerst een storting toe.
             </p>
           )}
 
           {!ikBenActief && (
-            <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', textAlign: 'center', padding: '4px 0' }}>
+            <p className="text-sm tekst-grijs-6 text-center" style={{ padding: '4px 0' }}>
               Je hebt je afgemeld en kunt geen transacties meer invoeren.
             </p>
           )}
 
-          <div style={{ borderTop: '1px solid var(--grijs-200)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--grijs-400)', marginBottom: 0 }}>
-              Beheer
-            </p>
+          <div className="actie-sectie">
+            <p className="sectie-label mb-0">Beheer</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="grid-2">
               <button
                 className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
                 style={{ minWidth: 0, fontSize: '0.85rem' }}
@@ -161,18 +160,18 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </div>
 
             {ikBenActief && !ikBenGestort && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'left', marginTop: -4 }}>
+              <p className="text-xs tekst-grijs-5 text-left" style={{ marginTop: -4 }}>
                 Eerst storten om je te kunnen afmelden.
               </p>
             )}
             {/* UX-1 fix (2026-04-16): uitleg dat iedereen het potje kan afsluiten */}
             {heeftTransacties && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'right', marginTop: -4 }}>
+              <p className="text-xs tekst-grijs-5 text-right" style={{ marginTop: -4 }}>
                 Iedereen kan het potje afsluiten.
               </p>
             )}
             {!heeftTransacties && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--grijs-500)', textAlign: 'right', marginTop: -4 }}>
+              <p className="text-xs tekst-grijs-5 text-right" style={{ marginTop: -4 }}>
                 Afsluiten kan pas als er transacties zijn.
               </p>
             )}

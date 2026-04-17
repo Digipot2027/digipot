@@ -104,15 +104,15 @@ function PaginaPotje() {
   if (laden) return (
     <div className="pagina">
       <div className="kaart">
-        <div className="skeleton" style={{ height: 28, width: '60%', marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 16, width: '40%', marginBottom: 8 }} />
-        <div className="skeleton" style={{ height: 16, width: '30%' }} />
+        <div className="skeleton skeleton-titel" />
+        <div className="skeleton skeleton-subtitel" />
+        <div className="skeleton skeleton-smal" />
       </div>
       <div className="kaart">
-        <div className="skeleton" style={{ height: 16, width: '50%', marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 40, marginBottom: 8 }} />
-        <div className="skeleton" style={{ height: 40, marginBottom: 8 }} />
-        <div className="skeleton" style={{ height: 40 }} />
+        <div className="skeleton skeleton-subtitel mb-3" />
+        <div className="skeleton skeleton-rij mb-2" />
+        <div className="skeleton skeleton-rij mb-2" />
+        <div className="skeleton skeleton-rij" />
       </div>
     </div>
   )
@@ -120,7 +120,7 @@ function PaginaPotje() {
   if (fout) return (
     <div className="pagina">
       <div className="kaart">
-        <p style={{ color: 'var(--rood)' }}>{fout}</p>
+        <p className="tekst-rood">{fout}</p>
       </div>
     </div>
   )
@@ -158,7 +158,7 @@ function PaginaPotje() {
           ⚠️ Verbinding verbroken. Wijzigingen worden niet opgeslagen.
         </div>
       )}
-      <div style={!online ? { paddingTop: 40 } : undefined}>
+      <div className={!online ? 'online-offset' : undefined}>
         <PaginaOverzicht
           potje={potje}
           deelnemers={deelnemers}

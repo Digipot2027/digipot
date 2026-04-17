@@ -773,3 +773,154 @@ tr[role="button"]:focus-visible,
 
 /* Subtitel ingesprongen na terugknop (36px = knopbreedte + gap) */
 .subtitel-ingesprongen { margin-bottom: 0; padding-left: 36px; }
+
+/* Offset voor offline-banner (hoogte van .verbinding-banner) */
+.online-offset { padding-top: 40px; }
+
+/* PaginaOverzicht — header */
+.overzicht-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.overzicht-header__links  { flex: 1; min-width: 0; }
+.overzicht-header__rechts { display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
+
+/* PaginaOverzicht — deelnemerstafel */
+.deelnemers-tabel-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.deelnemers-tabel {
+  width: 100%;
+  min-width: 260px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.deelnemers-tabel thead tr { border-bottom: 1px solid var(--grijs-200); }
+.deelnemers-tabel th {
+  font-size: 11px;
+  color: var(--grijs-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 6px 8px;
+}
+.deelnemers-tabel th:first-child { text-align: left; }
+.deelnemers-tabel th:not(:first-child) { text-align: right; }
+
+/* PaginaOverzicht — actie-kaart */
+.actie-kaart { display: flex; flex-direction: column; gap: 10px; }
+.actie-sectie {
+  border-top: 1px solid var(--grijs-200);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* PaginaEindafrekening — gedeeld */
+.eindafrekening-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.eindafrekening-saldo-rij {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+.eindafrekening-saldo-rij--border { border-bottom: 1px solid var(--grijs-200); }
+
+/* PaginaEindafrekening — deelnemer-rij in eindafrekening */
+.ea-deelnemer {
+  padding: 12px 0;
+  opacity: 1;
+}
+.ea-deelnemer--afgemeld { opacity: 0.75; }
+.ea-deelnemer--border   { border-bottom: 1px solid var(--grijs-100); }
+.ea-deelnemer__knop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  gap: 8px;
+  padding: 0;
+}
+.ea-deelnemer__links  { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ea-deelnemer__naam-rij { display: flex; align-items: center; gap: 6px; }
+.ea-deelnemer__naam {
+  font-size: 0.9375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ea-deelnemer__naam--afgemeld { text-decoration: line-through; }
+.ea-deelnemer__sub-betaald { font-size: 13px; color: var(--grijs-600); }
+.ea-deelnemer__sub-gestort { font-size: 12px; color: var(--grijs-500); }
+.ea-deelnemer__rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.ea-deelnemer__bedrag { font-weight: 700; font-size: 1rem; }
+.ea-deelnemer__bedrag--positief { color: var(--groen); }
+.ea-deelnemer__bedrag--negatief { color: var(--rood); }
+.ea-deelnemer__details-label { font-size: 11px; color: var(--grijs-500); display: flex; align-items: center; gap: 3px; }
+.ea-deelnemer__pijl {
+  font-size: 12px;
+  color: var(--grijs-400);
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.ea-deelnemer__pijl--open { transform: rotate(90deg); }
+.ea-deelnemer__status { font-size: 12px; margin-top: 6px; }
+.ea-deelnemer__status--positief { color: var(--groen); }
+.ea-deelnemer__status--negatief { color: var(--rood); }
+
+/* PaginaEindafrekening — uitklapblok */
+.ea-detail-blok {
+  background: var(--grijs-50);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.ea-detail-sectie-titel {
+  font-weight: 600;
+  color: var(--grijs-600);
+  margin-bottom: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ea-detail-sectie-titel--mt { margin-top: 10px; }
+.ea-detail-transactie-rij {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  color: var(--grijs-700);
+}
+.ea-detail-transactie-rij__bedrag { font-weight: 500; }
+.ea-detail-transactie-rij__bedrag--groen { color: var(--groen); }
+
+/* PaginaEindafrekening — vereffening */
+.vereffening-rij { padding: 12px 0; }
+.vereffening-rij--border { border-bottom: 1px solid var(--grijs-100); }
+.vereffening-rij__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.vereffening-rij__namen { font-size: 0.9375rem; }
+.vereffening-rij__pijl  { color: var(--grijs-500); margin: 0 6px; }
+.vereffening-rij__bedrag { font-weight: 700; font-size: 1rem; }
+.vereffening-rij__tikkie { font-size: 0.875rem; min-height: 40px; }
+
+/* Alles vereffend kaart */
+.alles-vereffend {
+  text-align: center;
+  padding: 20px 24px;
+}
+.alles-vereffend__emoji { font-size: 32px; margin-bottom: 8px; }
+.alles-vereffend__sub   { font-size: 13px; color: var(--grijs-600); }

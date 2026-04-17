@@ -78,11 +78,12 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
 
       {/* ── Header ── */}
       <div className="kaart">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <h1 className="titel" style={{ marginBottom: 0 }}>🔒 {potje.naam}</h1>
+        <div className="eindafrekening-header">
+          <h1 className="titel mb-0">🔒 {potje.naam}</h1>
           <button
             onClick={() => navigate('/instellingen')}
-            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--grijs-500)', padding: '2px 0 0 0', lineHeight: 1 }}
+            className="knop-icoon"
+            style={{ fontSize: 22, padding: '2px 0 0 0' }}
             aria-label="Instellingen openen"
           >
             ⚙️
@@ -91,23 +92,23 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
 
         <p className="subtitel">{sluitRegel}</p>
 
-        <p style={{ fontSize: 12, color: 'var(--grijs-500)', marginTop: -8, marginBottom: 12 }}>
+        <p className="text-xs tekst-grijs-5" style={{ marginTop: -8, marginBottom: 12 }}>
           Dit potje wordt na 7 dagen volledig verwijderd.
         </p>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--grijs-200)' }}>
-          <span style={{ color: 'var(--grijs-600)' }}>Totaal in de pot gestort</span>
+        <div className="eindafrekening-saldo-rij eindafrekening-saldo-rij--border">
+          <span className="tekst-grijs-6">Totaal in de pot gestort</span>
           <strong>{formatBedrag(saldi.potTotaal, valuta)}</strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
-          <span style={{ color: 'var(--grijs-600)' }}>Totaal uitgegeven</span>
+        <div className="eindafrekening-saldo-rij">
+          <span className="tekst-grijs-6">Totaal uitgegeven</span>
           <strong>{formatBedrag(saldi.potUitgaven, valuta)}</strong>
         </div>
       </div>
 
       {/* ── Eindafrekening per deelnemer ── */}
       <div className="kaart">
-        <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+        <h2 className="text-base font-semibold mb-4">
           Eindafrekening per deelnemer
         </h2>
 
@@ -121,96 +122,73 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
           return (
             <div
               key={d.id}
-              style={{
-                borderBottom: isLaatste ? 'none' : '1px solid var(--grijs-100)',
-                opacity: isAfgemeld ? 0.75 : 1,
-                padding: '12px 0',
-              }}
+              className={`ea-deelnemer${isAfgemeld ? ' ea-deelnemer--afgemeld' : ''}${!isLaatste ? ' ea-deelnemer--border' : ''}`}
             >
               <button
                 onClick={() => toggleDetail(d.id)}
                 aria-expanded={isOpen}
                 aria-controls={detailId}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                  width: '100%', background: 'none', border: 'none',
-                  cursor: 'pointer', textAlign: 'left', gap: 8, padding: 0,
-                }}
+                className="ea-deelnemer__knop"
               >
-                <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <strong style={{
-                      fontSize: '0.9375rem',
-                      textDecoration: isAfgemeld ? 'line-through' : 'none',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
+                <span className="ea-deelnemer__links">
+                  <span className="ea-deelnemer__naam-rij">
+                    <strong className={`ea-deelnemer__naam${isAfgemeld ? ' ea-deelnemer__naam--afgemeld' : ''}`}>
                       {d.naam}
                     </strong>
                     {isAfgemeld && (
                       <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
                     )}
                   </span>
-                  <span style={{ fontSize: 13, color: 'var(--grijs-600)' }}>
+                  <span className="ea-deelnemer__sub-betaald">
                     Betaald: {formatBedrag(d.betaald, valuta)}
                   </span>
-                  <span style={{ fontSize: 12, color: 'var(--grijs-500)' }}>
+                  <span className="ea-deelnemer__sub-gestort">
                     In de pot: {formatBedrag(d.gestort, valuta)}
                   </span>
                 </span>
 
-                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                  <span style={{ fontWeight: 700, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', fontSize: '1rem' }}>
+                <span className="ea-deelnemer__rechts">
+                  <span className={`ea-deelnemer__bedrag${d.verrekening >= 0 ? ' ea-deelnemer__bedrag--positief' : ' ea-deelnemer__bedrag--negatief'}`}>
                     {d.verrekening >= 0
                       ? `+${formatBedrag(d.verrekening, valuta)}`
                       : `-${formatBedrag(Math.abs(d.verrekening), valuta)}`}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--grijs-500)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <span className="ea-deelnemer__details-label">
                     details
-                    <span style={{
-                      fontSize: 12, color: 'var(--grijs-400)', lineHeight: 1,
-                      display: 'inline-block', transition: 'transform 0.15s',
-                      transform: isOpen ? 'rotate(90deg)' : 'none',
-                    }}>›</span>
+                    <span className={`ea-deelnemer__pijl${isOpen ? ' ea-deelnemer__pijl--open' : ''}`}>›</span>
                   </span>
                 </span>
               </button>
 
-              <div style={{ fontSize: 12, color: d.verrekening >= 0 ? 'var(--groen)' : 'var(--rood)', marginTop: 6 }}>
+              <div className={`ea-deelnemer__status${d.verrekening >= 0 ? ' ea-deelnemer__status--positief' : ' ea-deelnemer__status--negatief'}`}>
                 {d.verrekening >= 0 ? '✅ Ontvangt geld terug' : '⚠️ Moet bijbetalen'}
               </div>
 
               <div id={detailId}>
                 {isOpen && (
-                  <div style={{
-                    background: 'var(--grijs-50)', borderRadius: 8,
-                    padding: '12px 14px', marginTop: 10, fontSize: 13,
-                  }}>
+                  <div className="ea-detail-blok">
                     {dtransacties.length === 0 ? (
-                      <p style={{ color: 'var(--grijs-500)', margin: 0 }}>Geen transacties.</p>
+                      <p className="tekst-grijs-5" style={{ margin: 0 }}>Geen transacties.</p>
                     ) : (
                       <>
                         {dtransacties.filter(t => t.type === 'storting').length > 0 && (
                           <>
-                            <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                              In de pot gestort
-                            </p>
+                            <p className="ea-detail-sectie-titel">In de pot gestort</p>
                             {dtransacties.filter(t => t.type === 'storting').map(t => (
-                              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>
+                              <div key={t.id} className="ea-detail-transactie-rij">
                                 <span>{tijdLabel(t.aangemaakt_op)}</span>
-                                <span style={{ fontWeight: 500 }}>{formatBedrag(t.bedrag, valuta)}</span>
+                                <span className="ea-detail-transactie-rij__bedrag">{formatBedrag(t.bedrag, valuta)}</span>
                               </div>
                             ))}
                           </>
                         )}
                         {dtransacties.filter(t => t.type === 'betaling').length > 0 && (
                           <>
-                            <p style={{ fontWeight: 600, color: 'var(--grijs-600)', marginBottom: 6, marginTop: 10, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                              Betalingen aan horeca
-                            </p>
+                            <p className="ea-detail-sectie-titel ea-detail-sectie-titel--mt">Betalingen aan horeca</p>
                             {dtransacties.filter(t => t.type === 'betaling').map(t => (
-                              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: 'var(--grijs-700)' }}>
+                              <div key={t.id} className="ea-detail-transactie-rij">
                                 <span>{tijdLabel(t.aangemaakt_op)}</span>
-                                <span style={{ fontWeight: 500, color: 'var(--groen)' }}>{formatBedrag(t.bedrag, valuta)}</span>
+                                <span className="ea-detail-transactie-rij__bedrag ea-detail-transactie-rij__bedrag--groen">{formatBedrag(t.bedrag, valuta)}</span>
                               </div>
                             ))}
                           </>
@@ -228,27 +206,26 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
       {/* ── Vereffening ── */}
       {vereffening.length > 0 && (
         <div className="kaart">
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Vereffening</h2>
-          <p style={{ fontSize: 13, color: 'var(--grijs-600)', marginBottom: 16 }}>
+          <h2 className="text-base font-semibold mb-1">Vereffening</h2>
+          <p className="text-sm tekst-grijs-6 mb-4">
             {vereffening.length === 1
               ? 'Eén overboeking om alles te vereffenen'
               : `${vereffening.length} overboekingen om alles te vereffenen`}
           </p>
           {vereffening.map((v, i) => (
-            <div key={i} style={{ borderBottom: i < vereffening.length - 1 ? '1px solid var(--grijs-100)' : 'none', padding: '12px 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: '0.9375rem' }}>
+            <div key={i} className={`vereffening-rij${i < vereffening.length - 1 ? ' vereffening-rij--border' : ''}`}>
+              <div className="vereffening-rij__header">
+                <span className="vereffening-rij__namen">
                   <strong>{v.van}</strong>
-                  <span style={{ color: 'var(--grijs-500)', margin: '0 6px' }}>→</span>
+                  <span className="vereffening-rij__pijl">→</span>
                   <strong>{v.aan}</strong>
                 </span>
-                <span style={{ fontWeight: 700, fontSize: '1rem' }}>
+                <span className="vereffening-rij__bedrag">
                   {formatBedrag(v.bedrag, valuta)}
                 </span>
               </div>
               <button
-                className="knop knop-secundair"
-                style={{ fontSize: '0.875rem', minHeight: 40 }}
+                className="knop knop-secundair vereffening-rij__tikkie"
                 onClick={openTikkie}
                 aria-label={`Stuur Tikkie naar ${v.van} voor ${formatBedrag(v.bedrag, valuta)}`}
               >
@@ -260,15 +237,15 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
       )}
 
       {vereffening.length === 0 && saldi.deelnemersSaldi.length > 0 && (
-        <div className="kaart" style={{ textAlign: 'center', padding: '20px 24px' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
-          <p style={{ fontWeight: 600, marginBottom: 4 }}>Alles vereffend</p>
-          <p style={{ fontSize: 13, color: 'var(--grijs-600)' }}>Er hoeft niemand meer bij te betalen.</p>
+        <div className="kaart alles-vereffend">
+          <div className="alles-vereffend__emoji">🎉</div>
+          <p className="font-semibold mb-1">Alles vereffend</p>
+          <p className="alles-vereffend__sub">Er hoeft niemand meer bij te betalen.</p>
         </div>
       )}
 
       {/* ── Knoppen ── */}
-      <div className="kaart" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="kaart actie-kaart">
         <button className="knop knop-primair" onClick={() => navigate('/')}>
           🍺 Nieuw potje starten
         </button>
