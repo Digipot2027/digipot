@@ -586,3 +586,49 @@ tr[role="button"]:focus-visible,
 
 /* Fout-kaart in potjeslijst */
 .fout-kaart { outline: none; }
+
+/* DeelnemerRij — tabelrij in het overzichtscherm */
+.deelnemer-rij {
+  background: transparent;
+  border-bottom: 1px solid var(--grijs-100);
+  cursor: pointer;
+  opacity: 1;
+}
+.deelnemer-rij--afgemeld {
+  background: var(--grijs-50);
+  opacity: 0.6;
+}
+.deelnemer-rij__naam-cel  { padding: 10px 6px; overflow: hidden; }
+.deelnemer-rij__naam-inhoud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--grijs-900);
+  overflow: hidden;
+  font-weight: 400;
+}
+.deelnemer-rij__naam-inhoud--ikzelf { font-weight: 600; }
+.deelnemer-rij__naam-tekst {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.deelnemer-rij__naam-tekst--afgemeld { text-decoration: line-through; }
+.deelnemer-rij__pijl { font-size: 12px; color: var(--grijs-400); font-weight: 400; flex-shrink: 0; }
+.deelnemer-rij__bedrag-cel {
+  font-size: 14px;
+  color: var(--grijs-600);
+  text-align: right;
+  padding: 10px 6px;
+  white-space: nowrap;
+}
+.deelnemer-rij__betaald-cel {
+  font-size: 14px;
+  text-align: right;
+  padding: 10px 6px;
+  white-space: nowrap;
+  color: var(--grijs-400);
+}
+.deelnemer-rij__betaald-cel--actief { color: var(--grijs-900); }

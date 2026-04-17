@@ -114,19 +114,19 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
       await pageB.goto(`/potje/${potje.id}`)
       await expect(pageB.getByText('Welkom, Bob', { exact: true })).toBeVisible({ timeout: 8000 })
 
-      // Alice meldt zich af via de DB
-      await supabase
+      // Alice meldt zich af via de DB — client met Alice's device_id voor RLS
+      const supabaseAlice = maakSupabaseClient(deviceA)
+      await supabaseAlice
         .from('deelnemers')
         .update({ actief: false, afgemeld_op: new Date().toISOString() })
         .eq('id', deelnemerA.id)
 
-      // Bob's pagina moet via realtime de afmelding van Alice zien
-      // De rij van Alice krijgt een visuele markering (opacity/doorstreping)
+      // Bob's pagina moet via realtime de afmelding van Alice zien.
+      // De <tr> van Alice krijgt de CSS-klasse deelnemer-rij--afgemeld.
+      // Realtime kan 1-3s nodig hebben om de wijziging te propageren.
       await expect(
-        pageB.locator('[style*="opacity"]').filter({ hasText: /Alice/i })
-          .or(pageB.locator('[style*="line-through"]').filter({ hasText: /Alice/i }))
-          .or(pageB.getByText(/Alice.*afgemeld|afgemeld.*Alice/i))
-      ).toBeVisible({ timeout: 10000 })
+        pageB.locator('tr.deelnemer-rij--afgemeld').filter({ hasText: /Alice/i })
+      ).toBeVisible({ timeout: 15000 })
     } finally {
       await contextA.close()
       await contextB.close()
