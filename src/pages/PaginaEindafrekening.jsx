@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { berekenEindafrekening, berekenVereffening } from '../utils/berekenSaldi'
+import { berekenEindafrekening } from '../utils/berekenEindafrekening'
+import { berekenVereffening } from '../utils/berekenVereffening'
 import { formatBedrag } from '../utils/formatBedrag'
 import { tijdLabel } from '../utils/tijdUtils'
 import { STANDAARD_VALUTA } from '../constants'

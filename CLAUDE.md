@@ -17,6 +17,43 @@ npm run e2e:chromium  # Chromium only — snelste feedback
 npm run e2e:report    # HTML rapport openen
 ```
 
+## Git-workflow
+
+Elke wijziging gaat via een feature branch en Pull Request — nooit direct naar `main`.
+
+```bash
+# 1. Nieuwe branch aanmaken
+git checkout -b beschrijvende-naam
+
+# 2. Wijzigingen maken, committen
+git add <bestanden>
+git commit -m "beschrijving"
+
+# 3. Branch naar GitHub pushen
+git push -u origin beschrijvende-naam
+
+# 4. Pull Request aanmaken op GitHub
+# → CI draait automatisch (unit tests + e2e)
+# → Als alles groen: vink "Merge without waiting for requirements" aan
+# → Klik "Merge pull request"
+
+# 5. Lokaal bijwerken na merge
+git checkout main
+git pull
+```
+
+**Branch protection op `main`:**
+- Direct pushen naar `main` is geblokkeerd
+- Unit tests (Vitest) zijn verplicht voor merge
+- E2e tests (Chromium) zijn verplicht voor merge
+- Als eigenaar kun je mergen via "Merge without waiting for requirements (bypass rules)"
+- Deploy naar Cloudflare Pages gebeurt automatisch na merge op `main`
+
+**Commit-naamgeving:** kort en beschrijvend, in het Nederlands of Engels.
+Voorbeelden: `css: fase 3 — kleine modals`, `fix: RLS race condition in supabaseClient`
+
+---
+
 ## Lokale kwaliteitswaarborg
 
 Vóór elke push naar `main` moeten de volgende checks slagen — identiek aan CI:
