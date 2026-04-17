@@ -72,25 +72,22 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 500 }}
+      className="modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-transactie-titel"
     >
-      <div
-        ref={panelRef}
-        style={{ background: 'var(--wit)', width: '100%', borderRadius: '16px 16px 0 0', padding: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}
-      >
-        <h2 id="modal-transactie-titel" style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{titel}</h2>
+      <div ref={panelRef} className="modal-panel">
+        <h2 id="modal-transactie-titel" className="modal-titel">{titel}</h2>
 
         {!ikBenActief && (
-          <div style={{ background: 'var(--grijs-100)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 14, color: 'var(--grijs-600)' }}>
+          <div className="modal-info-blok">
             Je hebt je afgemeld en kunt geen transacties meer invoeren.
           </div>
         )}
 
         {!isStorting && ikBenActief && (
-          <p style={{ fontSize: 14, color: 'var(--grijs-600)', marginBottom: 16 }}>
+          <p className="modal-tekst--mb3">
             Beschikbaar saldo: <strong>{formatBedrag(potSaldo, valuta)}</strong>
           </p>
         )}
@@ -112,20 +109,19 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
               aria-invalid={fout ? 'true' : undefined}
             />
             {bedragGeldig && !fout && (
-              <div className="teller" style={{ color: 'var(--groen)' }}>= {formatBedrag(bedragNum, valuta)}</div>
+              <div className="teller tekst-groen">= {formatBedrag(bedragNum, valuta)}</div>
             )}
             {/* WCAG 1.3.1 / 4.1.3: id koppelt foutmelding aan invoerveld via aria-describedby */}
             {fout && <div id="bedrag-invoer-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" className="knop knop-secundair" onClick={onAnnuleer} style={{ flex: 1 }}>
+          <div className="modal-knoppen">
+            <button type="button" className="knop knop-secundair flex-1" onClick={onAnnuleer}>
               Annuleren
             </button>
             <button
               type="submit"
-              className={`knop ${isStorting ? 'knop-primair' : 'knop-gevaar'}`}
-              style={{ flex: 1 }}
+              className={`knop flex-1 ${isStorting ? 'knop-primair' : 'knop-gevaar'}`}
               disabled={laden || !bedrag || !ikBenActief}
             >
               {laden

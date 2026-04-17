@@ -28,31 +28,27 @@ function ModalSluiten({ potjeNaam, onBevestig, onAnnuleer }) {
   return (
     // K4: role + aria-modal + aria-labelledby
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 500 }}
+      className="modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-sluiten-titel"
     >
-      <div
-        ref={panelRef}
-        style={{ background: 'var(--wit)', width: '100%', borderRadius: '16px 16px 0 0', padding: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}
-      >
-        <h2 id="modal-sluiten-titel" style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>🔒 Potje sluiten</h2>
-        <p style={{ fontSize: 14, color: 'var(--grijs-600)', marginBottom: 20 }}>
+      <div ref={panelRef} className="modal-panel">
+        <h2 id="modal-sluiten-titel" className="modal-titel">🔒 Potje sluiten</h2>
+        <p className="modal-tekst">
           Weet je zeker dat je <strong>{potjeNaam}</strong> wilt sluiten?
           Dit kan niet ongedaan worden gemaakt. Iedereen ziet direct de eindafrekening.
         </p>
 
-        {fout && <div className="fout-tekst" style={{ marginBottom: 12 }}>{fout}</div>}
+        {fout && <div className="fout-tekst mb-3">{fout}</div>}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="knop knop-secundair" onClick={onAnnuleer} style={{ flex: 1 }}>
+        <div className="modal-knoppen">
+          <button className="knop knop-secundair flex-1" onClick={onAnnuleer}>
             Annuleren
           </button>
           {/* V4: pijl op primaire actieknop */}
           <button
-            className="knop knop-gevaar"
-            style={{ flex: 1 }}
+            className="knop knop-gevaar flex-1"
             onClick={handleSluiten}
             disabled={laden}
           >
