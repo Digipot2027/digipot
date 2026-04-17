@@ -42,59 +42,31 @@ function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = 'EUR' }) {
       role="button"
       tabIndex={0}
       aria-label={`Details van ${deelnemer.naam}${isAfgemeld ? ', afgemeld' : ''}`}
-      style={{
-        background: isAfgemeld ? 'var(--grijs-50)' : 'transparent',
-        borderBottom: '1px solid var(--grijs-100)',
-        cursor: 'pointer',
-        opacity: isAfgemeld ? 0.6 : 1,
-      }}
+      className={`deelnemer-rij${isAfgemeld ? ' deelnemer-rij--afgemeld' : ''}`}
     >
       {/* Naam-cel — overflow:hidden + ellipsis zodat lange namen de bedragkolommen
           niet wegdrukken in de table-layout:fixed tabel op smalle schermen (320px).
           Volledige naam is beschikbaar via aria-label op de <tr> en via de detail-sheet. */}
-      <td style={{ padding: '10px 6px', overflow: 'hidden' }}>
-        <span style={{
-          fontWeight: isIkzelf ? 600 : 400,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          textDecoration: isAfgemeld ? 'line-through' : 'none',
-          color: 'var(--grijs-900)',
-          overflow: 'hidden',
-        }}>
-          <span style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            minWidth: 0,
-          }}>
+      <td className="deelnemer-rij__naam-cel">
+        <span className={`deelnemer-rij__naam-inhoud${isIkzelf ? ' deelnemer-rij__naam-inhoud--ikzelf' : ''}`}>
+          <span className={`deelnemer-rij__naam-tekst${isAfgemeld ? ' deelnemer-rij__naam-tekst--afgemeld' : ''}`}>
             {deelnemer.naam}{isIkzelf ? ' (jij)' : ''}
           </span>
           {isAfgemeld && (
             <span className="badge badge-afgemeld" style={{ fontSize: 10, flexShrink: 0 }}>Afgemeld</span>
           )}
           {/* Pijltje als visuele hint — aria-hidden want al duidelijk via role="button" */}
-          <span
-            style={{ fontSize: 12, color: 'var(--grijs-400)', fontWeight: 400, textDecoration: 'none', flexShrink: 0 }}
-            aria-hidden="true"
-          >›</span>
+          <span className="deelnemer-rij__pijl" aria-hidden="true">›</span>
         </span>
       </td>
 
       {/* Ingelegd-cel */}
-      <td style={{ fontSize: 14, color: 'var(--grijs-600)', textAlign: 'right', padding: '10px 6px', whiteSpace: 'nowrap' }}>
+      <td className="deelnemer-rij__bedrag-cel">
         {formatBedrag(saldi?.gestort || 0, valuta)}
       </td>
 
       {/* Betaald-cel */}
-      <td style={{
-        fontSize: 14,
-        color: (saldi?.betaald || 0) > 0 ? 'var(--grijs-900)' : 'var(--grijs-400)',
-        textAlign: 'right',
-        padding: '10px 6px',
-        whiteSpace: 'nowrap',
-      }}>
+      <td className={`deelnemer-rij__betaald-cel${(saldi?.betaald || 0) > 0 ? ' deelnemer-rij__betaald-cel--actief' : ''}`}>
         {formatBedrag(saldi?.betaald || 0, valuta)}
       </td>
     </tr>
