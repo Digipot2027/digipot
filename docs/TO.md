@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 3.8
+**Versie:** 3.9
 **Datum:** 2026-04-17
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -297,4 +297,5 @@ Zie versie 2.6 (ongewijzigd).
 | 3.5 | 2026-04-16 | **Audit-fix:** 2 gemiste overtredingen alsnog gemigreerd (`useMijnPotjes.js` r57, `PaginaPotje.jsx` r162); §3 projectstructuur bijgewerkt met `storage.js` en `tijdUtils.js` en pw9–pw13; §18 testcount bijgewerkt naar 728 | Naverificatie na storage-abstractie audit |
 | 3.6 | 2026-04-17 | **Technische schuld afgelost + CSS-migratie fase 1:** utility-klassen en component-specifieke CSS toegevoegd aan `index.css`; basis gereed voor fasen 2–10 | Technische schuld items 1/5/6; CSS-migratie fase 1 van 10 |
 | 3.7 | 2026-04-17 | **CSS-migratie fase 2:** `DeelKnop` en `PaginaNietGevonden` inline-stijl-vrij | CSS-migratie stap 2 van 10 |
-| 3.8 | 2026-04-17 | **CSS-migratie fase 3:** `ModalSluiten`, `ModalAfmelden`, `ModalDeelnemen`, `ModalTransactie` inline-stijl-vrij via `.modal-overlay`, `.modal-panel`, `.modal-titel`, `.modal-tekst`, `.modal-knoppen`, `.modal-info-blok`, `.waarschuwing-blok` | CSS-migratie stap 3 van 10 |
+| 3.8 | 2026-04-17 | **CSS-migratie fase 3:** vier modals inline-stijl-vrij | CSS-migratie stap 3 van 10 |
+| 3.9 | 2026-04-17 | **CSS-migratie fase 4:** `PaginaNieuwPotje` en `PaginaProfiel` inline-stijl-vrij via `.pagina-header`, `.kaart-header`, `.knop-icoon`, `.info-kaart`, `.voorbeeld-blok`, `.tekstgrootte-knop` (BEM conditioneel) | CSS-migratie stap 4 van 10 |

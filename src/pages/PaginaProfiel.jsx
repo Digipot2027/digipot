@@ -77,10 +77,11 @@ function PaginaProfiel() {
 
       {/* Header */}
       <div className="kaart">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+        <div className="kaart-header">
           <button
             onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--grijs-600)', padding: '4px 0', lineHeight: 1 }}
+            className="knop-icoon"
+            style={{ fontSize: '1.25rem', padding: '4px 0' }}
             aria-label="Terug"
           >
             ←
@@ -126,18 +127,23 @@ function PaginaProfiel() {
 
       {/* Tekstgrootte */}
       <div className="kaart">
-        <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>Tekstgrootte</h2>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)', marginBottom: 16 }}>
+        <h2 className="text-base font-semibold mb-1">Tekstgrootte</h2>
+        <p className="text-sm tekst-grijs-6 mb-4">
           De instelling wordt direct toegepast en onthouden.
         </p>
 
         <div
           role="radiogroup"
           aria-label="Tekstgrootte kiezen"
-          style={{ display: 'flex', gap: 10 }}
+          className="flex gap-2"
         >
           {TEKSTGROOTTES.map(({ waarde, label }, index) => {
             const actief = tekstgrootte === waarde
+            const letterKlasse = waarde === 'normaal'
+              ? 'tekstgrootte-knop__letter--normaal'
+              : waarde === 'groot'
+              ? 'tekstgrootte-knop__letter--groot'
+              : 'tekstgrootte-knop__letter--extra'
             return (
               <button
                 key={waarde}
@@ -154,21 +160,9 @@ function PaginaProfiel() {
                   handleTekstgrootte(TEKSTGROOTTES[volgende].waarde, volgende)
                 }}
                 onClick={() => handleTekstgrootte(waarde, index)}
-                style={{
-                  flex: 1,
-                  padding: '12px 8px',
-                  borderRadius: 8,
-                  border: actief ? '2px solid var(--blauw)' : '1.5px solid var(--grijs-200)',
-                  background: actief ? '#eff6ff' : 'var(--grijs-50)',
-                  color: actief ? 'var(--blauw)' : 'var(--grijs-900)',
-                  fontWeight: actief ? 700 : 400,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  textAlign: 'center',
-                  transition: 'all 0.15s',
-                }}
+                className={`tekstgrootte-knop${actief ? ' tekstgrootte-knop--actief' : ''}`}
               >
-                <div style={{ fontSize: waarde === 'normaal' ? '1rem' : waarde === 'groot' ? '1.25rem' : '1.5rem', marginBottom: 4 }}>A</div>
+                <div className={letterKlasse}>A</div>
                 <div>{label}</div>
               </button>
             )
@@ -176,17 +170,17 @@ function PaginaProfiel() {
         </div>
 
         {/* Live voorbeeld */}
-        <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--grijs-50)', borderRadius: 8, border: '1px solid var(--grijs-200)' }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--grijs-600)', marginBottom: 4 }}>Voorbeeld:</p>
-          <p style={{ fontSize: '1rem' }}>Vakantie Spanje 2026</p>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>Potje · 3 deelnemers · €45,00</p>
+        <div className="voorbeeld-blok">
+          <p className="text-sm tekst-grijs-6 mb-1">Voorbeeld:</p>
+          <p className="text-base">Vakantie Spanje 2026</p>
+          <p className="text-sm tekst-grijs-6">Potje · 3 deelnemers · €45,00</p>
         </div>
       </div>
 
       {/* Naam verwijderen */}
       {opgeslagenNaamState && (
-        <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)', marginBottom: 12 }}>
+        <div className="kaart info-kaart">
+          <p className="text-sm tekst-grijs-6 mb-3">
             Je naam wordt lokaal opgeslagen op dit apparaat. Er worden geen persoonlijke gegevens verstuurd.
           </p>
           <button
@@ -200,8 +194,8 @@ function PaginaProfiel() {
       )}
 
       {!opgeslagenNaamState && (
-        <div className="kaart" style={{ background: 'var(--grijs-50)', border: '1px solid var(--grijs-200)' }}>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--grijs-600)' }}>
+        <div className="kaart info-kaart">
+          <p className="text-sm tekst-grijs-6">
             Je naam wordt lokaal opgeslagen op dit apparaat. Er worden geen persoonlijke gegevens verstuurd.
           </p>
         </div>
