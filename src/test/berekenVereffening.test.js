@@ -23,7 +23,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { berekenVereffening } from '../utils/berekenSaldi'
+import { berekenVereffening } from '../utils/berekenVereffening'
 
 // ── BV-01: één crediteur, één debiteur, exact gelijk bedrag ──────────────────
 

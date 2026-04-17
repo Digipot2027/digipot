@@ -24,7 +24,8 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { berekenSaldi, berekenEindafrekening } from '../utils/berekenSaldi'
+import { berekenSaldi } from '../utils/berekenSaldi'
+import { berekenEindafrekening } from '../utils/berekenEindafrekening'
 
 // ── Geëxtraheerde logica uit useMijnPotjes ────────────────────────────────────
 

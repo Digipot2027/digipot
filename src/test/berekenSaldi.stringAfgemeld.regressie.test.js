@@ -31,7 +31,8 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { berekenEindafrekening, berekenSaldi } from '../utils/berekenSaldi'
+import { berekenEindafrekening } from '../utils/berekenEindafrekening'
+import { berekenSaldi } from '../utils/berekenSaldi'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
