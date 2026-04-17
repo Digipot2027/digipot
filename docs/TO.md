@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 4.2
+**Versie:** 4.3
 **Datum:** 2026-04-17
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -301,4 +301,5 @@ Zie versie 2.6 (ongewijzigd).
 | 3.9 | 2026-04-17 | **CSS-migratie fase 4:** `PaginaNieuwPotje` en `PaginaProfiel` inline-stijl-vrij | CSS-migratie stap 4 van 10 |
 | 4.0 | 2026-04-17 | **CSS-migratie fase 5:** `PaginaInstellingen` inline-stijl-vrij | CSS-migratie stap 5 van 10 |
 | 4.1 | 2026-04-17 | **CSS-migratie fase 6:** `PaginaOpenPotjes` en `PaginaGeslotenPotjes` inline-stijl-vrij | CSS-migratie stap 6 van 10 |
-| 4.2 | 2026-04-17 | **CSS-migratie fase 7:** `DeelnemerRij` inline-stijl-vrij via `.deelnemer-rij`, BEM-modifiers voor `isAfgemeld` en `isIkzelf` | CSS-migratie stap 7 van 10 |
+| 4.2 | 2026-04-17 | **CSS-migratie fase 7:** `DeelnemerRij` inline-stijl-vrij | CSS-migratie stap 7 van 10 |
+| 4.3 | 2026-04-17 | **CSS-migratie fase 8:** `DeelnemerDetailSheet` inline-stijl-vrij via `.detail-panel`, `.detail-header`, `.detail-totalen`, `.detail-sectie`, `.detail-transactie-rij`, `.detail-leeg` | CSS-migratie stap 8 van 10 |
