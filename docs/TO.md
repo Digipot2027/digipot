@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 3.5
-**Datum:** 2026-04-16
+**Versie:** 3.7
+**Datum:** 2026-04-17
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -295,3 +295,5 @@ Zie versie 2.6 (ongewijzigd).
 | 3.3 | 2026-04-16 | **§18 CI-gedrag + §19 3-jobs pipeline:** Playwright e2e in CI gedocumenteerd | E2e in GitHub Actions |
 | 3.4 | 2026-04-16 | **localStorage-abstractielaag:** `src/utils/storage.js` geïntroduceerd; `controleer-patronen.js` uitgebreid met `localStorage.`-patroon; unit tests storage.test.js toegevoegd (10 tests); TEKSTGROOTTE_KEY bugfix in `main.jsx` via `getItem()` | Technische schuld: directe localStorage-aanroepen gesaneerd |
 | 3.5 | 2026-04-16 | **Audit-fix:** 2 gemiste overtredingen alsnog gemigreerd (`useMijnPotjes.js` r57, `PaginaPotje.jsx` r162); §3 projectstructuur bijgewerkt met `storage.js` en `tijdUtils.js` en pw9–pw13; §18 testcount bijgewerkt naar 728 | Naverificatie na storage-abstractie audit |
+| 3.6 | 2026-04-17 | **Technische schuld afgelost + CSS-migratie fase 1:** utility-klassen en component-specifieke CSS toegevoegd aan `index.css`; basis gereed voor fasen 2–10 | Technische schuld items 1/5/6; CSS-migratie fase 1 van 10 |
+| 3.7 | 2026-04-17 | **CSS-migratie fase 2:** `DeelKnop` (inline `style`-prop vervangen door `className`-prop; `deelknop-in-kaart` toegevoegd aan CSS), `PaginaNietGevonden` (volledig inline-stijl-vrij via `.lege-staat`, `.text-xl`, `.font-bold`, `.mb-3`, `.text-sm`, `.tekst-grijs-6`, `.mb-6`); `.text-xl` toegevoegd aan utility-klassen | CSS-migratie stap 2 van 10 |

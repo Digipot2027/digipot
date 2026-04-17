@@ -11,7 +11,7 @@ import { deelLink } from '../utils/deelLink'
  * "Nodig vrienden uit" maakt het doel expliciet — anderen laten meedoen —
  * in plaats van het technische middel (een potje delen).
  */
-function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
+function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
   const [status, setStatus] = useState('idle') // 'idle' | 'gekopieerd' | 'fout'
 
   // Op mobiel verschijnt native share sheet, op desktop kopiëren we direct
@@ -42,8 +42,7 @@ function DeelKnop({ potjeNaam, variant = 'secundair', style = {} }) {
 
   return (
     <button
-      className={`knop knop-${variant}`}
-      style={{ ...style }}
+      className={`knop knop-${variant}${className ? ' ' + className : ''}`}
       onClick={handleDelen}
       aria-live="polite"
       aria-label={

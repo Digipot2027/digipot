@@ -66,7 +66,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           <DeelKnop
             potjeNaam={potje?.naam}
             variant="secundair"
-            style={{ marginTop: 10, fontSize: 14, padding: '8px 14px', width: 'auto' }}
+            className="deelknop-in-kaart"
           />
         </div>
 
