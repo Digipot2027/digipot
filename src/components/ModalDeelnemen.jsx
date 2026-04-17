@@ -50,20 +50,17 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 500 }}
+      className="modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-deelnemen-titel"
     >
-      <div
-        ref={panelRef}
-        style={{ background: 'var(--wit)', width: '100%', borderRadius: '16px 16px 0 0', padding: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}
-      >
-        <h2 id="modal-deelnemen-titel" style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+      <div ref={panelRef} className="modal-panel">
+        <h2 id="modal-deelnemen-titel" className="modal-titel">
           🍺 Meedoen aan {potjeNaam}
         </h2>
 
-        <ul style={{ listStyle: 'none', marginBottom: 16, fontSize: 13, color: 'var(--grijs-600)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <ul className="flex flex-col gap-1 mb-4 text-sm tekst-grijs-6">
           <li>💰 Stort geld in het potje</li>
           <li>🍺 Registreer wat de groep uitgeeft</li>
           <li>📊 Eerlijke verdeling bij afsluiten</li>
@@ -94,12 +91,11 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
             {fout && <div id="naam-deelnemen-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="modal-knoppen">
             {onAnnuleer && (
               <button
                 type="button"
-                className="knop knop-secundair"
-                style={{ flex: 1 }}
+                className="knop knop-secundair flex-1"
                 onClick={onAnnuleer}
               >
                 Annuleren
@@ -107,8 +103,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
             )}
             <button
               type="submit"
-              className="knop knop-primair"
-              style={{ flex: onAnnuleer ? 1 : undefined }}
+              className={`knop knop-primair${onAnnuleer ? ' flex-1' : ''}`}
               disabled={laden || !naam.trim()}
             >
               {laden ? 'Bezig…' : 'Meedoen →'}

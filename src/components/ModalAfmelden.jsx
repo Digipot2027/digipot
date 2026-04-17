@@ -48,29 +48,26 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 500 }}
+      className="modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-afmelden-titel"
     >
-      <div
-        ref={panelRef}
-        style={{ background: 'var(--wit)', width: '100%', borderRadius: '16px 16px 0 0', padding: 24, paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}
-      >
-        <h2 id="modal-afmelden-titel" style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
+      <div ref={panelRef} className="modal-panel">
+        <h2 id="modal-afmelden-titel" className="modal-titel">
           👋 Afmelden
         </h2>
 
-        <p style={{ fontSize: 14, color: 'var(--grijs-600)', marginBottom: 12 }}>
+        <p className="modal-tekst--mb3">
           Weet je zeker dat je <strong>{deelnemerNaam}</strong> wilt afmelden?
         </p>
 
         {/* Gevolgen expliciet benoemen */}
-        <div style={{ background: 'var(--oranje-licht)', border: '1px solid #fed7aa', borderRadius: 8, padding: '12px 14px', marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: 'var(--oranje)', fontWeight: 600, marginBottom: 4 }}>
+        <div className="waarschuwing-blok">
+          <p className="waarschuwing-blok__titel">
             Let op — dit kan niet ongedaan worden gemaakt:
           </p>
-          <ul style={{ listStyle: 'none', fontSize: 13, color: 'var(--oranje)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <ul className="waarschuwing-blok__lijst">
             <li>• Je telt niet meer mee bij nieuwe betalingen</li>
             <li>• Je kunt je daarna niet opnieuw aanmelden</li>
             <li>• Je inleg blijft zichtbaar in de eindafrekening</li>
@@ -79,24 +76,22 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
 
         {/* BUG-3 fix: fout zichtbaar in de modal */}
         {fout && (
-          <div className="fout-tekst" style={{ marginBottom: 12 }} role="alert">
+          <div className="fout-tekst mb-3" role="alert">
             {fout}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="modal-knoppen">
           <button
             type="button"
-            className="knop knop-secundair"
-            style={{ flex: 1 }}
+            className="knop knop-secundair flex-1"
             onClick={onAnnuleer}
           >
             Annuleren
           </button>
           <button
             type="button"
-            className="knop knop-afmelden"
-            style={{ flex: 1 }}
+            className="knop knop-afmelden flex-1"
             onClick={handleBevestig}
             disabled={laden}
           >
