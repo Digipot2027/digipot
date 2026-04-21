@@ -1,16 +1,47 @@
-# React + Vite
+# Digipot
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Groepsuitgaven bijhouden en eerlijk verdelen — zonder account, zonder gedoe.
 
-Currently, two official plugins are available:
+## Wat is het?
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Digipot is een Nederlandse webapp waarmee groepen gezamenlijke uitgaven kunnen bijhouden. Deelnemers storten geld in een gedeeld potje, registreren betalingen, en krijgen bij afsluiting een eerlijke eindafrekening met wie wie nog wat verschuldigd is.
 
-## React Compiler
+Geen account nodig. Toegang via een gedeelde link. Apparaatidentificatie via een UUID in localStorage.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the ESLint configuration
+| Onderdeel | Technologie |
+|---|---|
+| Frontend | React 19 + Vite 8 |
+| Backend | Supabase (PostgreSQL 17 + Realtime) |
+| Routing | React Router 7 |
+| Foutlogging | Sentry |
+| Tests (unit) | Vitest + @testing-library/react |
+| Tests (e2e) | Playwright |
+| Deployment | Cloudflare Pages |
+| CI | GitHub Actions |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Lokaal draaien
+
+```bash
+npm install
+cp .env.example .env.local   # vul VITE_SUPABASE_URL en VITE_SUPABASE_ANON_KEY in
+npm run dev
+```
+
+## Tests
+
+```bash
+npm run test:run        # unit tests (Vitest)
+npm run e2e:chromium    # e2e tests (Playwright, Chromium)
+npm run lint            # ESLint
+```
+
+## Documentatie
+
+- `docs/FO.md` — Functioneel Ontwerp (gebruikersflows, schermen, validaties)
+- `docs/TO.md` — Technisch Ontwerp (architectuur, datamodel, security, testen)
+
+## Licentie
+
+Privéproject. Niet bedoeld voor publieke distributie.
