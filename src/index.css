@@ -431,12 +431,38 @@ tr[role="button"]:focus-visible,
   margin-bottom: 0;
 }
 
-/* DeelKnop in kaart-header — kleinere variant voor binnen een kaart */
-.deelknop-in-kaart {
-  margin-top: 10px;
-  font-size: 14px;
-  padding: 8px 14px;
-  width: auto;
+/* C1/UX: pottitel in overzicht-header niet afbreken — afkappen met ellipsis */
+.overzicht-header__links .titel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* UX: DeelKnop als tekstlink in Beheer-sectie */
+.deelknop-tekstlink {
+  background: none;
+  border: none;
+  color: var(--blauw);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 0;
+  text-align: center;
+  width: 100%;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.deelknop-tekstlink:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* UX: scheiding tussen destructieve beheer-knoppen en DeelKnop */
+.deelknop-scheiding {
+  border-top: 1px solid var(--grijs-100);
+  padding-top: 10px;
+  margin-top: 2px;
 }
 .saldo-display { text-align: right; }
 .saldo-display__bedrag {
@@ -811,7 +837,7 @@ tr[role="button"]:focus-visible,
 .actie-kaart { display: flex; flex-direction: column; gap: 10px; }
 .actie-sectie {
   border-top: 1px solid var(--grijs-200);
-  padding-top: 10px;
+  padding-top: 14px;  /* iets meer ademruimte voor het BEHEER-label */
   display: flex;
   flex-direction: column;
   gap: 8px;

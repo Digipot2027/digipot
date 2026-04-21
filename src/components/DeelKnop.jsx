@@ -42,7 +42,10 @@ function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
 
   return (
     <button
-      className={`knop knop-${variant}${className ? ' ' + className : ''}`}
+      className={variant === 'tekstlink'
+        ? `deelknop-tekstlink${className ? ' ' + className : ''}`
+        : `knop knop-${variant}${className ? ' ' + className : ''}`
+      }
       onClick={handleDelen}
       aria-live="polite"
       aria-label={
