@@ -3,6 +3,7 @@ import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
 import { valideerTransactieBedrag } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 /**
  * ModalTransactie — formulier voor storting of betaling.
@@ -23,7 +24,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * konden worden ingediend. bezigRef is synchroon en blokkeert de tweede
  * aanroep direct.
  */
-function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, onBevestig, onAnnuleer }) {
+function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
@@ -33,7 +34,7 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
 
   const isStorting = type === 'storting'
   const titel = isStorting ? '💰 Storting toevoegen' : '🍺 Rondje betaald'
-  const MAX = 999.99
+  const MAX = MAX_BEDRAG
 
   const bedragNum = parseBedrag(bedrag)
   const bedragGeldig = bedrag.length > 0 && !isNaN(bedragNum) && bedragNum > 0 && bedragNum <= MAX

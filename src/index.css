@@ -446,6 +446,7 @@ tr[role="button"]:focus-visible,
 .saldo-display__bedrag--positief { color: var(--groen); }
 .saldo-display__bedrag--nul      { color: var(--grijs-600); }
 .saldo-display__label { font-size: 12px; color: var(--grijs-500); }
+.saldo-display__gem   { font-size: 11px; color: var(--grijs-500); margin-top: 2px; text-align: right; }
 
 /* Modal — overlay en panel (gedeeld door alle modals) */
 .modal-overlay {

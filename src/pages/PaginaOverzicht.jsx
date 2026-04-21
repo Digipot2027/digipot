@@ -24,6 +24,9 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
   const valuta = potje?.valuta ?? STANDAARD_VALUTA
   const saldi = berekenSaldi(deelnemers, transacties)
   const actieveDeelnemers = deelnemers.filter(d => d.actief !== false)
+  const gemiddeldePerPersoon = actieveDeelnemers.length > 0
+    ? saldi.potSaldo / actieveDeelnemers.length
+    : 0
   const ikBenActief = ikzelf?.actief !== false
   const heeftTransacties = transacties.length > 0
   // TECH-3 fix: heeftGestort() uit berekenSaldi.js i.p.v. inline check
@@ -46,6 +49,11 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                   {formatBedrag(saldi.potSaldo, valuta)}
                 </div>
                 <div className="sectie-label">nog te besteden</div>
+                {actieveDeelnemers.length > 1 && (
+                  <div className="saldo-display__gem">
+                    {formatBedrag(gemiddeldePerPersoon, valuta)} gem. p.p.
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => navigate('/instellingen')}
@@ -138,7 +146,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           )}
 
           <div className="actie-sectie">
-            <p className="sectie-label mb-0">Beheer</p>
+            <h2 className="sectie-label mb-0">Beheer</h2>
 
             <div className="grid-2">
               <button
