@@ -47,7 +47,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               <p className="subtitel mb-0">Welkom, {ikzelf?.naam}</p>
             </div>
             <div className="overzicht-header__rechts">
-              <div style={{ textAlign: 'right' }}>
+              <div className="saldo-rechts">
                 <div className={`saldo-display${saldi.potSaldo > 0 ? ' saldo-display--positief' : ' saldo-display--nul'}`}>
                   {formatBedrag(saldi.potSaldo, valuta)}
                 </div>
@@ -60,8 +60,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               </div>
               <button
                 onClick={() => navigate('/instellingen')}
-                className="knop-icoon"
-                style={{ fontSize: 22, padding: '2px 0 0 0' }}
+                className="knop-icoon knop-icoon-instellingen"
                 aria-label="Instellingen openen"
               >
                 ⚙️
@@ -122,22 +121,22 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
         <div className="kaart actie-kaart">
 
           <div className="grid-2">
-            <button className="knop knop-primair" style={{ minWidth: 0 }} onClick={onStorten} disabled={!ikBenActief}>
+            <button className="knop knop-primair knop-in-grid" onClick={onStorten} disabled={!ikBenActief}>
               💰 In pot storten
             </button>
-            <button className="knop knop-secundair" style={{ minWidth: 0 }} onClick={onBetalen} disabled={!ikBenActief || saldi.potSaldo === 0}>
+            <button className="knop knop-secundair knop-in-grid" onClick={onBetalen} disabled={!ikBenActief || saldi.potSaldo === 0}>
               🍺 Betaling registreren
             </button>
           </div>
 
           {ikBenActief && saldi.potSaldo === 0 && (
-            <p className="text-xs tekst-grijs-5 text-center" style={{ marginTop: -4 }}>
+            <p className="text-xs tekst-grijs-5 text-center helptekst-rechts">
               Geen saldo beschikbaar. Voeg eerst een storting toe.
             </p>
           )}
 
           {!ikBenActief && (
-            <p className="text-sm tekst-grijs-6 text-center" style={{ padding: '4px 0' }}>
+            <p className="text-sm tekst-grijs-6 text-center helptekst-center">
               Je hebt je afgemeld en kunt geen transacties meer invoeren.
             </p>
           )}
@@ -147,16 +146,15 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
             <div className="grid-2">
               <button
-                className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'}`}
-                style={{ minWidth: 0, fontSize: '0.85rem' }}
+                className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'} knop-beheer`}
                 onClick={() => ikBenActief && setAfmeldenModaal(true)}
                 disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
               >
                 {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Jezelf afmelden' : '✅ Afgemeld'}
               </button>
               <button
-                className="knop knop-gevaar"
-                style={{ opacity: heeftTransacties ? 0.7 : 0.35, minWidth: 0, fontSize: '0.85rem' }}
+                className="knop knop-gevaar knop-beheer"
+                style={{ opacity: heeftTransacties ? 0.7 : 0.35 }}
                 onClick={onSluiten}
                 disabled={!heeftTransacties}
               >
@@ -164,28 +162,32 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               </button>
             </div>
 
-            <DeelKnop
-              potjeNaam={potje?.naam}
-              variant="secundair"
-              className="deelknop-in-kaart"
-            />
-
             {ikBenActief && !ikBenGestort && (
-              <p className="text-xs tekst-grijs-5 text-left" style={{ marginTop: -4 }}>
+              <p className="text-xs tekst-grijs-5 text-left helptekst-links">
                 Eerst storten om je te kunnen afmelden.
               </p>
             )}
-            {/* UX-1 fix (2026-04-16): uitleg dat iedereen het potje kan afsluiten */}
+            {/* Helptekst direct onder "Pot afsluiten" — rechts uitgelijnd zodat
+                hij visueel associeert met de rechterknop in het grid */}
             {heeftTransacties && (
-              <p className="text-xs tekst-grijs-5 text-right" style={{ marginTop: -4 }}>
+              <p className="text-xs tekst-grijs-5 text-right helptekst-rechts">
                 Iedereen kan het potje afsluiten.
               </p>
             )}
             {!heeftTransacties && (
-              <p className="text-xs tekst-grijs-5 text-right" style={{ marginTop: -4 }}>
+              <p className="text-xs tekst-grijs-5 text-right helptekst-rechts">
                 Afsluiten kan pas als er transacties zijn.
               </p>
             )}
+
+            {/* Scheidingslijn + tekstlink voor niet-destructieve actie */}
+            <div className="deelknop-scheiding">
+              <DeelKnop
+                potjeNaam={potje?.naam}
+                variant="tekstlink"
+                className="deelknop-tekstlink"
+              />
+            </div>
           </div>
 
         </div>
