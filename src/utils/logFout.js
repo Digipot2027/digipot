@@ -10,6 +10,15 @@ import { vertaalFout } from './vertaalFout'
  * - Geeft een vertaalde Nederlandse gebruikerstekst terug
  * - Voegt context toe zonder persoonlijke data (geen namen, bedragen)
  *
+ * PII-risico (B3, gedocumenteerd 2026-04-21):
+ *   De `error.message` wordt als onderdeel van de Error-instantie naar Sentry
+ *   gestuurd. In de huidige codebase bevatten messages alleen door de code
+ *   gegenereerde strings (foutcodes, DB-foutmeldingen) — geen gebruikersinvoer.
+ *   Risico: als Supabase ooit gebruikersinvoer in een foutmelding opneemt, of
+ *   als een toekomstige foutmelding gebruikersinput bevat, lekt die naar Sentry.
+ *   Voor dit privéproject met voornamen als enige gebruikersinvoer is het risico
+ *   momenteel verwaarloosbaar. Bewust geaccepteerd; geen sanitisatie geïmplementeerd.
+ *
  * Regels:
  * - Altijd aanroepen voordat een fout getoond wordt aan de gebruiker
  * - vertaalFout() nooit rechtstreeks aanroepen in componenten
