@@ -105,7 +105,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
             />
             <div className="teller">{naam.length}/{MAX_NAAM}</div>
             {heeftProfielNaam && !fout && (
-              <div style={{ fontSize: 12, color: 'var(--grijs-600)', marginTop: 4 }}>
+              <div className="profiel-hint">
                 Uit je profiel. Je kunt de naam aanpassen.
               </div>
             )}

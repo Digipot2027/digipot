@@ -294,10 +294,8 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | | |
 |---|---|
 | **Ernst** | Laag |
-| **Status** | 🔴 Open |
-| **Omschrijving** | A17 dekt double-submit (één klik → één request). Er is echter geen beperking op het aantal requests per device per tijdseenheid. Een kwaadwillende of kapotte client kan in theorie honderden stortingen of betalingen per seconde aanmaken. Supabase-RLS biedt geen rate-limiting. |
-| **Risico** | Laag: de applicatie vereist een geldig potje-ID en deelnemer-ID (niet openbaar voorspelbaar). Misbruik is mogelijk maar niet triviaal. |
-| **Aanbeveling** | Cloudflare Rate Limiting rule op `POST /rest/v1/transacties` (bv. max 10 req/min per IP). Alternatief: Supabase DB-functie met check op recente transactiefrequentie. Uitgesteld tot misbruik zich voordoet. |
+| **Status** | ✅ Afgelost (TO v6.0, 2026-04-21) |
+| **Omschrijving** | Migratie `20260421000100_transacties_rate_limit.sql` breidt de `transacties_insert` RLS-policy uit met een COUNT-subquery: max 10 transacties per device_id per minuut. Bij overschrijding retourneert Supabase een 42501-fout die `vertaalFout.js` al vertaalt naar een begrijpelijke melding. Geen frontend-wijziging nodig. |
 
 ---
 
@@ -340,9 +338,8 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | | |
 |---|---|
 | **Ernst** | Laag |
-| **Status** | 🔴 Open |
-| **Omschrijving** | De CSS-migratie is als "voltooid" gedocumenteerd (TO v4.5), maar `PaginaOverzicht` en `ModalDeelnemen` bevatten nog micro-aanpassingen als inline stijl (`marginTop: -4`, `minWidth: 0`, `fontSize: 12`, `textAlign: 'right'`). Dit zijn geen runtime-dynamische waarden en horen thuis in CSS-klassen of component-specifieke regels. |
-| **Aanbeveling** | Extraheer naar klassen in `index.css` of documenteer expliciet als geaccepteerde uitzondering en pas de definitie van "CSS-migratie voltooid" aan in de TO. |
+| **Status** | ✅ Afgelost (TO v6.0, 2026-04-21) |
+| **Omschrijving** | CSS-klassen `.knop-in-grid`, `.knop-beheer`, `.helptekst-links`, `.helptekst-rechts`, `.helptekst-center`, `.knop-icoon-instellingen`, `.saldo-rechts` en `.profiel-hint` toegevoegd aan `index.css`. `PaginaOverzicht` en `ModalDeelnemen` zijn volledig inline-stijl-vrij. Uitzondering: de runtime-dynamische `opacity` op de sluiten-knop blijft als inline style — de waarde is afhankelijk van `heeftTransacties` en kan niet statisch worden uitgedrukt. Dit is gedocumenteerde uitzondering, geen achterstand. |
 
 ---
 
@@ -374,8 +371,8 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 |---|---|---|
 | B2 — Geen audit trail voor deleties | Medium | ✅ Afgelost |
 | B5 — Geen herstelstrategie bij downtime | Medium | ✅ Afgelost |
-| B4 — Geen frontend rate limiting | Laag | 🔴 Open |
-| C1 — Resterende inline stijlen | Laag | 🔴 Open |
+| B4 — Geen frontend rate limiting | Laag | ✅ Afgelost |
+| C1 — Resterende inline stijlen | Laag | ✅ Afgelost |
 | C2 — Disabled knop zonder directe feedback | Laag | 🔴 Open |
 | C3 — Branching-strategie niet gedocumenteerd | Laag | 🔴 Open |
 
@@ -398,3 +395,4 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 |---|---|---|
 | 1.0 | 2026-04-21 | Initieel aangelegd — gereconstrueerd uit TO-wijzigingslog v1.0–5.6, code-audit en sessie-geheugen |
 | 1.1 | 2026-04-21 | B2 en B5 afgelost; status bijgewerkt in overzicht |
+| 1.2 | 2026-04-21 | B4 en C1 afgelost; status bijgewerkt in overzicht |

@@ -816,6 +816,16 @@ tr[role="button"]:focus-visible,
   flex-direction: column;
   gap: 8px;
 }
+/* C1: klassen voor inline stijlen in PaginaOverzicht en ModalDeelnemen */
+.knop-in-grid      { min-width: 0; }                        /* grid-2 knoppen zonder overflow */
+.knop-beheer       { min-width: 0; font-size: 0.85rem; }    /* afmeld/sluit-knoppen in Beheer */
+.knop-gevaar-beheer { min-width: 0; font-size: 0.85rem; }   /* sluiten-knop met opacity via JS */
+.helptekst-links   { margin-top: -4px; }                    /* subtekst onder knop-rij links */
+.helptekst-rechts  { margin-top: -4px; }                    /* subtekst onder knop-rij rechts */
+.helptekst-center  { padding: 4px 0; }                      /* afgemeld-tekst gecentreerd */
+.knop-icoon-instellingen { font-size: 1.375rem; padding: 2px 0 0 0; } /* tandwiel in header */
+.saldo-rechts      { text-align: right; }                   /* saldo-blok rechtsuitgelijnd */
+.profiel-hint      { font-size: 0.75rem; color: var(--grijs-600); margin-top: 4px; } /* ModalDeelnemen profielnaam-hint */
 
 /* PaginaEindafrekening — gedeeld */
 .eindafrekening-header {
