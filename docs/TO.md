@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 6.1
+**Versie:** 6.2
 **Datum:** 2026-04-21
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -295,8 +295,8 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 |---|---|---|
 | B4 | Laag | Rate limiting — afgelost via RLS-frequentiecheck (max 10/min per device) |
 | C1 | Laag | Inline stijlen — afgelost, zie TO v6.0 |
-| C2 | Laag | Disabled afmeld-knop zonder directe feedback |
-| C3 | Laag | Branching-strategie niet gedocumenteerd |
+| C2 | Laag | Disabled afmeld-knop — afgelost, zie TO v6.2 |
+| C3 | Laag | Branching-strategie — afgelost, zie TO v6.2 |
 
 ---
 
@@ -335,4 +335,6 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.7 | 2026-04-21 | **§24 technische schuld toegevoegd:** `docs/SCHULD.md` aangelegd als enige bron van waarheid voor alle schulditems (A1–A20, B1–B7, nieuw C1–C3). TO §24 verwijst naar dit bestand en bevat een beknopt overzicht van openstaande items. Inhoudsopgave bijgewerkt. | Schuldenlijst bestond niet als bestand — verliesrisico tussen sessies |
 | 5.8 | 2026-04-21 | **B2 afgelost — audit trail voor verwijderde transacties:** migratie `20260421000000_transacties_audit_log.sql` voegt tabel `transacties_log` toe met trigger `trg_log_verwijderde_transactie` (SECURITY DEFINER, search_path=public). Elke DELETE op `transacties` — via undo én via lifecycle-CASCADE — vastgelegd met `transactie_id`, `potje_id`, `deelnemer_id`, `type`, `bedrag`, `aangemaakt_op`, `verwijderd_op` en `verwijderd_door` (device_id uit request-header, NULL bij server-side jobs). Index op `potje_id`. Tabel append-only voor anon-rol. Geen frontend-wijziging. | Technische schuld B2: undo en lifecycle-verwijderingen waren definitief onherstelbaar |
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel na Supabase-downtime:** `src/utils/formulierBuffer.js` toegevoegd (`slaagFormulierOp`, `laadFormulier`, `wisFormulier`) — sessionStorage best-effort buffer. `PaginaStorten` bewaart ingevoerd bedrag bij REQUEST_TIMEOUT/netwerkfout en toont herstelbanner bij terugkeer. `ModalTransactie` krijgt prop `potjeId` (default `null`); buffer ook actief bij betalingen. `PaginaPotje` geeft `potjeId={id}` door. Buffer gewist na succesvolle submit. `formulierBuffer.test.js` toegevoegd (11 tests). Testcount: 815. §24 openstaande items bijgewerkt. | Technische schuld B5: bij timeout ging ingevulde data verloren zonder hersteloptie |
-| 6.0 | 2026-04-21 | **B4 afgelost — rate limiting via RLS:** migratie `20260421000100_transacties_rate_limit.sql` breidt `transacties_insert` uit met frequentiecheck: max 10 transacties per device_id per minuut via COUNT op `aangemaakt_op`. Bij overschrijding 42501 → bestaande `vertaalFout.js` melding. **C1 afgelost — resterende inline stijlen:** CSS-klassen `.knop-in-grid`, `.knop-beheer`, `.helptekst-links/rechts/center`, `.knop-icoon-instellingen`, `.saldo-rechts`, `.profiel-hint` toegevoegd aan `index.css`. `PaginaOverzicht` en `ModalDeelnemen` volledig inline-stijl-vrij. Uitzondering: runtime-dynamische `opacity` op sluiten-knop blijft als inline style. §24 bijgewerkt. | Technische schuld B4 en C1 afgelost |
+| 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Technische schuld B4 en C1 afgelost |
+| 6.1 | 2026-04-21 | **UX overzichtscherm:** pottitel ellipsis, DeelKnop als tekstlink, helptekst op juiste plek, ademruimte Beheer. | UX-verbeteringen na screenshot-review |
+| 6.2 | 2026-04-21 | **C2 + C3 afgelost:** `title` op disabled afmeld-knop; sectie Ontwikkelworkflow toegevoegd aan `README.md`. SCHULD.md v1.3: alle items afgelost of geaccepteerd. | Laatste twee schulditems afgelost |
