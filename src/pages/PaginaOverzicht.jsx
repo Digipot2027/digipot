@@ -74,12 +74,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               <span className="badge badge-afgemeld">Afgemeld</span>
             </div>
           )}
-
-          <DeelKnop
-            potjeNaam={potje?.naam}
-            variant="secundair"
-            className="deelknop-in-kaart"
-          />
         </div>
 
         {/* Deelnemers */}
@@ -169,6 +163,12 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 🔒 Pot afsluiten
               </button>
             </div>
+
+            <DeelKnop
+              potjeNaam={potje?.naam}
+              variant="secundair"
+              className="deelknop-in-kaart"
+            />
 
             {ikBenActief && !ikBenGestort && (
               <p className="text-xs tekst-grijs-5 text-left" style={{ marginTop: -4 }}>
