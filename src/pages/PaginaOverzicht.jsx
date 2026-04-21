@@ -149,6 +149,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'} knop-beheer`}
                 onClick={() => ikBenActief && setAfmeldenModaal(true)}
                 disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
+                title={ikBenActief && !ikBenGestort ? 'Eerst storten om je te kunnen afmelden' : undefined}
               >
                 {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Jezelf afmelden' : '✅ Afgemeld'}
               </button>

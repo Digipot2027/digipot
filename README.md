@@ -42,6 +42,28 @@ npm run lint            # ESLint
 - `docs/FO.md` — Functioneel Ontwerp (gebruikersflows, schermen, validaties)
 - `docs/TO.md` — Technisch Ontwerp (architectuur, datamodel, security, testen)
 
+## Ontwikkelworkflow
+
+Dit project gebruikt twee vaste branches:
+
+- `acceptatie` — integratiebranch; alle feature-PR's gaan hier naartoe
+- `main` — productiebranch; alleen via PR vanuit `acceptatie`
+
+```
+feature/mijn-wijziging
+  ↓ PR naar acceptatie   (dagelijkse flow, CI moet groen zijn)
+acceptatie
+  ↓ PR naar main        (bewuste release-stap)
+main → Cloudflare Pages deploy
+```
+
+Branch aanmaken:
+
+```bash
+git checkout acceptatie
+git checkout -b feature/mijn-wijziging
+```
+
 ## Licentie
 
 Privéproject. Niet bedoeld voor publieke distributie.
