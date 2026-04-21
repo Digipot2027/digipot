@@ -51,6 +51,7 @@ function PaginaPotje() {
   useEffect(() => {
     if (location.state?.toast) {
       const { bericht, type } = location.state.toast
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       toonToast(bericht, type)
       navigate(location.pathname, { replace: true, state: {} })
     }
