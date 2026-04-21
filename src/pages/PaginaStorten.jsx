@@ -6,10 +6,30 @@ import { logFout } from '../utils/logFout'
 import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
+import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulierBuffer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 // Standaardbedragen — primaire keuzemethode
 const SNELBEDRAGEN = [5, 10, 20, 50]
+
+/**
+ * leesEnWisBuffer — lees de sessionStorage-buffer voor een potje-ID.
+ *
+ * B5: aangeroepen op module-niveau (buiten de component) zodat de waarde
+ * beschikbaar is vóór de eerste render. laadFormulier() wist de buffer
+ * direct na lezen — het aanbod is eenmalig per paginalaad.
+ *
+ * Wordt één keer per module-evaluatie aangeroepen; bij SPA-navigatie
+ * terug naar dit scherm evalueert React Router de module opnieuw.
+ */
+function leesEnWisBuffer(potjeId) {
+  if (!potjeId) return { bedrag: '', actief: false }
+  const herstel = laadFormulier(`digipot:storten:${potjeId}`)
+  if (herstel?.bedrag) {
+    return { bedrag: String(herstel.bedrag).replace('.', ','), actief: true }
+  }
+  return { bedrag: '', actief: false }
+}
 
 function PaginaStorten() {
   const { id } = useParams()
@@ -17,11 +37,17 @@ function PaginaStorten() {
 
   const { potje, deelnemers, transacties, deelnemer, laden, fout } = usePotje(id)
 
+  // B5: buffer één keer uitlezen via useState lazy initializer.
+  // De initializer wordt alleen bij mount aangeroepen, niet bij re-renders.
+  // leesEnWisBuffer() wist de buffer direct — eenmalig aanbod.
+  const [bufferInit] = useState(() => leesEnWisBuffer(id))
+
   const [gekozenBedrag, setGekozenBedrag] = useState(null)
-  const [vrijeInvoer, setVrijeInvoer] = useState('')
-  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false)
+  const [vrijeInvoer, setVrijeInvoer] = useState(bufferInit.bedrag)
+  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(bufferInit.actief)
   const [invoerFout, setInvoerFout] = useState('')
   const [bezig, setBezig] = useState(false)
+  const [bufferHersteld, setBufferHersteld] = useState(bufferInit.actief)
   const vrijeInvoerRef = useRef(null)
 
   // Dubbele-submit-guard (fix dubbelstorten 2026-04-13)
@@ -55,6 +81,7 @@ function PaginaStorten() {
     setVrijeInvoer('')
     setVrijeInvoerActief(false)
     setInvoerFout('')
+    setBufferHersteld(false)
   }
 
   function handleVrijeInvoerToggle() {
@@ -67,6 +94,7 @@ function PaginaStorten() {
     setVrijeInvoer(e.target.value)
     setGekozenBedrag(null)
     setInvoerFout('')
+    setBufferHersteld(false)
   }
 
   async function handleStorten() {
@@ -105,6 +133,9 @@ function PaginaStorten() {
         .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey }))
       if (error) throw error
 
+      // B5: submit geslaagd — verwijder eventuele buffer
+      wisFormulier(`digipot:storten:${id}`)
+
       navigate(`/potje/${id}`, {
         state: {
           toast: {
@@ -115,7 +146,13 @@ function PaginaStorten() {
       })
     } catch (e) {
       bezigRef.current = false
-      setInvoerFout(logFout(e, { component: 'PaginaStorten', actie: 'storten' }))
+      const foutmelding = logFout(e, { component: 'PaginaStorten', actie: 'storten' })
+      // B5: bij timeout of netwerkfout het bedrag bewaren zodat de gebruiker
+      // het niet opnieuw hoeft in te voeren na verversen of terugnavigeren
+      if (e.message?.includes('REQUEST_TIMEOUT') || e.message?.includes('fetch') || e.message?.includes('NetworkError')) {
+        slaagFormulierOp(`digipot:storten:${id}`, { bedrag: effectiefBedrag })
+      }
+      setInvoerFout(foutmelding)
     } finally {
       setBezig(false)
     }
@@ -172,6 +209,15 @@ function PaginaStorten() {
           {potje?.naam} {'\u00b7'} {deelnemer?.naam}
         </p>
       </div>
+
+      {/* B5: melding dat het bedrag is hersteld na een eerdere mislukte poging */}
+      {bufferHersteld && (
+        <div className="kaart herstel-melding" role="status">
+          <p className="herstel-melding__tekst">
+            🔄 Je vorige bedrag is hersteld. Controleer het en probeer opnieuw te storten.
+          </p>
+        </div>
+      )}
 
       {reedGestort > 0 && (
         <div className="kaart storten-al-gestort">
