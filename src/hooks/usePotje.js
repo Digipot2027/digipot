@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { metTimeout } from '../utils/requestTimeout'
 import { useDeviceId } from './useDeviceId'
 
 /**
@@ -47,9 +48,9 @@ export function usePotje(potjeId) {
         { data: d, error: de },
         { data: t, error: te },
       ] = await Promise.all([
-        supabase.from('potjes').select('*').eq('id', potjeId).single(),
-        supabase.from('deelnemers').select('*').eq('potje_id', potjeId).order('aangemaakt_op'),
-        supabase.from('transacties').select('*').eq('potje_id', potjeId).order('aangemaakt_op'),
+        metTimeout(supabase.from('potjes').select('*').eq('id', potjeId).single()),
+        metTimeout(supabase.from('deelnemers').select('*').eq('potje_id', potjeId).order('aangemaakt_op')),
+        metTimeout(supabase.from('transacties').select('*').eq('potje_id', potjeId).order('aangemaakt_op')),
       ])
       if (pe) throw pe
       if (de) throw de

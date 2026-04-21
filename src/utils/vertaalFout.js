@@ -34,6 +34,11 @@ export function vertaalFout(error) {
       bericht.includes('JWTExpired') || bericht.includes('not authenticated'))
     return 'Sessie verlopen. Ververs de pagina.'
 
+  // A8 fix (2026-04-20): timeout-melding voor trage of weggevallen verbindingen.
+  // REQUEST_TIMEOUT gooit metTimeout() als een Supabase-query langer duurt dan QUERY_TIMEOUT_MS.
+  if (bericht.includes('REQUEST_TIMEOUT'))
+    return 'Het verzoek duurde te lang. Controleer je verbinding en probeer het opnieuw.'
+
   if (bericht.includes('fetch') || bericht.includes('network') || bericht.includes('NetworkError'))
     return 'Verbinding verbroken. Wijzigingen worden niet opgeslagen. Controleer je internet.'
 
@@ -58,9 +63,9 @@ export function vertaalFout(error) {
   if (bericht.includes('PGRST') || bericht.includes('406') || bericht.includes('400'))
     return 'De verbinding met de database is mislukt. Probeer de pagina te verversen.'
 
-  // BUG-FIX (Sentry REACT-8 / REACT-9, 2026-04-15):
-  // RLS-blokkade op transacties INSERT — device-id niet herkend door de DB.
-  // Treedt op als de x-device-id header leeg was bij de request.
+  // row-level security: treedt op bij verouderde sessies — verwachte gebruikerssituatie.
+  // 42501 gaat na de A18-fix (2026-04-20) naar Sentry als bug, maar de gebruiker
+  // ziet alsnog een begrijpelijke melding: vertaalFout() en logFout() zijn orthogonaal.
   if (bericht.includes('row-level security') || bericht.includes('42501'))
     return 'Je sessie is niet herkend. Ververs de pagina en probeer opnieuw.'
 

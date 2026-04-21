@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { berekenEindafrekening } from '../utils/berekenEindafrekening'
 import { useDeviceId } from './useDeviceId'
@@ -14,6 +15,19 @@ import { getItem } from '../utils/storage'
  *   - localStorage.getItem(PROFIEL_NAAM_KEY) vervangen door getItem() uit storage.js.
  *     Consistent met de rest van de codebase; foutafhandeling (QuotaExceededError)
  *     zit nu in de abstractielaag i.p.v. direct in de hook.
+ *
+ * Fix (2026-04-20 / N4 / case-insensitieve naam-matching):
+ *   - De deelnemers-query op profielnaam gebruikte .eq('naam', profielNaam), wat
+ *     case-sensitief is in PostgreSQL. Iemand met profielnaam "jan" vond geen
+ *     deelnemer genaamd "Jan". Fix: .ilike('naam', profielNaam) voor exacte
+ *     case-insensitieve match. PostgREST escapet de waarde automatisch zodat
+ *     SQL-wildcards in namen geen probleem vormen.
+ *     De downstream mijnDeelnemer-zoeklogica gebruikte al .toLowerCase() en
+ *     is daarmee consistent.
+ *
+ * Fix (2026-04-20 / A8 / query timeouts):
+ *   - metTimeout() toegevoegd op alle Supabase-queries. Bij netwerkproblemen
+ *     hing Promise.all() onbeperkt waardoor de UI in laad-staat bleef.
  */
 export function useMijnPotjes(status) {
   const deviceId = useDeviceId()
@@ -48,16 +62,16 @@ export function useMijnPotjes(status) {
 
         const deelnemerSets = await Promise.all([
           deviceId
-            ? supabase
+            ? metTimeout(supabase
                 .from('deelnemers')
                 .select('potje_id, naam, id, device_id')
-                .eq('device_id', deviceId)
+                .eq('device_id', deviceId))
             : Promise.resolve({ data: [], error: null }),
           profielNaam
-            ? supabase
+            ? metTimeout(supabase
                 .from('deelnemers')
                 .select('potje_id, naam, id, device_id')
-                .eq('naam', profielNaam)
+                .ilike('naam', profielNaam))
             : Promise.resolve({ data: [], error: null }),
         ])
 
@@ -81,12 +95,12 @@ export function useMijnPotjes(status) {
         potjeIdsRef.current = potjeIds
 
         const orderKolom = status === 'open' ? 'aangemaakt_op' : 'gesloten_op'
-        const { data: gevondenPotjes, error: pError } = await supabase
+        const { data: gevondenPotjes, error: pError } = await metTimeout(supabase
           .from('potjes')
           .select('*')
           .in('id', potjeIds)
           .eq('status', status)
-          .order(orderKolom, { ascending: false })
+          .order(orderKolom, { ascending: false }))
 
         if (pError) throw pError
         if (!gevondenPotjes || gevondenPotjes.length === 0) {
@@ -101,8 +115,8 @@ export function useMijnPotjes(status) {
           { data: deelnemers, error: dError },
           { data: transacties, error: tError },
         ] = await Promise.all([
-          supabase.from('deelnemers').select('*').in('potje_id', gevondenIds),
-          supabase.from('transacties').select('*').in('potje_id', gevondenIds),
+          metTimeout(supabase.from('deelnemers').select('*').in('potje_id', gevondenIds)),
+          metTimeout(supabase.from('transacties').select('*').in('potje_id', gevondenIds)),
         ])
 
         if (dError) throw dError

@@ -25,14 +25,15 @@
  *   LF-116-04  SALDO_TE_LAAG gaat nog steeds niet naar Sentry (geen regressie)
  *   LF-116-05  PGRST116 geeft de juiste gebruikerstekst terug
  *
- * RLS/42501 (Sentry REACT-8 / REACT-9, 2026-04-15):
+ * RLS/42501 (Sentry REACT-8 / REACT-9, 2026-04-15 + A18 fix 2026-04-20):
  *   VF-RLS-01  "row-level security" → sessie-niet-herkend melding
  *   VF-RLS-02  "42501" → sessie-niet-herkend melding
  *   VF-RLS-03  RLS gaat NIET naar fallback
  *   VF-RLS-04  RLS gaat NIET naar generieke PGRST-melding
  *   VF-RLS-05  42501 gaat vóór fallback
  *   LF-RLS-01  "row-level security" wordt als gebruikersfout behandeld — niet naar Sentry
- *   LF-RLS-02  "42501" wordt als gebruikersfout behandeld — niet naar Sentry
+ *   LF-RLS-02  "42501" zonder "row-level security"-tekst gaat WEL naar Sentry (A18 fix)
+ *              vertaalFout() geeft nog steeds de sessie-melding terug (orthogonaal)
  *   LF-RLS-03  RLS geeft de juiste gebruikerstekst terug
  *   LF-RLS-04  geen regressie: SALDO_TE_LAAG gaat nog steeds niet naar Sentry
  */
@@ -185,12 +186,18 @@ describe('logFout — LF-RLS: row-level security / 42501 als gebruikersfout', ()
     expect(Sentry.captureException).not.toHaveBeenCalled()
   })
 
-  it('LF-RLS-02: "42501" wordt NIET naar Sentry gestuurd', () => {
+  it('LF-RLS-02: "42501" zonder "row-level security"-tekst gaat WEL naar Sentry (A18 fix, 2026-04-20)', () => {
+    // Vóór A18: '42501' was uitgesloten van Sentry. Na A18 is de uitsluiting
+    // verwijderd omdat bootstrapDeviceId() stabiel is — 42501-fouten zijn nu bugs.
+    // Uitzondering: als de message ook 'row-level security' bevat (de Supabase
+    // human-readable tekst), valt hij onder de row-level security matcher
+    // en wordt hij alsnog als gebruikersfout behandeld.
+    // Dit bericht bevat '42501' maar NIET 'row-level security' → gaat naar Sentry.
     logFout(
       new Error('ERROR: 42501: permission denied'),
       { component: 'ModalTransactie', actie: 'betaling' }
     )
-    expect(Sentry.captureException).not.toHaveBeenCalled()
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1)
   })
 
   it('LF-RLS-03: RLS-fout geeft de juiste gebruikerstekst terug', () => {

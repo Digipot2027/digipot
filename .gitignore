@@ -27,6 +27,11 @@ dist-ssr
 # Smoke test output logs — gegenereerd, niet in versiebeheer
 smoke/*-output.log
 
+# Verouderde migratiebestanden in root — vervangen door supabase/migrations/
+# Niet verwijderd vanwege git-history; worden genegeerd bij nieuwe commits
+# UITZONDERING: bewaar ze in git voor historische traceerbaarheid — NIET hier excluden
+# (zie supabase/migrations/README.md voor de gestructureerde versie)
+
 # Playwright test-resultaten — gegenereerd, niet in versiebeheer
 # Uitzondering: e2e-resultaat.json wordt door de pre-push hook gebruikt
 playwright-report/

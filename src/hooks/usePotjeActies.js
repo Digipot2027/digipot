@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi, heeftGestort } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { useDeviceId } from './useDeviceId'
@@ -28,6 +29,14 @@ import { STANDAARD_VALUTA } from '../constants'
  * Fix (2026-04-16 / TECH-3):
  *   - handleAfmelden: heeftGestort() uit berekenSaldi.js i.p.v. inline check.
  *     Eén bron van waarheid voor de afmeld-drempel.
+ *
+ * Zombie-preventie (2026-04-18):
+ *   - handleAfmelden veroorzaakt onrechtstreeks het sluiten van het potje
+ *     wanneer dit de laatste actieve deelnemer betreft. De sluiting vindt
+ *     plaats in de DB via trigger trg_sluit_potje_bij_laatste_afmelding.
+ *     De UI ontvangt de status-wijziging via het realtime abonnement in
+ *     usePotje en schakelt automatisch door naar de eindafrekening.
+ *     Geen codewijziging in deze hook — alleen gedragsverandering op DB-niveau.
  */
 
 function rond(waarde) {
@@ -57,9 +66,9 @@ export function usePotjeActies({
   const handleDeelnemen = useCallback(async (naam) => {
     const nieuweDeelnemerId = crypto.randomUUID()
 
-    const { error } = await supabase
+    const { error } = await metTimeout(supabase
       .from('deelnemers')
-      .insert({ id: nieuweDeelnemerId, potje_id: potjeId, naam, device_id: deviceId })
+      .insert({ id: nieuweDeelnemerId, potje_id: potjeId, naam, device_id: deviceId }))
 
     if (error) throw error
 
@@ -87,11 +96,11 @@ export function usePotjeActies({
       throw new Error(`SALDO_TE_LAAG:${saldi.potSaldo}`)
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await metTimeout(supabase
       .from('transacties')
       .insert({ potje_id: potjeId, deelnemer_id: deelnemer.id, type, bedrag })
       .select()
-      .single()
+      .single())
     if (error) throw error
 
     const deelnemerSnapshot = deelnemer
@@ -129,11 +138,11 @@ export function usePotjeActies({
       }
     }
 
-    const { error } = await supabase
+    const { error } = await metTimeout(supabase
       .from('transacties')
       .delete()
       .eq('id', transactie.id)
-      .eq('deelnemer_id', actiefDeelnemer.id)
+      .eq('deelnemer_id', actiefDeelnemer.id))
     if (error) {
       toonToast(logFout(error, { component: 'usePotjeActies', actie: 'undo' }), 'fout')
     } else {
@@ -149,7 +158,7 @@ export function usePotjeActies({
       throw new Error('DEELNEMER_ONTBREEKT')
     }
 
-    const { error } = await supabase
+    const { error } = await metTimeout(supabase
       .from('potjes')
       .update({
         status: 'gesloten',
@@ -157,7 +166,7 @@ export function usePotjeActies({
         gesloten_door: deelnemer.id,
       })
       .eq('id', potjeId)
-      .eq('status', 'open')
+      .eq('status', 'open'))
     if (error) throw error
     setModaal(null)
   }, [potjeId, deelnemer, setModaal])
@@ -176,12 +185,12 @@ export function usePotjeActies({
 
     setAfmeldenLaden(true)
     try {
-      const { data, error } = await supabase
+      const { data, error } = await metTimeout(supabase
         .from('deelnemers')
         .update({ actief: false, afgemeld_op: new Date().toISOString() })
         .eq('id', deelnemer.id)
         .select()
-        .maybeSingle()
+        .maybeSingle())
       if (error) throw error
 
       if (!data) {
