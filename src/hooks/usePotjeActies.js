@@ -37,6 +37,10 @@ import { STANDAARD_VALUTA } from '../constants'
  *     De UI ontvangt de status-wijziging via het realtime abonnement in
  *     usePotje en schakelt automatisch door naar de eindafrekening.
  *     Geen codewijziging in deze hook — alleen gedragsverandering op DB-niveau.
+ *
+ * Lint-fix (2026-04-21 / eslint-plugin-react-hooks 7.1.1):
+ *   - handleUndo vóór handleTransactie gedeclareerd om de
+ *     react-hooks/immutability "accessed before declaration" fout op te lossen.
  */
 
 function rond(waarde) {
@@ -85,38 +89,10 @@ export function usePotjeActies({
     navigate(`/potje/${potjeId}/storten`)
   }, [potjeId, deviceId, setDeelnemer, navigate])
 
-  // ── handleTransactie ─────────────────────────────────────────────────────────
-
-  const handleTransactie = useCallback(async (type, bedrag) => {
-    if (!deelnemer?.id) throw new Error('DEELNEMER_ONTBREEKT')
-    if (deelnemer.actief === false) throw new Error('NIET_ACTIEF')
-
-    const saldi = berekenSaldi(deelnemers, transacties)
-    if (type === 'betaling' && bedrag > saldi.potSaldo) {
-      throw new Error(`SALDO_TE_LAAG:${saldi.potSaldo}`)
-    }
-
-    const { data, error } = await metTimeout(supabase
-      .from('transacties')
-      .insert({ potje_id: potjeId, deelnemer_id: deelnemer.id, type, bedrag })
-      .select()
-      .single())
-    if (error) throw error
-
-    const deelnemerSnapshot = deelnemer
-
-    setModaal(null)
-    toonToast(
-      type === 'storting'
-        ? `Storting van ${formatBedrag(bedrag, valuta)} geregistreerd.`
-        : `Betaling van ${formatBedrag(bedrag, valuta)} geregistreerd.`,
-      'ok',
-      { label: 'Ongedaan', handler: () => handleUndo(data, deelnemerSnapshot) }
-    )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [potjeId, deelnemer, deelnemers, transacties, valuta, setModaal, toonToast])
-
   // ── handleUndo ───────────────────────────────────────────────────────────────
+  // Gedeclareerd vóór handleTransactie zodat handleTransactie ernaar kan
+  // verwijzen in de toast-callback zonder "accessed before declaration" te triggeren
+  // (react-hooks/immutability, eslint-plugin-react-hooks 7.1.1).
 
   const handleUndo = useCallback(async (transactie, deelnemerOverride) => {
     const actiefDeelnemer = deelnemerOverride ?? deelnemer
@@ -150,6 +126,37 @@ export function usePotjeActies({
       toonToast('Transactie ongedaan gemaakt.', 'ok')
     }
   }, [transacties, deelnemers, deelnemer, toonToast, setTransacties])
+
+  // ── handleTransactie ─────────────────────────────────────────────────────────
+
+  const handleTransactie = useCallback(async (type, bedrag) => {
+    if (!deelnemer?.id) throw new Error('DEELNEMER_ONTBREEKT')
+    if (deelnemer.actief === false) throw new Error('NIET_ACTIEF')
+
+    const saldi = berekenSaldi(deelnemers, transacties)
+    if (type === 'betaling' && bedrag > saldi.potSaldo) {
+      throw new Error(`SALDO_TE_LAAG:${saldi.potSaldo}`)
+    }
+
+    const { data, error } = await metTimeout(supabase
+      .from('transacties')
+      .insert({ potje_id: potjeId, deelnemer_id: deelnemer.id, type, bedrag })
+      .select()
+      .single())
+    if (error) throw error
+
+    const deelnemerSnapshot = deelnemer
+
+    setModaal(null)
+    toonToast(
+      type === 'storting'
+        ? `Storting van ${formatBedrag(bedrag, valuta)} geregistreerd.`
+        : `Betaling van ${formatBedrag(bedrag, valuta)} geregistreerd.`,
+      'ok',
+      { label: 'Ongedaan', handler: () => handleUndo(data, deelnemerSnapshot) }
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [potjeId, deelnemer, deelnemers, transacties, valuta, setModaal, toonToast])
 
   // ── handleSluiten ────────────────────────────────────────────────────────────
 

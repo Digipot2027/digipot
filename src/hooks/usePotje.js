@@ -72,6 +72,7 @@ export function usePotje(potjeId) {
 
   // ── Realtime abonnementen + online/offline ───────────────────────────────────
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     laadData()
 
     const kanaal = supabase
