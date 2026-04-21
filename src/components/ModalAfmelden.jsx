@@ -25,8 +25,14 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * sluit_potje_bij_laatste_afmelding het potje automatisch, waarna de
  * eindafrekening verschijnt. Zonder deze waarschuwing zou de sluiting
  * een verrassing zijn.
+ *
+ * Achtergelaten bedrag (2026-04-21): prop achtergelatenBedrag toont een
+ * extra bullet wanneer de deelnemer een betekenisvol aandeel in het
+ * resterende potsaldo achterlaat. De berekening en drempel (€2) zitten
+ * in berekenAchtergelatenBedrag() — de modal toont alleen wat wordt
+ * meegegeven. null of 0 = geen melding.
  */
-function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, onBevestig, onAnnuleer }) {
+function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, achtergelatenBedrag = null, onBevestig, onAnnuleer }) {
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
@@ -78,6 +84,9 @@ function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, onBevestig, on
             <li>• Je telt niet meer mee bij nieuwe betalingen</li>
             <li>• Je kunt je daarna niet opnieuw aanmelden</li>
             <li>• Je inleg blijft zichtbaar in de eindafrekening</li>
+            {achtergelatenBedrag !== null && achtergelatenBedrag > 0 && (
+              <li>• Je laat <strong>~{achtergelatenBedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}</strong> achter in het potje — dit geld ben je kwijt</li>
+            )}
             {isLaatsteActieve && (
               <li><strong>• Het potje wordt direct afgesloten</strong> — jij bent de laatste actieve deelnemer. Iedereen ziet meteen de eindafrekening.</li>
             )}
