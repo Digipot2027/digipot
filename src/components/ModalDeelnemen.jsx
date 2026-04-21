@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
 import { valideerDeelnemerNaam } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { MAX_NAAM, MAX_DEELNEMERS } from '../constants'
 
 /**
  * ModalDeelnemen — naamkeuze en bevestiging voor nieuwe deelname.
@@ -27,8 +28,6 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
   // A17: guard tegen dubbele submit vóór de eerste async round-trip voltooid is
   const bezigRef = useRef(false)
 
-  const MAX_NAAM = 30
-  const MAX_DEELNEMERS = 20
   const heeftProfielNaam = profielNaam.length > 0
 
   useEffect(() => {

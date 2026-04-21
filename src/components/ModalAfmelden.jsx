@@ -86,7 +86,7 @@ function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, onBevestig, on
 
         {/* BUG-3 fix: fout zichtbaar in de modal */}
         {fout && (
-          <div className="fout-tekst mb-3" role="alert">
+          <div id="modal-afmelden-fout" className="fout-tekst mb-3" role="alert">
             {fout}
           </div>
         )}
@@ -104,6 +104,7 @@ function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, onBevestig, on
             className="knop knop-afmelden flex-1"
             onClick={handleBevestig}
             disabled={laden}
+            aria-describedby={fout ? 'modal-afmelden-fout' : undefined}
           >
             {laden ? 'Bezig...' : 'Ja, afmelden →'}
           </button>

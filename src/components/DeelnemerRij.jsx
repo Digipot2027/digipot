@@ -1,4 +1,5 @@
 import { formatBedrag } from '../utils/formatBedrag'
+import { STANDAARD_VALUTA } from '../constants'
 
 /**
  * DeelnemerRij — één rij in de deelnemerstafel op het Overzichtscherm.
@@ -23,7 +24,7 @@ import { formatBedrag } from '../utils/formatBedrag'
  * @param {Function} props.onClick      - Callback bij klik of Enter/Space
  * @param {string}   [props.valuta]     - ISO 4217 valutacode (default: 'EUR')
  */
-function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = 'EUR' }) {
+function DeelnemerRij({ deelnemer, saldi, isIkzelf, onClick, valuta = STANDAARD_VALUTA }) {
   const isAfgemeld = deelnemer.actief === false
 
   // WCAG-3: Space-toets scrollt de pagina als e.preventDefault() ontbreekt.

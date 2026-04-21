@@ -6,7 +6,7 @@ import { logFout } from '../utils/logFout'
 import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
-import { STANDAARD_VALUTA } from '../constants'
+import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 // Standaardbedragen — primaire keuzemethode
 const SNELBEDRAGEN = [5, 10, 20, 50]
@@ -30,7 +30,7 @@ function PaginaStorten() {
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
 
-  const MAX = 999.99
+  const MAX = MAX_BEDRAG
   // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
   const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
