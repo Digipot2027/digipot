@@ -18,8 +18,15 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * in de modal zelf via lokale fout-state. De outer handler (usePotjeActies
  * handleAfmelden) vangt DB-fouten al op via toonToast; deze catch dekt
  * onverwachte bugs in de aanroepketen die de outer handler niet bereiken.
+ *
+ * Zombie-preventie (2026-04-18): prop isLaatsteActieve toont een extra
+ * waarschuwing aan de gebruiker die als laatste actieve deelnemer op het
+ * punt staat zich af te melden. Na afmelding sluit de DB-trigger
+ * sluit_potje_bij_laatste_afmelding het potje automatisch, waarna de
+ * eindafrekening verschijnt. Zonder deze waarschuwing zou de sluiting
+ * een verrassing zijn.
  */
-function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
+function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, onBevestig, onAnnuleer }) {
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
@@ -71,6 +78,9 @@ function ModalAfmelden({ deelnemerNaam, onBevestig, onAnnuleer }) {
             <li>• Je telt niet meer mee bij nieuwe betalingen</li>
             <li>• Je kunt je daarna niet opnieuw aanmelden</li>
             <li>• Je inleg blijft zichtbaar in de eindafrekening</li>
+            {isLaatsteActieve && (
+              <li><strong>• Het potje wordt direct afgesloten</strong> — jij bent de laatste actieve deelnemer. Iedereen ziet meteen de eindafrekening.</li>
+            )}
           </ul>
         </div>
 

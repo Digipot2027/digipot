@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 2.4
-**Datum:** 2026-04-17
+**Versie:** 2.7
+**Datum:** 2026-04-20
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -58,6 +58,8 @@ Alle gebruikersfouten via `logFout()` → Sentry + Nederlandse gebruikerstekst. 
 ### Levenscyclus
 
 Open potjes > 24 uur → automatisch gesloten. Potjes > 7 dagen → verwijderd. Via Supabase Edge Functions + pg_cron.
+
+**Zombie-preventie (2026-04-18):** een potje mag nooit in de toestand “open zonder actieve deelnemers” komen te staan. Wanneer de laatste actieve deelnemer zich afmeldt, wordt het potje automatisch en direct gesloten door de databasetrigger `trg_sluit_potje_bij_laatste_afmelding`. Het sluittijdstip (`gesloten_op`) wordt gelijkgesteld aan het afmeldtijdstip van die laatste deelnemer. Het veld `gesloten_door` bevat de id van die deelnemer. Voor de eindafrekening telt deze laatste afmelder als “afgemeld”, conform de bestaande regel dat afmelden op hetzelfde moment als sluiting telt als niet-actief. De gebruiker die op het punt staat als laatste af te melden, krijgt in de afmeld-modal een aanvullende waarschuwing te zien: *“Het potje wordt direct afgesloten — jij bent de laatste actieve deelnemer. Iedereen ziet meteen de eindafrekening.”* De sluiting zelf gebeurt atomair op databaseniveau en wordt via de bestaande realtime-synchronisatie automatisch zichtbaar op alle verbonden apparaten.
 
 ### Monitoring
 
@@ -122,3 +124,5 @@ Zie versie 1.8 (ongewijzigd).
 | 2.2 | 2026-04-16 | **§14 apparaatidentificatie aangevuld:** centrale localStorage-abstractielaag gedocumenteerd (`src/utils/storage.js`); bug-fix `main.jsx` literal string → `TEKSTGROOTTE_KEY` gedocumenteerd | Storage-abstractielaag geïntroduceerd voor onderhoudbaarheid en testbaarheid |
 | 2.3 | 2026-04-17 | **Technische schuld afgelost (3 items):** E2e in CI, `berekenSaldi.js` gesplitst in vier modules (`berekenSaldi`, `berekenEindafrekening`, `berekenVereffening`, `berekenHelpers`), localStorage-abstractielaag volledig doorgevoerd | Technische schuld items 1/5/6 uit schuldenlijst |
 | 2.4 | 2026-04-17 | **CSS-migratie fase 1:** utility-klassen en component-specifieke klassen toegevoegd aan `index.css` (`.flex`, `.grid-2`, `.truncate`, `.knop-icoon`, `.nav-rij`, `.kaart-header`, `.skeleton-*`, `.lege-staat`, `.saldo-display`, e.a.); dit is de eerste stap van de gefaseerde migratie van inline `style={{}}` naar CSS | Technische schuld: inline stijlen (hoog volume) — fase 1 van 10 |
+| 2.5 | 2026-04-18 | **§14 zombie-preventie gedocumenteerd:** laatste afmelding sluit automatisch het potje via DB-trigger; afmeld-modal toont extra waarschuwing wanneer gebruiker de laatste actieve deelnemer is | Uit testpraktijk bleek dat een potje in zombie-toestand kon belanden (status=open zonder actieve deelnemers), onherstelbaar via de reguliere flow door RLS-policy |
+| 2.7 | 2026-04-20 | **Technische schuld 3 items afgelost (A8, N4, A18):** query timeouts via `metTimeout()` op alle Supabase-calls — bij overschrijding ziet de gebruiker “Het verzoek duurde te lang. Controleer je verbinding en probeer het opnieuw.”; naam-matching in Open/Gesloten potjes nu case-insensitief (profielnaam "jan" vindt deelnemer "Jan"); 42501-fouten (RLS na stabiele bootstrapDeviceId-fix) worden voortaan als bugs naar Sentry gestuurd voor monitoring. | Technische schuld audit 2026-04-20 — tweede batch |

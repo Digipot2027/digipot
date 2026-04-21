@@ -195,6 +195,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
       {afmeldenModaal && (
         <ModalAfmelden
           deelnemerNaam={ikzelf?.naam}
+          isLaatsteActieve={ikBenActief && actieveDeelnemers.length === 1 && actieveDeelnemers[0]?.id === ikzelf?.id}
           onBevestig={async () => {
             await onAfmelden()
             setAfmeldenModaal(false)

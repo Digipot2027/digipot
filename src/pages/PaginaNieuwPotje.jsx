@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { metTimeout } from '../utils/requestTimeout'
 import { valideerPotjeNaam } from '../utils/valideer'
 import { MAX_NAAM, STANDAARD_VALUTA } from '../constants'
 
@@ -47,9 +48,9 @@ function PaginaNieuwPotje() {
       // crypto.randomUUID() is beschikbaar in alle moderne browsers en in Node.js ≥ 14.
       const nieuweId = crypto.randomUUID()
 
-      const { error } = await supabase
+      const { error } = await metTimeout(supabase
         .from('potjes')
-        .insert({ id: nieuweId, naam: naam.trim(), valuta })
+        .insert({ id: nieuweId, naam: naam.trim(), valuta }))
 
       if (error) throw error
       navigate(`/potje/${nieuweId}`)

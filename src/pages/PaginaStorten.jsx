@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
+import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { STANDAARD_VALUTA } from '../constants'
@@ -99,9 +100,9 @@ function PaginaStorten() {
     setBezig(true)
     try {
       const idempotencyKey = crypto.randomUUID()
-      const { error } = await supabase
+      const { error } = await metTimeout(supabase
         .from('transacties')
-        .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey })
+        .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey }))
       if (error) throw error
 
       navigate(`/potje/${id}`, {
