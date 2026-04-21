@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { berekenSaldi, heeftGestort } from '../utils/berekenSaldi'
+import { berekenSaldi, heeftGestort, berekenAchtergelatenBedrag } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { STANDAARD_VALUTA } from '../constants'
 import DeelnemerRij from '../components/DeelnemerRij.jsx'
@@ -31,6 +31,9 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
   const heeftTransacties = transacties.length > 0
   // TECH-3 fix: heeftGestort() uit berekenSaldi.js i.p.v. inline check
   const ikBenGestort = heeftGestort(saldi.deelnemersSaldi, ikzelf?.id)
+  const achtergelatenBedrag = ikBenActief
+    ? berekenAchtergelatenBedrag(saldi.deelnemersSaldi, ikzelf?.id, saldi.potSaldo, saldi.potTotaal)
+    : null
 
   return (
     <>
@@ -204,6 +207,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
         <ModalAfmelden
           deelnemerNaam={ikzelf?.naam}
           isLaatsteActieve={ikBenActief && actieveDeelnemers.length === 1 && actieveDeelnemers[0]?.id === ikzelf?.id}
+          achtergelatenBedrag={achtergelatenBedrag}
           onBevestig={async () => {
             await onAfmelden()
             setAfmeldenModaal(false)

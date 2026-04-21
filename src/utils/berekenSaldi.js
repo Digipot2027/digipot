@@ -65,6 +65,35 @@ export function berekenSaldi(deelnemers, transacties) {
 }
 
 /**
+ * Berekent het bedrag dat een deelnemer achterlaat in het potje bij afmelding.
+ *
+ * Een deelnemer laat geld achter wanneer zijn evenredig aandeel in het
+ * resterende potsaldo groter is dan nul. Dit aandeel is gebaseerd op zijn
+ * relatieve bijdrage aan het totaal gestorte bedrag:
+ *
+ *   aandeel = (eigen gestort / potTotaal) × potSaldo
+ *
+ * Randgevallen:
+ *   - potTotaal === 0 → geen storting geweest, aandeel = 0
+ *   - deelnemer niet gevonden in saldi → 0
+ *   - aandeel < drempel → 0 (geen melding voor verwaarloosbare bedragen)
+ *
+ * @param {Array}  deelnemersSaldi - Resultaat van berekenSaldi().deelnemersSaldi
+ * @param {string} deelnemerId     - ID van de deelnemer die zich afmeldt
+ * @param {number} potSaldo        - Huidig resterend saldo in het potje
+ * @param {number} potTotaal       - Totaal gestorte bedrag in het potje
+ * @param {number} [drempel=2]     - Minimaal bedrag om een waarschuwing te tonen (€)
+ * @returns {number} Het achtergelaten bedrag, of 0 als het onder de drempel valt
+ */
+export function berekenAchtergelatenBedrag(deelnemersSaldi, deelnemerId, potSaldo, potTotaal, drempel = 2) {
+  if (potTotaal === 0 || potSaldo <= 0) return 0
+  const saldi = deelnemersSaldi.find(s => s.id === deelnemerId)
+  if (!saldi || saldi.gestort <= 0) return 0
+  const aandeel = rond((saldi.gestort / potTotaal) * potSaldo)
+  return aandeel >= drempel ? aandeel : 0
+}
+
+/**
  * Bepaalt of een deelnemer heeft gestort op basis van saldi.
  *
  * TECH-3 fix (2026-04-16): de check `(mijnSaldi?.gestort ?? 0) > 0` was
