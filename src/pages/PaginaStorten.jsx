@@ -12,18 +12,42 @@ import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 // Standaardbedragen — primaire keuzemethode
 const SNELBEDRAGEN = [5, 10, 20, 50]
 
+/**
+ * leesEnWisBuffer — lees de sessionStorage-buffer voor een potje-ID.
+ *
+ * B5: aangeroepen op module-niveau (buiten de component) zodat de waarde
+ * beschikbaar is vóór de eerste render. laadFormulier() wist de buffer
+ * direct na lezen — het aanbod is eenmalig per paginalaad.
+ *
+ * Wordt één keer per module-evaluatie aangeroepen; bij SPA-navigatie
+ * terug naar dit scherm evalueert React Router de module opnieuw.
+ */
+function leesEnWisBuffer(potjeId) {
+  if (!potjeId) return { bedrag: '', actief: false }
+  const herstel = laadFormulier(`digipot:storten:${potjeId}`)
+  if (herstel?.bedrag) {
+    return { bedrag: String(herstel.bedrag).replace('.', ','), actief: true }
+  }
+  return { bedrag: '', actief: false }
+}
+
 function PaginaStorten() {
   const { id } = useParams()
   const navigate = useNavigate()
 
   const { potje, deelnemers, transacties, deelnemer, laden, fout } = usePotje(id)
 
+  // B5: buffer één keer uitlezen via useState lazy initializer.
+  // De initializer wordt alleen bij mount aangeroepen, niet bij re-renders.
+  // leesEnWisBuffer() wist de buffer direct — eenmalig aanbod.
+  const [bufferInit] = useState(() => leesEnWisBuffer(id))
+
   const [gekozenBedrag, setGekozenBedrag] = useState(null)
-  const [vrijeInvoer, setVrijeInvoer] = useState('')
-  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false)
+  const [vrijeInvoer, setVrijeInvoer] = useState(bufferInit.bedrag)
+  const [vrijeInvoerActief, setVrijeInvoerActief] = useState(bufferInit.actief)
   const [invoerFout, setInvoerFout] = useState('')
   const [bezig, setBezig] = useState(false)
-  const [bufferHersteld, setBufferHersteld] = useState(false)
+  const [bufferHersteld, setBufferHersteld] = useState(bufferInit.actief)
   const vrijeInvoerRef = useRef(null)
 
   // Dubbele-submit-guard (fix dubbelstorten 2026-04-13)
@@ -31,21 +55,6 @@ function PaginaStorten() {
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
-
-  // B5: herstel formulierdata uit sessionStorage na timeout bij vorige poging.
-  // laadFormulier() verwijdert de buffer direct na lezen — eenmalige aanbieding.
-  // setState binnen effect is hier bewust: buffer wordt eenmalig gelezen bij
-  // mount op basis van de potje-ID, niet als reactie op externe state-wijziging.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (!id) return
-    const herstel = laadFormulier(`digipot:storten:${id}`)
-    if (herstel?.bedrag) {
-      setVrijeInvoer(String(herstel.bedrag).replace('.', ','))
-      setVrijeInvoerActief(true)
-      setBufferHersteld(true)
-    }
-  }, [id])
 
   const MAX = MAX_BEDRAG
   // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
