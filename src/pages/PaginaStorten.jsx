@@ -34,6 +34,9 @@ function PaginaStorten() {
 
   // B5: herstel formulierdata uit sessionStorage na timeout bij vorige poging.
   // laadFormulier() verwijdert de buffer direct na lezen — eenmalige aanbieding.
+  // setState binnen effect is hier bewust: buffer wordt eenmalig gelezen bij
+  // mount op basis van de potje-ID, niet als reactie op externe state-wijziging.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!id) return
     const herstel = laadFormulier(`digipot:storten:${id}`)
