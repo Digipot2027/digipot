@@ -24,7 +24,6 @@ import {
   MAX_NAAM,
   MAX_DEELNEMERS,
   MAX_BEDRAG,
-  VALUTA_OPTIES,
 } from '../constants'
 
 describe('constants', () => {
@@ -38,22 +37,6 @@ describe('constants', () => {
     expect(MAX_NAAM).toBe(30)
     expect(MAX_DEELNEMERS).toBe(20)
     expect(MAX_BEDRAG).toBe(999.99)
-  })
-
-  it('VALUTA_OPTIES bevat 7 valuta met waarde + label', () => {
-    expect(VALUTA_OPTIES).toHaveLength(7)
-    expect(VALUTA_OPTIES[0].waarde).toBe('EUR')
-    for (const opt of VALUTA_OPTIES) {
-      expect(typeof opt.waarde).toBe('string')
-      expect(opt.waarde).toHaveLength(3) // ISO 4217 = altijd 3 tekens
-      expect(typeof opt.label).toBe('string')
-      expect(opt.label.length).toBeGreaterThan(0)
-    }
-  })
-
-  it('VALUTA_OPTIES bevat EUR, USD, GBP, CHF, DKK, NOK, SEK in volgorde', () => {
-    const waardes = VALUTA_OPTIES.map(o => o.waarde)
-    expect(waardes).toEqual(['EUR', 'USD', 'GBP', 'CHF', 'DKK', 'NOK', 'SEK'])
   })
 })
 

@@ -49,19 +49,3 @@ export const MAX_BEDRAG = 999.99
  * Overeenkomstig DB DEFAULT 'EUR' op kolom potjes.valuta.
  */
 export const STANDAARD_VALUTA = 'EUR'
-
-// ── Valuta-opties voor potje aanmaken ────────────────────────────────────────
-
-/**
- * Beschikbare valuta's voor nieuwe potjes.
- * Waarde = ISO 4217-code, label = weergavenaam.
- */
-export const VALUTA_OPTIES = [
-  { waarde: 'EUR', label: 'EUR — Euro (€)' },
-  { waarde: 'USD', label: 'USD — US Dollar ($)' },
-  { waarde: 'GBP', label: 'GBP — Brits Pond (£)' },
-  { waarde: 'CHF', label: 'CHF — Zwitserse Frank (Fr.)' },
-  { waarde: 'DKK', label: 'DKK — Deense Kroon (kr.)' },
-  { waarde: 'NOK', label: 'NOK — Noorse Kroon (kr.)' },
-  { waarde: 'SEK', label: 'SEK — Zweedse Kroon (kr.)' },
-]
