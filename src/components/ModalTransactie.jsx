@@ -3,6 +3,7 @@ import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
 import { valideerTransactieBedrag } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { slaagFormulierOp, wisFormulier } from '../utils/formulierBuffer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 /**
@@ -24,7 +25,7 @@ import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
  * konden worden ingediend. bezigRef is synchroon en blokkeert de tweede
  * aanroep direct.
  */
-function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, ikBenActief = true, onBevestig, onAnnuleer }) {
+function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = null, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
@@ -67,6 +68,8 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, ikBenActie
 
     try {
       await onBevestig(type, bedragNum)
+      // B5: submit geslaagd — verwijder eventuele buffer
+      if (potjeId) wisFormulier(`digipot:betaling:${potjeId}`)
     } catch (error) {
       if (error.message?.includes('SALDO_TE_LAAG')) {
         const saldo = error.message.split(':')[1]
@@ -76,6 +79,14 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, ikBenActie
       } else if (error.message?.includes('DEELNEMER_ONTBREEKT')) {
         setFout('Er is iets misgegaan. Ververs de pagina en probeer opnieuw.')
       } else {
+        // B5: bij timeout of netwerkfout het bedrag bewaren voor herstel
+        if (potjeId && (
+          error.message?.includes('REQUEST_TIMEOUT') ||
+          error.message?.includes('fetch') ||
+          error.message?.includes('NetworkError')
+        )) {
+          slaagFormulierOp(`digipot:betaling:${potjeId}`, { bedrag: bedragNum, type })
+        }
         setFout(logFout(error, { component: 'ModalTransactie', actie: type }))
       }
     } finally {

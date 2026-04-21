@@ -6,6 +6,7 @@ import { logFout } from '../utils/logFout'
 import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
+import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulierBuffer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 // Standaardbedragen — primaire keuzemethode
@@ -22,6 +23,7 @@ function PaginaStorten() {
   const [vrijeInvoerActief, setVrijeInvoerActief] = useState(false)
   const [invoerFout, setInvoerFout] = useState('')
   const [bezig, setBezig] = useState(false)
+  const [bufferHersteld, setBufferHersteld] = useState(false)
   const vrijeInvoerRef = useRef(null)
 
   // Dubbele-submit-guard (fix dubbelstorten 2026-04-13)
@@ -29,6 +31,18 @@ function PaginaStorten() {
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
+
+  // B5: herstel formulierdata uit sessionStorage na timeout bij vorige poging.
+  // laadFormulier() verwijdert de buffer direct na lezen — eenmalige aanbieding.
+  useEffect(() => {
+    if (!id) return
+    const herstel = laadFormulier(`digipot:storten:${id}`)
+    if (herstel?.bedrag) {
+      setVrijeInvoer(String(herstel.bedrag).replace('.', ','))
+      setVrijeInvoerActief(true)
+      setBufferHersteld(true)
+    }
+  }, [id])
 
   const MAX = MAX_BEDRAG
   // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
@@ -55,6 +69,7 @@ function PaginaStorten() {
     setVrijeInvoer('')
     setVrijeInvoerActief(false)
     setInvoerFout('')
+    setBufferHersteld(false)
   }
 
   function handleVrijeInvoerToggle() {
@@ -67,6 +82,7 @@ function PaginaStorten() {
     setVrijeInvoer(e.target.value)
     setGekozenBedrag(null)
     setInvoerFout('')
+    setBufferHersteld(false)
   }
 
   async function handleStorten() {
@@ -105,6 +121,9 @@ function PaginaStorten() {
         .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey }))
       if (error) throw error
 
+      // B5: submit geslaagd — verwijder eventuele buffer
+      wisFormulier(`digipot:storten:${id}`)
+
       navigate(`/potje/${id}`, {
         state: {
           toast: {
@@ -115,7 +134,13 @@ function PaginaStorten() {
       })
     } catch (e) {
       bezigRef.current = false
-      setInvoerFout(logFout(e, { component: 'PaginaStorten', actie: 'storten' }))
+      const foutmelding = logFout(e, { component: 'PaginaStorten', actie: 'storten' })
+      // B5: bij timeout of netwerkfout het bedrag bewaren zodat de gebruiker
+      // het niet opnieuw hoeft in te voeren na verversen of terugnavigeren
+      if (e.message?.includes('REQUEST_TIMEOUT') || e.message?.includes('fetch') || e.message?.includes('NetworkError')) {
+        slaagFormulierOp(`digipot:storten:${id}`, { bedrag: effectiefBedrag })
+      }
+      setInvoerFout(foutmelding)
     } finally {
       setBezig(false)
     }
@@ -172,6 +197,15 @@ function PaginaStorten() {
           {potje?.naam} {'\u00b7'} {deelnemer?.naam}
         </p>
       </div>
+
+      {/* B5: melding dat het bedrag is hersteld na een eerdere mislukte poging */}
+      {bufferHersteld && (
+        <div className="kaart herstel-melding" role="status">
+          <p className="herstel-melding__tekst">
+            🔄 Je vorige bedrag is hersteld. Controleer het en probeer opnieuw te storten.
+          </p>
+        </div>
+      )}
 
       {reedGestort > 0 && (
         <div className="kaart storten-al-gestort">

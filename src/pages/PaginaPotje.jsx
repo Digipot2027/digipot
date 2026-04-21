@@ -178,6 +178,7 @@ function PaginaPotje() {
           type="betaling"
           potSaldo={saldi.potSaldo}
           valuta={valuta}
+          potjeId={id}
           ikBenActief={ikBenActief}
           onBevestig={handleTransactie}
           onAnnuleer={() => setModaal(null)}

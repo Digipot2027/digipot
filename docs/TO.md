@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 5.2
+**Versie:** 5.9
 **Datum:** 2026-04-21
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -19,6 +19,7 @@
 21. Wijzigingslog
 22. Cloudflare Worker — Lifecycle Cron (vervallen)
 23. Supabase Edge Functions — Lifecycle
+24. Technische schuld
 
 ---
 
@@ -284,6 +285,21 @@ Zie versie 2.6 (ongewijzigd).
 
 ---
 
+## 24. Technische schuld
+
+De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, nieuw gesignaleerde items C1–C3) wordt bijgehouden in `docs/SCHULD.md`. Dat bestand is de enige bron van waarheid voor openstaande en afgeloste technische schuld.
+
+**Openstaand (per 2026-04-21):**
+
+| Item | Ernst | Omschrijving |
+|---|---|---|
+| B4 | Laag | Geen frontend rate limiting op device-niveau |
+| C1 | Laag | Resterende inline stijlen na CSS-migratie |
+| C2 | Laag | Disabled afmeld-knop zonder directe feedback |
+| C3 | Laag | Branching-strategie niet gedocumenteerd |
+
+---
+
 ## 21. Wijzigingslog
 
 | Versie | Datum | Wijziging | Reden |
@@ -316,3 +332,6 @@ Zie versie 2.6 (ongewijzigd).
 | 5.4 | 2026-04-21 | **CI uitgebreid met `acceptatie`-branch:** `on.push.branches` en `on.pull_request.branches` bevatten nu ook `acceptatie`. Deploy-job blijft beperkt tot `main`. Werkwijze: feature branches vertrekken vanaf `acceptatie`, PR naar `acceptatie`, na goedkeuring PR van `acceptatie` naar `main`. | Stabiele acceptatieomgeving via vaste branch |
 | 5.5 | 2026-04-21 | **`berekenSaldi.js`: `berekenAchtergelatenBedrag()` toegevoegd.** Pure exportfunctie berekent het evenredige aandeel van een deelnemer in het resterende potsaldo bij afmelding: `(gestort / potTotaal) × potSaldo`, afgerond op 2 decimalen. Retourneert 0 als het aandeel onder de drempel valt (standaard €2), potsaldo ≤0 is, of deelnemer niet gevonden wordt. `ModalAfmelden` krijgt nieuwe prop `achtergelatenBedrag` (default `null`); toont extra bullet als waarde > 0. `PaginaOverzicht` berekent de waarde en geeft haar door. Testbestand `berekenSaldi.achtergelatenBedrag.regressie.test.js` toegevoegd (15 tests). Testcount: 804. | Deelnemer was onbewust geld kwijt bij afmelding zonder waarschuwing |
 | 5.6 | 2026-04-21 | **`PaginaOverzicht`: "Nodig vrienden uit" verplaatst van header naar Beheer-sectie.** Knop stond in de header-kaart als volle-breedte secundaire knop. Verplaatst naar onderaan de Beheer-sectie, na de afmeld- en afsluitknoppen. CSS-klasse `.deelknop-in-kaart` blijft ongewijzigd bruikbaar. | Header te druk; uitnodigen is een eenmalige beheersactie, geen primaire actie |
+| 5.7 | 2026-04-21 | **§24 technische schuld toegevoegd:** `docs/SCHULD.md` aangelegd als enige bron van waarheid voor alle schulditems (A1–A20, B1–B7, nieuw C1–C3). TO §24 verwijst naar dit bestand en bevat een beknopt overzicht van openstaande items. Inhoudsopgave bijgewerkt. | Schuldenlijst bestond niet als bestand — verliesrisico tussen sessies |
+| 5.8 | 2026-04-21 | **B2 afgelost — audit trail voor verwijderde transacties:** migratie `20260421000000_transacties_audit_log.sql` voegt tabel `transacties_log` toe met trigger `trg_log_verwijderde_transactie` (SECURITY DEFINER, search_path=public). Elke DELETE op `transacties` — via undo én via lifecycle-CASCADE — vastgelegd met `transactie_id`, `potje_id`, `deelnemer_id`, `type`, `bedrag`, `aangemaakt_op`, `verwijderd_op` en `verwijderd_door` (device_id uit request-header, NULL bij server-side jobs). Index op `potje_id`. Tabel append-only voor anon-rol. Geen frontend-wijziging. | Technische schuld B2: undo en lifecycle-verwijderingen waren definitief onherstelbaar |
+| 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel na Supabase-downtime:** `src/utils/formulierBuffer.js` toegevoegd (`slaagFormulierOp`, `laadFormulier`, `wisFormulier`) — sessionStorage best-effort buffer. `PaginaStorten` bewaart ingevoerd bedrag bij REQUEST_TIMEOUT/netwerkfout en toont herstelbanner bij terugkeer. `ModalTransactie` krijgt prop `potjeId` (default `null`); buffer ook actief bij betalingen. `PaginaPotje` geeft `potjeId={id}` door. Buffer gewist na succesvolle submit. `formulierBuffer.test.js` toegevoegd (11 tests). Testcount: 815. §24 openstaande items bijgewerkt. | Technische schuld B5: bij timeout ging ingevulde data verloren zonder hersteloptie |
