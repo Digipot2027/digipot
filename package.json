@@ -21,7 +21,7 @@
     "e2e:mobile": "playwright test --project=mobile-safari"
   },
   "dependencies": {
-    "@sentry/react": "^10.48.0",
+    "@sentry/react": "^10.49.0",
     "@supabase/supabase-js": "^2.103.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.5",
