@@ -11,7 +11,13 @@ export default defineConfig({
     // e2e/ expliciet uitsluiten — Playwright-bestanden gebruiken test.describe()
     // van @playwright/test, niet van Vitest. Zonder deze uitsluiting pikt Vitest
     // de spec-bestanden op en crasht op de onbekende Playwright-API.
-    exclude: ['**/node_modules/**', 'e2e/**'],
+    exclude: [
+      '**/node_modules/**',
+      'e2e/**',
+      // Lege .js-stubs — vervangen door .jsx-equivalenten; bevatten geen tests
+      'src/test/modalDeelnemen.dubbelSubmit.regressie.test.js',
+      'src/test/modalTransactie.dubbelSubmit.regressie.test.js',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

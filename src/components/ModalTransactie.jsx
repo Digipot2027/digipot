@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
 import { valideerTransactieBedrag } from '../utils/valideer'
@@ -16,12 +16,20 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * het bedrag-invoerveld. Screenreaders kondigen de foutmelding nu automatisch
  * aan zodra het veld focus heeft. role="alert" op de fout-div zorgt voor
  * directe aankondiging bij verschijnen.
+ *
+ * A17 fix (2026-04-20): bezigRef-guard toegevoegd. De laden-state vertraagt
+ * de UI maar blokkeert geen tweede klik vóór de eerste async round-trip
+ * klaar is, waardoor bij een snelle dubbele klik twee identieke transacties
+ * konden worden ingediend. bezigRef is synchroon en blokkeert de tweede
+ * aanroep direct.
  */
 function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
+  // A17: guard tegen dubbele submit vóór de eerste async round-trip voltooid is
+  const bezigRef = useRef(false)
 
   const isStorting = type === 'storting'
   const titel = isStorting ? '💰 Storting toevoegen' : '🍺 Rondje betaald'
@@ -51,7 +59,11 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
       return
     }
 
+    // A17: blokkeer dubbele submit
+    if (bezigRef.current) return
+    bezigRef.current = true
     setLaden(true)
+
     try {
       await onBevestig(type, bedragNum)
     } catch (error) {
@@ -66,6 +78,7 @@ function ModalTransactie({ type, potSaldo, valuta = 'EUR', ikBenActief = true, o
         setFout(logFout(error, { component: 'ModalTransactie', actie: type }))
       }
     } finally {
+      bezigRef.current = false
       setLaden(false)
     }
   }

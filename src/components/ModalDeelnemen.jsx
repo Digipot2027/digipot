@@ -1,13 +1,31 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
 import { valideerDeelnemerNaam } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+
+/**
+ * ModalDeelnemen — naamkeuze en bevestiging voor nieuwe deelname.
+ *
+ * A1 fix (2026-04-20): annuleer-knop was alleen gerenderd als onAnnuleer
+ * aanwezig is, maar de submit-knop miste de klasse flex-1 wanneer de
+ * annuleer-knop ontbreekt — knop vulde dan de volledige breedte.
+ * Gedrag was correct; de klasse-logica is vereenvoudigd en expliciet
+ * gedocumenteerd.
+ *
+ * A17 fix (2026-04-20): bezigRef-guard toegevoegd. Zonder guard kon een
+ * gebruiker het formulier tweemaal indienen door snel achter elkaar op
+ * 'Meedoen →' te klikken (duplicate key violation op DB-niveau). De
+ * laden-state vertraagt de UI maar blokkeert geen tweede klik vóór de
+ * eerste async round-trip klaar is.
+ */
 
 function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profielNaam = '' }) {
   const [naam, setNaam] = useState(profielNaam)
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
+  // A17: guard tegen dubbele submit vóór de eerste async round-trip voltooid is
+  const bezigRef = useRef(false)
 
   const MAX_NAAM = 30
   const MAX_DEELNEMERS = 20
@@ -38,12 +56,17 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
       return
     }
 
+    // A17: blokkeer dubbele submit
+    if (bezigRef.current) return
+    bezigRef.current = true
+
     setLaden(true)
     try {
       await onDeelnemen(naam.trim())
     } catch (error) {
       setFout(logFout(error, { component: 'ModalDeelnemen', actie: 'deelnemen' }))
     } finally {
+      bezigRef.current = false
       setLaden(false)
     }
   }
@@ -92,6 +115,9 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
           </div>
 
           <div className="modal-knoppen">
+            {/* A1: annuleer-knop aanwezig wanneer de modal sluitbaar is (terugkerende deelnemer).
+                Wanneer onAnnuleer undefined is (eerste deelname — modal is verplicht),
+                toont alleen de submit-knop op volle breedte. */}
             {onAnnuleer && (
               <button
                 type="button"
@@ -103,7 +129,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
             )}
             <button
               type="submit"
-              className={`knop knop-primair${onAnnuleer ? ' flex-1' : ''}`}
+              className={`knop knop-primair flex-1`}
               disabled={laden || !naam.trim()}
             >
               {laden ? 'Bezig…' : 'Meedoen →'}
