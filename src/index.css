@@ -606,6 +606,63 @@ tr[role="button"]:focus-visible,
   line-height: 1.45;
 }
 
+/* ModalAfmelden — genummerde lijst en oranje banner */
+.modal-afmelden-subtekst {
+  font-size: 14px;
+  color: var(--grijs-600);
+  margin-bottom: 16px;
+}
+
+.modal-afmelden-lijst {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.modal-afmelden-lijst li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--grijs-900);
+  line-height: 1.4;
+}
+.modal-afmelden-lijst__nummer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--grijs-200);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--grijs-600);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Oranje banner voor achtergelaten bedrag */
+.modal-afmelden-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--oranje-700);
+  line-height: 1.45;
+}
+.modal-afmelden-banner__icoon {
+  flex-shrink: 0;
+  font-size: 16px;
+  margin-top: 1px;
+}
+
 /* Informatieblok in modal (bijv. afgemeld-melding) */
 .modal-info-blok {
   background: var(--grijs-100);
