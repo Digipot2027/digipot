@@ -112,8 +112,8 @@ test.describe('PW-11: Realtime sluiting', () => {
     await page.getByRole('button', { name: /Pot afsluiten/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
-    // Zoek de bevestigingsknop in de modal — klik de gevaar-knop (rode knop) in de dialog
-    const bevestigKnop = page.getByRole('dialog').getByRole('button').filter({ hasText: /afsluiten|sluiten|bevestig/i }).last()
+    // Zoek de bevestigingsknop in de modal
+    const bevestigKnop = page.getByRole('dialog').getByRole('button', { name: /Ja, sluit de pot/i })
     await bevestigKnop.click()
 
     // Eindafrekeningscherm of verrekeningsdata verschijnt
