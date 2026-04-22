@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
 /**
@@ -9,8 +9,9 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  *
  * Gedrag:
  * - Escape of "Annuleren" sluit de modal zonder actie
- * - "Ja, afmelden" roept onBevestig() aan
+ * - "Ja, meld me af" roept onBevestig() aan
  * - Tab-trap binnen het panel (WCAG 2.1.1)
+ * - Klik buiten sheet of swipe-down sluit de modal
  *
  * BUG-3 fix (2026-04-16): catch-blok toegevoegd aan handleBevestig.
  * Zonder catch verdween een exception uit onBevestig() stil — geen fout
@@ -27,15 +28,24 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
  * een verrassing zijn.
  *
  * Achtergelaten bedrag (2026-04-21): prop achtergelatenBedrag toont een
- * extra bullet wanneer de deelnemer een betekenisvol aandeel in het
- * resterende potsaldo achterlaat. De berekening en drempel (€2) zitten
+ * oranje waarschuwingsbanner wanneer de deelnemer een betekenisvol aandeel
+ * in het resterende potsaldo achterlaat. De berekening en drempel (€2) zitten
  * in berekenAchtergelatenBedrag() — de modal toont alleen wat wordt
  * meegegeven. null of 0 = geen melding.
+ *
+ * Bottom-sheet restyling (2026-04-22):
+ * - Drag handle + slide-up animatie (zelfde patroon als andere modals)
+ * - Klik buiten sheet of swipe-down sluit modal
+ * - Titel 'Afmelden?' zonder emoji
+ * - Genummerde lijst met gevolgen
+ * - Oranje banner voor achtergelaten bedrag (apart van de lijst)
+ * - Knoppen gestapeld: 'Ja, meld me af' (rood) boven 'Annuleren' (wit)
  */
-function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, achtergelatenBedrag = null, onBevestig, onAnnuleer }) {
+function ModalAfmelden({ isLaatsteActieve = false, achtergelatenBedrag = null, onBevestig, onAnnuleer }) {
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
+  const swipeStartY = useRef(null)
 
   // Focus eerste knop bij openen
   useEffect(() => {
@@ -44,6 +54,22 @@ function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, achtergelatenB
 
   // WCAG 2.1.1 / 2.4.3: Escape + Tab-trap via gedeelde hook
   useFocusTrap(panelRef, onAnnuleer, { selector: 'button:not([disabled])' })
+
+  // Klik buiten sheet (op overlay) sluit de modal
+  const handleOverlayClick = useCallback((e) => {
+    if (e.target === e.currentTarget) onAnnuleer()
+  }, [onAnnuleer])
+
+  // Swipe-down op de drag handle sluit de modal
+  function handleTouchStart(e) {
+    swipeStartY.current = e.touches[0].clientY
+  }
+  function handleTouchEnd(e) {
+    if (swipeStartY.current === null) return
+    const delta = e.changedTouches[0].clientY - swipeStartY.current
+    swipeStartY.current = null
+    if (delta > 60) onAnnuleer()
+  }
 
   async function handleBevestig() {
     setFout('')
@@ -59,39 +85,64 @@ function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, achtergelatenB
     }
   }
 
+  const toonAchtergelatenBedrag = achtergelatenBedrag !== null && achtergelatenBedrag > 0
+
   return (
     <div
       className="modal-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-afmelden-titel"
+      onClick={handleOverlayClick}
     >
-      <div ref={panelRef} className="modal-panel">
+      <div ref={panelRef} className="modal-panel modal-panel--sheet">
+        {/* Drag handle — touch target voor swipe-to-dismiss */}
+        <div
+          className="modal-handle"
+          aria-hidden="true"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        />
+
         <h2 id="modal-afmelden-titel" className="modal-titel">
-          👋 Afmelden
+          Afmelden?
         </h2>
 
-        <p className="modal-tekst--mb3">
-          Weet je zeker dat je <strong>{deelnemerNaam}</strong> wilt afmelden?
+        <p className="modal-afmelden-subtekst">
+          Dit is onomkeerbaar. Na het afmelden:
         </p>
 
-        {/* Gevolgen expliciet benoemen */}
-        <div className="waarschuwing-blok">
-          <p className="waarschuwing-blok__titel">
-            Let op — dit kan niet ongedaan worden gemaakt:
-          </p>
-          <ul className="waarschuwing-blok__lijst">
-            <li>• Je telt niet meer mee bij nieuwe betalingen</li>
-            <li>• Je kunt je daarna niet opnieuw aanmelden</li>
-            <li>• Je inleg blijft zichtbaar in de eindafrekening</li>
-            {achtergelatenBedrag !== null && achtergelatenBedrag > 0 && (
-              <li>• Je laat <strong>~{achtergelatenBedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}</strong> achter in het potje — dit geld ben je kwijt</li>
-            )}
-            {isLaatsteActieve && (
-              <li><strong>• Het potje wordt direct afgesloten</strong> — jij bent de laatste actieve deelnemer. Iedereen ziet meteen de eindafrekening.</li>
-            )}
-          </ul>
-        </div>
+        {/* Genummerde lijst met gevolgen */}
+        <ol className="modal-afmelden-lijst">
+          <li>
+            <span className="modal-afmelden-lijst__nummer">1</span>
+            Je telt niet meer mee in nieuwe betalingen.
+          </li>
+          <li>
+            <span className="modal-afmelden-lijst__nummer">2</span>
+            Je kunt niet opnieuw deelnemen aan deze pot.
+          </li>
+          <li>
+            <span className="modal-afmelden-lijst__nummer">3</span>
+            Je storting blijft zichtbaar in de eindafrekening.
+          </li>
+          {isLaatsteActieve && (
+            <li>
+              <span className="modal-afmelden-lijst__nummer">4</span>
+              <strong>Het potje wordt direct afgesloten</strong> — jij bent de laatste actieve deelnemer.
+            </li>
+          )}
+        </ol>
+
+        {/* Oranje banner voor achtergelaten bedrag */}
+        {toonAchtergelatenBedrag && (
+          <div className="modal-afmelden-banner" role="note">
+            <span className="modal-afmelden-banner__icoon" aria-hidden="true">⚠️</span>
+            <span>
+              Je laat <strong>~{achtergelatenBedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}</strong> achter in de pot voor de andere deelnemers.
+            </span>
+          </div>
+        )}
 
         {/* BUG-3 fix: fout zichtbaar in de modal */}
         {fout && (
@@ -100,22 +151,22 @@ function ModalAfmelden({ deelnemerNaam, isLaatsteActieve = false, achtergelatenB
           </div>
         )}
 
-        <div className="modal-knoppen">
+        <div className="modal-knoppen--gestapeld">
           <button
             type="button"
-            className="knop knop-secundair flex-1"
-            onClick={onAnnuleer}
-          >
-            Annuleren
-          </button>
-          <button
-            type="button"
-            className="knop knop-afmelden flex-1"
+            className="knop knop-gevaar"
             onClick={handleBevestig}
             disabled={laden}
             aria-describedby={fout ? 'modal-afmelden-fout' : undefined}
           >
-            {laden ? 'Bezig...' : 'Ja, afmelden →'}
+            {laden ? 'Bezig…' : 'Ja, meld me af'}
+          </button>
+          <button
+            type="button"
+            className="knop knop-sheet-annuleer"
+            onClick={onAnnuleer}
+          >
+            Annuleren
           </button>
         </div>
       </div>
