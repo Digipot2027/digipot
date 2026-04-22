@@ -478,7 +478,7 @@ tr[role="button"]:focus-visible,
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.4);
   display: flex;
   align-items: flex-end;
   z-index: 500;
@@ -490,6 +490,37 @@ tr[role="button"]:focus-visible,
   padding: 24px;
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
+
+/* Bottom-sheet variant — slide-up animatie met iOS-curve */
+.modal-panel--sheet {
+  animation: sheetSlideUp 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  padding-top: 12px; /* ruimte voor de drag handle */
+}
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Drag handle — bovenaan het sheet */
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--grijs-200);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.modal-handle:active { cursor: grabbing; }
+
+/* Saldo-hint direct onder de titel (alleen bij betaling) */
+.modal-saldo-hint {
+  font-size: 14px;
+  color: var(--grijs-600);
+  margin-bottom: 20px;
+  margin-top: -6px;
+}
+
 .modal-titel {
   font-size: 18px;
   font-weight: 700;
@@ -508,6 +539,28 @@ tr[role="button"]:focus-visible,
 .modal-knoppen {
   display: flex;
   gap: 10px;
+}
+
+/* Gestapelde knoppen voor bottom-sheet (Bevestigen boven Annuleren) */
+.modal-knoppen--gestapeld {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Bevestig-knop disabled-staat in sheet (grijs, niet rood) */
+.knop-bevestig-inactief {
+  background: var(--grijs-200);
+  color: var(--grijs-500);
+}
+
+/* Annuleer-knop in sheet — wit met border, vetgedrukt */
+.knop-sheet-annuleer {
+  background: var(--wit);
+  color: var(--grijs-900);
+  border: 1.5px solid var(--grijs-200);
+  font-weight: 700;
 }
 
 /* Informatieblok in modal (bijv. afgemeld-melding) */

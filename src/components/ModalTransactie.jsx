@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
 import { valideerTransactieBedrag } from '../utils/valideer'
@@ -24,17 +24,31 @@ import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
  * klaar is, waardoor bij een snelle dubbele klik twee identieke transacties
  * konden worden ingediend. bezigRef is synchroon en blokkeert de tweede
  * aanroep direct.
+ *
+ * Bottom-sheet restyling (2026-04-22):
+ * - Drag handle bovenaan het sheet
+ * - Slide-up animatie met iOS-curve (cubic-bezier 0.32 0.72 0 1)
+ * - Swipe-down op handle sluit de modal
+ * - Klik buiten het sheet (op overlay) sluit de modal
+ * - Bevestigen-knop gestapeld boven Annuleren (beide full-width)
+ * - Label: 'Betaald bedrag' / 'Bedrag'; placeholder: '0,00'
+ * - Bevestigen: grijs+disabled bij leeg/ongeldig, rood bij geldig bedrag
+ * - Beschikbaar saldo direct onder de titel (alleen bij betaling)
  */
 function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = null, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
   const panelRef = useRef(null)
+  const handleRef = useRef(null)
   // A17: guard tegen dubbele submit vóór de eerste async round-trip voltooid is
   const bezigRef = useRef(false)
+  // Swipe-state voor drag-to-dismiss
+  const swipeStartY = useRef(null)
 
   const isStorting = type === 'storting'
-  const titel = isStorting ? '💰 Storting toevoegen' : '🍺 Rondje betaald'
+  const titel = isStorting ? 'Storting toevoegen' : 'Betaling registreren'
+  const labelBedrag = isStorting ? 'Bedrag' : 'Betaald bedrag'
   const MAX = MAX_BEDRAG
 
   const bedragNum = parseBedrag(bedrag)
@@ -45,6 +59,22 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
   }, [])
 
   useFocusTrap(panelRef, onAnnuleer, { selector: 'input:not([disabled]), button:not([disabled])' })
+
+  // Klik buiten sheet (op overlay) sluit de modal
+  const handleOverlayClick = useCallback((e) => {
+    if (e.target === e.currentTarget) onAnnuleer()
+  }, [onAnnuleer])
+
+  // Swipe-down op de drag handle sluit de modal
+  function handleTouchStart(e) {
+    swipeStartY.current = e.touches[0].clientY
+  }
+  function handleTouchEnd(e) {
+    if (swipeStartY.current === null) return
+    const delta = e.changedTouches[0].clientY - swipeStartY.current
+    swipeStartY.current = null
+    if (delta > 60) onAnnuleer()
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -101,9 +131,28 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-transactie-titel"
+      onClick={handleOverlayClick}
     >
-      <div ref={panelRef} className="modal-panel">
+      <div
+        ref={panelRef}
+        className="modal-panel modal-panel--sheet"
+      >
+        {/* Drag handle — touch target voor swipe-to-dismiss */}
+        <div
+          ref={handleRef}
+          className="modal-handle"
+          aria-hidden="true"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        />
+
         <h2 id="modal-transactie-titel" className="modal-titel">{titel}</h2>
+
+        {!isStorting && ikBenActief && (
+          <p className="modal-saldo-hint">
+            Beschikbaar saldo: <strong>{formatBedrag(potSaldo, valuta)}</strong>
+          </p>
+        )}
 
         {!ikBenActief && (
           <div className="modal-info-blok">
@@ -111,21 +160,15 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
           </div>
         )}
 
-        {!isStorting && ikBenActief && (
-          <p className="modal-tekst--mb3">
-            Beschikbaar saldo: <strong>{formatBedrag(potSaldo, valuta)}</strong>
-          </p>
-        )}
-
         <form onSubmit={handleSubmit}>
           <div className="veld">
-            <label className="label" htmlFor="bedrag-invoer">Bedrag ({valuta})</label>
+            <label className="label" htmlFor="bedrag-invoer">{labelBedrag}</label>
             <input
               id="bedrag-invoer"
               className={`input ${fout ? 'fout' : ''}`}
               type="text"
               inputMode="decimal"
-              placeholder="bijv. 12,50"
+              placeholder="0,00"
               value={bedrag}
               onChange={e => { setBedrag(e.target.value); setFout('') }}
               disabled={!ikBenActief}
@@ -140,18 +183,22 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
             {fout && <div id="bedrag-invoer-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
 
-          <div className="modal-knoppen">
-            <button type="button" className="knop knop-secundair flex-1" onClick={onAnnuleer}>
-              Annuleren
-            </button>
+          <div className="modal-knoppen--gestapeld">
             <button
               type="submit"
-              className={`knop flex-1 ${isStorting ? 'knop-primair' : 'knop-gevaar'}`}
-              disabled={laden || !bedrag || !ikBenActief}
+              className={`knop ${bedragGeldig && !laden ? 'knop-gevaar' : 'knop-bevestig-inactief'}`}
+              disabled={laden || !bedragGeldig || !ikBenActief}
             >
               {laden
                 ? (isStorting ? 'Storting registreren…' : 'Betaling registreren…')
-                : 'Bevestigen →'}
+                : 'Bevestigen'}
+            </button>
+            <button
+              type="button"
+              className="knop knop-sheet-annuleer"
+              onClick={onAnnuleer}
+            >
+              Annuleren
             </button>
           </div>
         </form>

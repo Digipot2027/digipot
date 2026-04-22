@@ -49,8 +49,8 @@ test.describe('PW-13: Undo en afmelden', () => {
     // Open betaalmodal en registreer een betaling
     await page.getByRole('button', { name: /Betaling registreren/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await page.getByLabel(/Bedrag/i).fill('10')
-    await page.getByRole('button', { name: 'Bevestigen →' }).click()
+    await page.getByLabel(/Betaald bedrag/i).fill('10')
+    await page.getByRole('button', { name: 'Bevestigen' }).click()
 
     // Modal sluit
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })

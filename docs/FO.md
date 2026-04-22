@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 3.2
-**Datum:** 2026-04-21
+**Versie:** 3.3
+**Datum:** 2026-04-22
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -119,6 +119,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 3.3 | 2026-04-22 | **§7 Betaling registreren modal — bottom-sheet restyling:** modal toont drag handle bovenaan; titel zonder emoji; beschikbaar saldo direct onder titel (alleen bij betaling); label 'Betaald bedrag'; placeholder '0,00'; knoppen gestapeld (Bevestigen boven Annuleren, beide full-width); Bevestigen grijs+disabled bij leeg/ongeldig, rood bij geldig bedrag; sluiten via swipe-down of klik buiten sheet. | UX-restyling conform moderne bottom-sheet patroon |
 | 1.0 | 2026-03-01 | Initieel FO opgesteld | Projectstart |
 | 1.1 | 2026-04-02 | Valutakeuze verborgen; UX-verbeteringen; mobiele tabel | UX + multicurrency uitgesteld |
 | 1.2 | 2026-04-03 | Scherm 404; DeelnemerDetailSheet; toast-timing; UUID-validatie; roving tabindex | Auditbevindingen |
