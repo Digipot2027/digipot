@@ -563,6 +563,49 @@ tr[role="button"]:focus-visible,
   font-weight: 700;
 }
 
+/* Gecentreerde modal-titel variant (ModalSluiten) */
+.modal-titel--center {
+  text-align: center;
+}
+
+/* Waarschuwingsicoon in roze cirkel (ModalSluiten) */
+.modal-sluiten-icoon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.modal-sluiten-icoon__symbool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: #fee2e2;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* Subtekst onder titel (ModalSluiten) */
+.modal-sluiten-subtekst {
+  font-size: 14px;
+  color: var(--grijs-600);
+  text-align: center;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Rode infobanner (ModalSluiten) */
+.modal-sluiten-banner {
+  background: var(--rood-licht);
+  color: var(--rood);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.45;
+}
+
 /* Informatieblok in modal (bijv. afgemeld-melding) */
 .modal-info-blok {
   background: var(--grijs-100);
