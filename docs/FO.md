@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 3.4
+**Versie:** 3.5
 **Datum:** 2026-04-22
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -119,6 +119,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 3.5 | 2026-04-22 | **§7 Afmelden modal — bottom-sheet restyling:** titel 'Afmelden?' zonder emoji; subtekst 'Dit is onomkeerbaar. Na het afmelden:'; genummerde lijst (1–3, optioneel 4 bij laatste actieve deelnemer); oranje waarschuwingsbanner voor achtergelaten bedrag (los van de lijst); knoppen gestapeld ('Ja, meld me af' rood boven 'Annuleren' wit); drag handle + slide-up + outside-click + swipe-down. | UX-restyling conform mockup |
 | 3.4 | 2026-04-22 | **§7 Pot sluiten modal — bottom-sheet restyling:** waarschuwingsicoon in roze cirkel; titel 'Pot sluiten?'; subtekst met 'onomkeerbaar' bold; rode infobanner met actief deelnemercount; knoppen gestapeld ('Ja, sluit de pot' rood boven 'Annuleren' wit); drag handle + slide-up + outside-click + swipe-down. Nieuwe prop `aantalActiefDeelnemers` doorgegeven vanuit `PaginaPotje`. | UX-restyling conform mockup |
 | 1.0 | 2026-03-01 | Initieel FO opgesteld | Projectstart |
 | 1.1 | 2026-04-02 | Valutakeuze verborgen; UX-verbeteringen; mobiele tabel | UX + multicurrency uitgesteld |
