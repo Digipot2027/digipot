@@ -60,10 +60,10 @@ test.describe('PW-3: Betaling via modal', () => {
     await page.getByRole('button', { name: /Betaling registreren|Rondje betaald/i }).click()
 
     await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page.getByRole('heading', { name: /Rondje betaald/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Betaling registreren/i })).toBeVisible()
 
-    await page.getByLabel(/Bedrag/i).fill('12,50')
-    await page.getByRole('button', { name: 'Bevestigen →' }).click()
+    await page.getByLabel(/Betaald bedrag/i).fill('12,50')
+    await page.getByRole('button', { name: 'Bevestigen' }).click()
 
     // Modal sluit als de betaling gelukt is
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 8000 })
@@ -88,8 +88,8 @@ test.describe('PW-3: Betaling via modal', () => {
     await expect(page.getByRole('dialog')).toBeVisible()
 
     // Saldo is €25 — invoer van €999 moet worden geblokkeerd
-    await page.getByLabel(/Bedrag/i).fill('999')
-    await page.getByRole('button', { name: 'Bevestigen →' }).click()
+    await page.getByLabel(/Betaald bedrag/i).fill('999')
+    await page.getByRole('button', { name: 'Bevestigen' }).click()
 
     // Modal moet open blijven met foutmelding
     await expect(page.getByRole('dialog')).toBeVisible()

@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 6.2
-**Datum:** 2026-04-21
+**Versie:** 6.3
+**Datum:** 2026-04-22
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -337,4 +337,5 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel na Supabase-downtime:** `src/utils/formulierBuffer.js` toegevoegd (`slaagFormulierOp`, `laadFormulier`, `wisFormulier`) — sessionStorage best-effort buffer. `PaginaStorten` bewaart ingevoerd bedrag bij REQUEST_TIMEOUT/netwerkfout en toont herstelbanner bij terugkeer. `ModalTransactie` krijgt prop `potjeId` (default `null`); buffer ook actief bij betalingen. `PaginaPotje` geeft `potjeId={id}` door. Buffer gewist na succesvolle submit. `formulierBuffer.test.js` toegevoegd (11 tests). Testcount: 815. §24 openstaande items bijgewerkt. | Technische schuld B5: bij timeout ging ingevulde data verloren zonder hersteloptie |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Technische schuld B4 en C1 afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm:** pottitel ellipsis, DeelKnop als tekstlink, helptekst op juiste plek, ademruimte Beheer. | UX-verbeteringen na screenshot-review |
+| 6.3 | 2026-04-22 | **Bottom-sheet restyling `ModalTransactie`:** `modal-panel--sheet` animatieklasse (slide-up cubic-bezier 0.32 0.72 0 1, 300ms); `.modal-handle` drag handle met touch swipe-to-dismiss; `.modal-knoppen--gestapeld` gestapelde knoplayout; `.knop-bevestig-inactief` en `.knop-sheet-annuleer` nieuwe knopklassen; `handleOverlayClick` sluit bij klik buiten panel; overlay backdrop aangepast naar `rgba(0,0,0,0.4)`. E2e selectors bijgewerkt in `pw3-betaling-modal.spec.js` en `pw13-undo-en-afmelden.spec.js` (label `Betaald bedrag`, knoptekst `Bevestigen`). | UX-restyling conform moderne bottom-sheet patroon |
 | 6.2 | 2026-04-21 | **C2 + C3 afgelost:** `title` op disabled afmeld-knop; sectie Ontwikkelworkflow toegevoegd aan `README.md`. SCHULD.md v1.3: alle items afgelost of geaccepteerd. | Laatste twee schulditems afgelost |
