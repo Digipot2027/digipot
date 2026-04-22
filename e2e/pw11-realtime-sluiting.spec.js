@@ -112,8 +112,9 @@ test.describe('PW-11: Realtime sluiting', () => {
     await page.getByRole('button', { name: /Pot afsluiten/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
-    // Zoek de bevestigingsknop in de modal
-    const bevestigKnop = page.getByRole('dialog').getByRole('button', { name: /Ja, sluit de pot/i })
+    // Wacht expliciet op de bevestigingsknop en klik dan
+    const bevestigKnop = page.getByRole('button', { name: /Ja, sluit de pot/i })
+    await expect(bevestigKnop).toBeVisible({ timeout: 5000 })
     await bevestigKnop.click()
 
     // Eindafrekeningscherm of verrekeningsdata verschijnt
