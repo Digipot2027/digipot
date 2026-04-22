@@ -109,10 +109,15 @@ test.describe('PW-11: Realtime sluiting', () => {
   test('PW-11c: handmatig sluiten via UI → eindafrekeningscherm met verrekeningsdata', async ({ page }) => {
     await openOverzicht(page)
 
-    await page.getByRole('button', { name: /Pot afsluiten/i }).click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+    // Wacht tot de Pot afsluiten-knop enabled is (vereist dat transacties geladen zijn)
+    const sluitKnop = page.getByRole('button', { name: /Pot afsluiten/i })
+    await expect(sluitKnop).toBeEnabled({ timeout: 8000 })
+    await sluitKnop.click()
 
-    // Wacht expliciet op de bevestigingsknop en klik dan
+    // Wacht op de modal met de juiste titel
+    await expect(page.getByRole('heading', { name: /Pot sluiten/i })).toBeVisible({ timeout: 5000 })
+
+    // Klik de bevestigingsknop
     const bevestigKnop = page.getByRole('button', { name: /Ja, sluit de pot/i })
     await expect(bevestigKnop).toBeVisible({ timeout: 5000 })
     await bevestigKnop.click()

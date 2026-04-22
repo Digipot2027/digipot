@@ -187,6 +187,7 @@ function PaginaPotje() {
       {modaal === 'sluiten' && (
         <ModalSluiten
           potjeNaam={potje?.naam}
+          aantalActiefDeelnemers={deelnemers.filter(d => d.actief !== false).length}
           onBevestig={handleSluiten}
           onAnnuleer={() => setModaal(null)}
         />
