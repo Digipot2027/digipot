@@ -167,12 +167,12 @@ Business logic en pure functies via unit tests — geen Supabase-mock, geen comp
 E2e-tests draaien tegen echte Supabase met `[E2E]`-prefix en cleanup via `afterEach`.
 Testprioriteit op basis van risico, niet op regelcoverage.
 
-### Unit/regressie — 728 tests
+### Unit/regressie — 841 tests
 
 | Categorie | Wat gedekt |
 |---|---|
 | Berekenlogica | Alle 5 referentiescenario's, nullcases, stringbedragen, tijdgrenzen |
-| Validatie | `valideerPotjeNaam`, `valideerDeelnemerNaam`, `valideerTransactieBedrag` — alle paden en grenzen |
+| Validatie | `valideerPotjeNaam`, `valideerDeelnemerNaam`, `valideerTransactieBedrag`, `beperkDecimalen` — alle paden en grenzen incl. decimalen-beperking |
 | Foutvertaling | Alle matchers incl. RLS/42501, PGRST116, JWT, netwerk |
 | Foutlogging | Sentry-routing, plain objects, gebruikersfout-uitsluitingen incl. RLS |
 | Tijdlabel | `tijdLabel()` en `volledigTijdLabel()` — vandaag/eerder, uit `tijdUtils.js` |
@@ -337,6 +337,7 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel na Supabase-downtime:** `src/utils/formulierBuffer.js` toegevoegd (`slaagFormulierOp`, `laadFormulier`, `wisFormulier`) — sessionStorage best-effort buffer. `PaginaStorten` bewaart ingevoerd bedrag bij REQUEST_TIMEOUT/netwerkfout en toont herstelbanner bij terugkeer. `ModalTransactie` krijgt prop `potjeId` (default `null`); buffer ook actief bij betalingen. `PaginaPotje` geeft `potjeId={id}` door. Buffer gewist na succesvolle submit. `formulierBuffer.test.js` toegevoegd (11 tests). Testcount: 815. §24 openstaande items bijgewerkt. | Technische schuld B5: bij timeout ging ingevulde data verloren zonder hersteloptie |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Technische schuld B4 en C1 afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm:** pottitel ellipsis, DeelKnop als tekstlink, helptekst op juiste plek, ademruimte Beheer. | UX-verbeteringen na screenshot-review |
+| 6.6 | 2026-04-23 | **`beperkDecimalen()` toegevoegd aan `valideer.js`:** pure exportfunctie kapt invoerstrings af tot maximaal 2 decimalen (komma én punt als scheidingsteken). Geïmporteerd en aangeroepen in `onChange`-handlers van `ModalTransactie` en `PaginaStorten`. `valideerTransactieBedrag()` uitgebreid met decimalen-check als verdediging in de diepte (na de nul-check, vóór de max-check). Testbestand `beperkDecimalen.test.js` toegevoegd (26 tests: 18 voor `beperkDecimalen`, 8 voor de decimalen-check in `valideerTransactieBedrag`). Testcount: 841. | Gebruikers konden meer dan 2 decimalen invullen in bedragvelden |
 | 6.5 | 2026-04-22 | **Bottom-sheet restyling `ModalAfmelden`:** titel 'Afmelden?' zonder emoji; subtekst `.modal-afmelden-subtekst`; genummerde lijst `.modal-afmelden-lijst` met `.modal-afmelden-lijst__nummer` cirkels; oranje banner `.modal-afmelden-banner` met icoon (los van de lijst, alleen bij `achtergelatenBedrag > 0`); knoppen gestapeld via `.modal-knoppen--gestapeld`; knoptekst 'Ja, meld me af' (`.knop-gevaar`); drag handle, outside-click, swipe-down. `deelnemerNaam`-prop vervallen uit JSX (niet meer zichtbaar in titel). | UX-restyling conform mockup |
 | 6.4 | 2026-04-22 | **Bottom-sheet restyling `ModalSluiten`:** waarschuwingsicoon (roze cirkel, `.modal-sluiten-icoon`), gecentreerde titel (`.modal-titel--center`), subtekst (`.modal-sluiten-subtekst`), rode infobanner (`.modal-sluiten-banner`) met deelnemercount. Prop `aantalActiefDeelnemers` toegevoegd; `PaginaPotje` geeft `deelnemers.filter(d => d.actief !== false).length` door. Slide-up animatie, drag handle, outside-click en swipe-down zelfde patroon als `ModalTransactie`. `potjeNaam`-prop blijft aanwezig (backward-compatible). Knoptekst: 'Ja, sluit de pot'. | UX-restyling conform mockup |
 | 6.3 | 2026-04-22 | **Bottom-sheet restyling `ModalTransactie`:** `modal-panel--sheet` animatieklasse (slide-up cubic-bezier 0.32 0.72 0 1, 300ms); `.modal-handle` drag handle met touch swipe-to-dismiss; `.modal-knoppen--gestapeld` gestapelde knoplayout; `.knop-bevestig-inactief` en `.knop-sheet-annuleer` nieuwe knopklassen; `handleOverlayClick` sluit bij klik buiten panel; overlay backdrop aangepast naar `rgba(0,0,0,0.4)`. E2e selectors bijgewerkt in `pw3-betaling-modal.spec.js` en `pw13-undo-en-afmelden.spec.js` (label `Betaald bedrag`, knoptekst `Bevestigen`). | UX-restyling conform moderne bottom-sheet patroon |
