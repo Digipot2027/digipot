@@ -5,12 +5,39 @@
  * zonder React, zonder DOM en zonder Supabase.
  *
  * Gebruik:
- *   import { valideerDeelnemerNaam, valideerTransactieBedrag, valideerPotjeNaam } from '../utils/valideer'
+ *   import { valideerDeelnemerNaam, valideerTransactieBedrag, valideerPotjeNaam, beperkDecimalen } from '../utils/valideer'
  *
  * Alle functies retourneren:
  *   - null   → invoer is geldig, geen fout
  *   - string → foutmelding voor de gebruiker
+ *
+ * beperkDecimalen retourneert een string (de al-dan-niet afgekorte invoer).
  */
+
+/**
+ * Beperkt een bedrag-invoerstring tot maximaal 2 decimalen.
+ *
+ * Bedoeld voor gebruik in onChange-handlers van bedragsveldem. Voorkomt dat de
+ * gebruiker meer dan 2 cijfers na de komma (of punt) invoert. Accepteert zowel
+ * komma als punt als decimaalteken (nl-NL én en-US stijl).
+ *
+ * Gedrag:
+ *   - Geen decimaalteken aanwezig → waarde ongewijzigd teruggegeven
+ *   - 0, 1 of 2 decimalen → ongewijzigd
+ *   - 3 of meer decimalen → afgekapt tot 2 decimalen (niet afgerond)
+ *   - Niet-string invoer → omgezet naar string vóór verwerking
+ *
+ * @param {string} waarde - De ruwe invoerstring uit het tekstveld
+ * @returns {string} De invoerstring met maximaal 2 decimalen
+ */
+export function beperkDecimalen(waarde) {
+  const s = String(waarde ?? '')
+  // Zoek het eerste komma- of puntscheidingsteken
+  const scheidingsIndex = s.search(/[,.]/);
+  if (scheidingsIndex === -1) return s
+  // Alles vóór het scheidingsteken + het scheidingsteken zelf + max 2 tekens erna
+  return s.slice(0, scheidingsIndex + 3)
+}
 
 /**
  * Valideert de naam van een nieuw potje.
@@ -99,6 +126,14 @@ export function valideerDeelnemerNaam(naam, deelnemers, { maxNaam = 30, maxDeeln
 export function valideerTransactieBedrag(bedragInvoer, bedragNum, { isStorting, potSaldo, formatBedrag, max = 999.99 }) {
   if (!bedragInvoer || isNaN(bedragNum) || bedragNum <= 0) {
     return 'Voer een bedrag in van minimaal €0,01.'
+  }
+
+  // Verdediging in de diepte: meer dan 2 decimalen is geen geldig eurobedrag.
+  // Normaal gesproken filtert beperkDecimalen() dit al op invoerniveau weg;
+  // deze check vangt edge-cases op zoals programmatisch ingestelde waarden.
+  const decDeel = String(bedragInvoer).replace(',', '.').split('.')[1]
+  if (decDeel !== undefined && decDeel.length > 2) {
+    return 'Voer maximaal 2 cijfers achter de komma in.'
   }
 
   if (bedragNum > max) {

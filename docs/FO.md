@@ -101,7 +101,19 @@ Business logic wordt getest als pure functies. Alle bekende regressiescenario's 
 
 ## 15. Validaties en begrenzingen
 
-Zie versie 1.8 (ongewijzigd).
+Zie versie 1.8 (grotendeels ongewijzigd).
+
+### Bedragvelden — maximaal 2 decimalen (2026-04-23)
+
+Alle invoervelden voor geldbedragen accepteren maximaal 2 cijfers achter de komma (of punt). Dit geldt voor:
+- **ModalTransactie** — storting en betaling
+- **PaginaStorten** — vrij invoerveld
+
+De beperking werkt op twee lagen:
+1. **Preventief (UI-laag):** de `onChange`-handler roept `beperkDecimalen()` aan, die de invoerstring direct afkapt tot 2 decimalen. De gebruiker ziet de extra cijfers dus niet verschijnen.
+2. **Verdediging in de diepte (validatielaag):** `valideerTransactieBedrag()` controleert ook op meer dan 2 decimalen en geeft de melding *“Voer maximaal 2 cijfers achter de komma in.”* terug als die check mislukt. Dit vangt edge-cases op zoals programmatisch ingestelde waarden.
+
+Snelknoppen op het stortenscherm zijn vaste gehele getallen en zijn niet geraakt door deze wijziging.
 
 ---
 
@@ -119,6 +131,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 3.6 | 2026-04-23 | **§15 Validaties bijgewerkt — max. 2 decimalen bij bedragvelden:** invoervelden voor geldbedragen (`ModalTransactie`, `PaginaStorten` vrij bedrag) beperken invoer actief tot maximaal 2 decimalen via `beperkDecimalen()` in de `onChange`-handler. Als verdediging in de diepte weigert `valideerTransactieBedrag()` ook programmatisch ingevoerde waarden met meer dan 2 decimalen. | Gebruikers konden meer dan 2 decimalen invullen in bedragvelden, wat niet overeenkomt met een geldig eurobedrag |
 | 3.5 | 2026-04-22 | **§7 Afmelden modal — bottom-sheet restyling:** titel 'Afmelden?' zonder emoji; subtekst 'Dit is onomkeerbaar. Na het afmelden:'; genummerde lijst (1–3, optioneel 4 bij laatste actieve deelnemer); oranje waarschuwingsbanner voor achtergelaten bedrag (los van de lijst); knoppen gestapeld ('Ja, meld me af' rood boven 'Annuleren' wit); drag handle + slide-up + outside-click + swipe-down. | UX-restyling conform mockup |
 | 3.4 | 2026-04-22 | **§7 Pot sluiten modal — bottom-sheet restyling:** waarschuwingsicoon in roze cirkel; titel 'Pot sluiten?'; subtekst met 'onomkeerbaar' bold; rode infobanner met actief deelnemercount; knoppen gestapeld ('Ja, sluit de pot' rood boven 'Annuleren' wit); drag handle + slide-up + outside-click + swipe-down. Nieuwe prop `aantalActiefDeelnemers` doorgegeven vanuit `PaginaPotje`. | UX-restyling conform mockup |
 | 1.0 | 2026-03-01 | Initieel FO opgesteld | Projectstart |

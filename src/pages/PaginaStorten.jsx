@@ -7,6 +7,7 @@ import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulierBuffer'
+import { beperkDecimalen } from '../utils/valideer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 // Standaardbedragen — primaire keuzemethode
@@ -91,7 +92,7 @@ function PaginaStorten() {
   }
 
   function handleVrijeInvoerWijziging(e) {
-    setVrijeInvoer(e.target.value)
+    setVrijeInvoer(beperkDecimalen(e.target.value))
     setGekozenBedrag(null)
     setInvoerFout('')
     setBufferHersteld(false)
