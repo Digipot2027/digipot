@@ -32,6 +32,8 @@
  *   2026-04-16 — vijfde patroon toegevoegd: localStorage. (directe aanroep)
  *                root cause storage-abstractielaag: alle toegang via src/utils/storage.js
  *                eerste patroon bijgewerkt: uitzonderingen verwijderd na migratie
+ *   2026-04-23 — zesde patroon toegevoegd: sessionStorage. (directe aanroep)
+ *                root cause audit bevinding #3: sessionStorage niet geborgd zoals localStorage
  */
 
 import { execSync } from 'child_process'
@@ -53,10 +55,7 @@ const PATRONEN = [
       'Direct aanroepen omzeilt UUID-validatie en fallback-logica.',
       'Root cause: JAVASCRIPT-REACT-6 (null device_id) + kritiek-1 (stille lege lijst).',
     ].join(' '),
-    uitzonderingen: [
-      // Na storage-abstractie (2026-04-16): geen uitzonderingen meer nodig.
-      // useDeviceId.js en supabaseClient.js gebruiken nu getItem() uit storage.js.
-    ],
+    uitzonderingen: [],
     waarschuwing: false,
   },
 
@@ -65,9 +64,6 @@ const PATRONEN = [
     // Bij INSERT is 0 rijen theoretisch onmogelijk — .single() is daar veilig,
     // maar alleen als de returnwaarde niet nodig is voor navigatie of state.
     // Gebruik bij twijfel .maybeSingle() + null-check.
-    // Root cause kritiek-2: handleAfmelden gaf onjuiste "potje bestaat niet"-melding.
-    // Hoog-4: PaginaNieuwPotje had zelfde patroon — opgelost door client-side UUID.
-    // Audit bevinding 1: handleDeelnemen had zelfde patroon — opgelost door client-side UUID.
     patroon: '.single()',
     reden: [
       'Controleer of .maybeSingle() beter past.',
@@ -75,11 +71,7 @@ const PATRONEN = [
       'Na INSERT: overweeg client-side UUID i.p.v. .select().single() (zie hoog-4, bevinding-1).',
     ].join(' '),
     uitzonderingen: [
-      // handleTransactie: INSERT op transacties — DB-constraint garandeert 1 rij,
-      // returnwaarde is nodig voor de undo-handler (data.id). .single() is hier correct.
       'src/hooks/usePotjeActies.js',
-      // usePotje: SELECT op potjes — PGRST116 wordt correct afgevangen door
-      // logFout/vertaalFout als "potje niet gevonden". Bewust geaccepteerd risico.
       'src/hooks/usePotje.js',
     ],
     waarschuwing: true,
@@ -87,8 +79,6 @@ const PATRONEN = [
 
   {
     // payload.new is undefined bij een Supabase realtime DELETE-event.
-    // Gebruik van payload.new zonder null-check kan state op undefined zetten
-    // waarna de UI stil breekt. Zie TO §18 risico-8.
     patroon: 'payload.new',
     reden: [
       'Controleer op null/undefined: payload.new is undefined bij DELETE-events.',
@@ -96,17 +86,14 @@ const PATRONEN = [
       'Risico: state wordt undefined, UI breekt zonder fout of Sentry-melding.',
     ].join(' '),
     uitzonderingen: [
-      'src/hooks/usePotje.js', // bewust geaccepteerd + gedocumenteerd (TO §18 hoog-8)
-      'src/hooks/useMijnPotjes.js', // payload.new?.id en payload.new?.potje_id — optional chaining, veilig
+      'src/hooks/usePotje.js',
+      'src/hooks/useMijnPotjes.js',
     ],
     waarschuwing: true,
   },
 
   {
-    // Centrale localStorage-abstractielaag (2026-04-16): alle toegang tot
-    // localStorage verloopt via src/utils/storage.js (getItem/setItem/removeItem).
-    // Direct aanroepen omzeilt de foutafhandeling en maakt mocking in tests
-    // onmogelijk. Enige uitzondering: de abstractielaag zelf.
+    // Centrale localStorage-abstractielaag (2026-04-16).
     patroon: 'localStorage.',
     reden: [
       'Gebruik getItem/setItem/removeItem uit src/utils/storage.js.',
@@ -114,17 +101,13 @@ const PATRONEN = [
       'Zie TO §storage-abstractie (2026-04-16).',
     ].join(' '),
     uitzonderingen: [
-      'src/utils/storage.js', // enige geautoriseerde implementatie
+      'src/utils/storage.js',
     ],
     waarschuwing: false,
   },
 
   {
-    // Root cause UI-dubbelpost (2026-04-13): Realtime INSERT-reducers zonder
-    // deduplicatie voegen een rij twee keer toe als de initiële fetch en het
-    // Realtime-event elkaar overlappen op het moment van navigatie.
-    // Het patroon [...prev, payload.new] is altijd onveilig in een INSERT-handler.
-    // Correct: prev.some(t => t.id === payload.new.id) ? prev : [...prev, payload.new]
+    // Root cause UI-dubbelpost (2026-04-13).
     patroon: '...prev, payload.new]',
     reden: [
       'Realtime INSERT-reducer zonder deduplicatie — UI kan dezelfde rij twee keer tonen.',
@@ -132,13 +115,26 @@ const PATRONEN = [
       'Root cause UI-dubbelpost 2026-04-13: fetch + Realtime-event leverden zelfde rij twee keer.',
     ].join(' '),
     uitzonderingen: [
-      // usePotje.js: de deduplicatie-regel zelf bevat het patroon als onderdeel
-      // van de safe variant — prev.some(...) ? prev : [...prev, payload.new]
-      // Dit is precies de correcte implementatie, geen overtreding.
       'src/hooks/usePotje.js',
-      // useMijnPotjes.js: gebruikt herlaad()-strategie, geen [...prev, payload.new]
-      // patroon in reducers — de match is een false positive op een includes()-check.
       'src/hooks/useMijnPotjes.js',
+    ],
+    waarschuwing: false,
+  },
+
+  {
+    // Centrale sessionStorage-abstractielaag (2026-04-23): alle toegang tot
+    // sessionStorage verloopt via src/utils/formulierBuffer.js.
+    // Direct aanroepen omzeilt de foutafhandeling en maakt mocking in tests
+    // onmogelijk. Enige uitzondering: de abstractielaag zelf.
+    // Audit bevinding #3 (2026-04-23).
+    patroon: 'sessionStorage.',
+    reden: [
+      'Gebruik slaagFormulierOp/laadFormulier/wisFormulier uit src/utils/formulierBuffer.js.',
+      'Direct sessionStorage aanroepen omzeilt foutafhandeling en is niet mockbaar.',
+      'Zie TO §formulierBuffer (2026-04-21). Audit bevinding #3 (2026-04-23).',
+    ].join(' '),
+    uitzonderingen: [
+      'src/utils/formulierBuffer.js',
     ],
     waarschuwing: false,
   },
