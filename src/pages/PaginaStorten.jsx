@@ -187,8 +187,7 @@ function PaginaStorten() {
     </div>
   )
 
-  const saldi = berekenSaldi(deelnemers, transacties)
-  const mijnSaldi = saldi.deelnemersSaldi.find(s => s.id === deelnemer?.id)
+  const mijnSaldi = berekenSaldi(deelnemers, transacties).deelnemersSaldi.find(s => s.id === deelnemer?.id)
   const reedGestort = mijnSaldi?.gestort ?? 0
 
   return (
@@ -313,23 +312,12 @@ function PaginaStorten() {
             onClick={handleStorten}
             disabled={bezig || !bedragGeldig}
           >
-            {bezig ? 'Bezig...' : 'Storten \u2192'}
+            {bezig ? 'Bezig...' : bedragGeldig ? `${formatBedrag(effectiefBedrag, valuta)} storten →` : 'Storten →'}
           </button>
         </div>
       </div>
 
-      <div className="kaart info-kaart">
-        <div className="storten-saldo-rij">
-          <span className="tekst-grijs-6">Huidig potsaldo</span>
-          <strong className={saldi.potSaldo > 0 ? 'tekst-groen' : 'tekst-grijs-6'}>
-            {formatBedrag(saldi.potSaldo, valuta)}
-          </strong>
-        </div>
-        <div className="storten-saldo-rij">
-          <span className="tekst-grijs-6">Totaal ingelegd</span>
-          <strong>{formatBedrag(saldi.potTotaal, valuta)}</strong>
-        </div>
-      </div>
+
 
     </div>
   )

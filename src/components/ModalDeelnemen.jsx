@@ -83,9 +83,9 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
         </h2>
 
         <ul className="flex flex-col gap-1 mb-4 text-sm tekst-grijs-6">
-          <li>💰 Stort geld in het potje</li>
+          <li>💰 Leg geld in de pot</li>
           <li>🍺 Registreer wat de groep uitgeeft</li>
-          <li>📊 Eerlijke verdeling bij afsluiten</li>
+          <li>📊 Aan het eind zie je wie wat terugkrijgt</li>
         </ul>
 
         <form onSubmit={handleSubmit}>
