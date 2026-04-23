@@ -24,7 +24,7 @@ function PaginaInstellingen() {
           >
             ←
           </button>
-          <h1 className="titel" style={{ marginBottom: 0 }}>⚙️ Instellingen</h1>
+          <h1 className="titel" style={{ marginBottom: 0 }}>Instellingen</h1>
         </div>
       </div>
 
