@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { logFout } from '../utils/logFout'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
 /**
@@ -76,10 +77,10 @@ function ModalAfmelden({ isLaatsteActieve = false, achtergelatenBedrag = null, o
     setLaden(true)
     try {
       await onBevestig()
-    } catch {
-      // Onverwachte fout in de aanroepketen — toon in de modal zodat de
-      // gebruiker feedback krijgt en de modal niet stil blijft hangen.
-      setFout('Er is iets misgegaan. Probeer het opnieuw.')
+    } catch (error) {
+      // BUG-3 fix aangevuld (2026-04-23): logFout() toegevoegd zodat onverwachte
+      // fouten in de aanroepketen ook naar Sentry gaan.
+      setFout(logFout(error, { component: 'ModalAfmelden', actie: 'afmelden' }))
     } finally {
       setLaden(false)
     }

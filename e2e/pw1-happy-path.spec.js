@@ -46,10 +46,10 @@ test.describe('PW-1: Happy path storten', () => {
     await page.goto(`/potje/${potje.id}/storten`)
     await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible()
 
-    await page.getByRole('button', { name: '€ 10,00' }).click()
-    await expect(page.getByRole('button', { name: '€ 10,00' })).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('button', { name: '€ 10,00', exact: true }).click()
+    await expect(page.getByRole('button', { name: '€ 10,00', exact: true })).toHaveAttribute('aria-pressed', 'true')
 
-    await page.getByRole('button', { name: 'Storten →' }).click()
+    await page.getByRole('button', { name: /storten →/i }).click()
 
     // Wacht op redirect naar overzicht
     await expect(page).toHaveURL(new RegExp(`/potje/${potje.id}$`), { timeout: 8000 })
@@ -90,7 +90,7 @@ test.describe('PW-1: Happy path storten', () => {
     await page.goto(`/potje/${potje.id}/storten`)
     await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible()
 
-    await expect(page.getByRole('button', { name: 'Storten →' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /storten/i }).first()).toBeDisabled()
     await expect(page).toHaveURL(new RegExp(`/storten$`))
   })
 })
