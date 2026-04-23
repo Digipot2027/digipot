@@ -278,11 +278,7 @@ function PaginaStorten() {
               aria-describedby={invoerFout && vrijeInvoerActief ? 'vrij-bedrag-fout' : undefined}
               aria-invalid={invoerFout && vrijeInvoerActief ? 'true' : undefined}
             />
-            {vrijeInvoerActief && vrijeInvoerNum > 0 && !invoerFout && (
-              <div className="teller tekst-groen">
-                = {formatBedrag(vrijeInvoerNum, valuta)}
-              </div>
-            )}
+
           </div>
         )}
 

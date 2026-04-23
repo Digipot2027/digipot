@@ -83,10 +83,16 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
           <button
             onClick={() => navigate('/instellingen')}
             className="knop-icoon"
-            style={{ fontSize: 22, padding: '2px 0 0 0' }}
             aria-label="Instellingen openen"
           >
-            ⚙️
+            <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <line x1="2" y1="5" x2="20" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="5" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+              <line x1="2" y1="11" x2="20" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="14" cy="11" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+              <line x1="2" y1="17" x2="20" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="9" cy="17" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
+            </svg>
           </button>
         </div>
 
@@ -250,7 +256,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
           🍺 Nieuw potje starten
         </button>
         <button className="knop knop-secundair" onClick={() => navigate('/instellingen')}>
-          ⚙️ Naar instellingen
+          Naar instellingen
         </button>
       </div>
 

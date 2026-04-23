@@ -169,12 +169,6 @@ function PaginaProfiel() {
           })}
         </div>
 
-        {/* Live voorbeeld */}
-        <div className="voorbeeld-blok">
-          <p className="text-sm tekst-grijs-6 mb-1">Voorbeeld:</p>
-          <p className="text-base">Vakantie Spanje 2026</p>
-          <p className="text-sm tekst-grijs-6">Potje · 3 deelnemers · €45,00</p>
-        </div>
       </div>
 
       {/* Naam verwijderen */}
