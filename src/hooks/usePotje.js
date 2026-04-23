@@ -52,6 +52,9 @@ export function usePotje(potjeId) {
         metTimeout(supabase.from('deelnemers').select('*').eq('potje_id', potjeId).order('aangemaakt_op')),
         metTimeout(supabase.from('transacties').select('*').eq('potje_id', potjeId).order('aangemaakt_op')),
       ])
+
+      // Partial failure: gooi de meest specifieke fout zodat vertaalFout()
+      // een begrijpelijke melding geeft (bijv. PGRST116 bij onbekend potje).
       if (pe) throw pe
       if (de) throw de
       if (te) throw te
