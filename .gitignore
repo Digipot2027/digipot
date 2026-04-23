@@ -37,3 +37,4 @@ smoke/*-output.log
 playwright-report/
 test-results/*
 !test-results/e2e-resultaat.json
+test-results/
