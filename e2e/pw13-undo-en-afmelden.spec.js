@@ -6,6 +6,10 @@
  * PW-13c: betaalknop disabled als potsaldo = 0 (gedocumenteerd UI-gedrag)
  * PW-13d: storting ongedaan maken terwijl ander saldo aanwezig → geblokkeerd
  * PW-13e: eigen undo werkt, andermans undo geblokkeerd
+ *
+ * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
+ * Nieuwe anchor: tabelcel met naam "(jij)".
+ * Knoplabels bijgewerkt: "In pot storten" → "Storten", "Betaling registreren" → "Betaling".
  */
 
 import { test, expect } from '@playwright/test'
@@ -32,11 +36,14 @@ test.describe('PW-13: Undo en afmelden', () => {
     if (potje) await verwijderTestPotje(supabase, potje.id)
   })
 
+  // Anchor: tabelcel met "(jij)" — vervangt "Welkom, [naam]"
   async function openOverzicht(page) {
     await page.goto('/')
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
     await page.goto(`/potje/${potje.id}`)
-    await expect(page.getByText('Welkom, Undoer', { exact: true })).toBeVisible({ timeout: 8000 })
+    await expect(
+      page.getByRole('cell', { name: /Undoer.*jij|jij.*Undoer/i })
+    ).toBeVisible({ timeout: 8000 })
   }
 
   test('PW-13a: betaling via modal → Undo klikken → transactie verdwenen', async ({ page }) => {
@@ -47,7 +54,7 @@ test.describe('PW-13: Undo en afmelden', () => {
     await openOverzicht(page)
 
     // Open betaalmodal en registreer een betaling
-    await page.getByRole('button', { name: /Betaling registreren/i }).click()
+    await page.getByRole('button', { name: /^Betaling$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByLabel(/Betaald bedrag/i).fill('10')
     await page.getByRole('button', { name: 'Bevestigen' }).click()
@@ -92,7 +99,7 @@ test.describe('PW-13: Undo en afmelden', () => {
     // De betaalknop op de overzichtspagina is disabled als het saldo 0 is.
     await openOverzicht(page)
 
-    const betaalKnop = page.getByRole('button', { name: /Betaling registreren/i })
+    const betaalKnop = page.getByRole('button', { name: /^Betaling$/i })
     await expect(betaalKnop).toBeVisible({ timeout: 5000 })
 
     // App-gedrag: betaalknop disabled bij saldo = 0
@@ -106,7 +113,7 @@ test.describe('PW-13: Undo en afmelden', () => {
     await openOverzicht(page)
 
     // Doe een nieuwe storting via UI om een Undo-toast te krijgen
-    await page.getByRole('button', { name: /In pot storten/i }).click()
+    await page.getByRole('button', { name: /^Storten$/i }).click()
     await expect(page).toHaveURL(new RegExp(`/storten`))
     await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible({ timeout: 5000 })
     await page.getByRole('group', { name: 'Standaardbedragen' }).getByRole('button').first().click()
@@ -143,7 +150,7 @@ test.describe('PW-13: Undo en afmelden', () => {
     await openOverzicht(page)
 
     // Doe een nieuwe storting via UI om Undo-toast te krijgen
-    await page.getByRole('button', { name: /In pot storten/i }).click()
+    await page.getByRole('button', { name: /^Storten$/i }).click()
     await expect(page).toHaveURL(new RegExp(`/storten`))
     await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible({ timeout: 5000 })
     await page.getByRole('group', { name: 'Standaardbedragen' }).getByRole('button').first().click()

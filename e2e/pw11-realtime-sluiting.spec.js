@@ -12,6 +12,10 @@
  * PW-11b: potje gesloten terwijl op stortenpagina → foutmelding bij submit
  * PW-11c: handmatig sluiten → eindafrekeningscherm zichtbaar met verrekeningen
  * PW-11d: storten na sluiting via UI → geblokkeerd met foutmelding
+ *
+ * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
+ * Nieuwe anchor: tabelcel met naam "(jij)".
+ * Knoplabels bijgewerkt: "Pot afsluiten" → "Pot sluiten".
  */
 
 import { test, expect } from '@playwright/test'
@@ -39,11 +43,14 @@ test.describe('PW-11: Realtime sluiting', () => {
     if (potje) await verwijderTestPotje(supabase, potje.id)
   })
 
+  // Anchor: tabelcel met "(jij)" — vervangt "Welkom, [naam]"
   async function openOverzicht(page) {
     await page.goto('/')
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
     await page.goto(`/potje/${potje.id}`)
-    await expect(page.getByText('Welkom, Sluiter', { exact: true })).toBeVisible({ timeout: 8000 })
+    await expect(
+      page.getByRole('cell', { name: /Sluiter.*jij|jij.*Sluiter/i })
+    ).toBeVisible({ timeout: 8000 })
   }
 
   test('PW-11a: potje gesloten via DB terwijl op overzicht → eindafrekeningscherm verschijnt', async ({ page }) => {
@@ -59,8 +66,7 @@ test.describe('PW-11: Realtime sluiting', () => {
       })
       .eq('id', potje.id)
 
-    // Realtime-update triggert de UI — wacht tot eindafrekeninginhoud zichtbaar wordt.
-    // De heading-tekst is potje-naam-afhankelijk; wacht op verrekeningsinhoud.
+    // Realtime-update triggert de UI — wacht tot eindafrekeningsinhoud zichtbaar wordt.
     await expect(
       page.getByText(/verrekening|bijbetalen|ontvangt|Eindafrekening|afsluiten/i).first()
     ).toBeVisible({ timeout: 12000 })
@@ -109,8 +115,8 @@ test.describe('PW-11: Realtime sluiting', () => {
   test('PW-11c: handmatig sluiten via UI → eindafrekeningscherm met verrekeningsdata', async ({ page }) => {
     await openOverzicht(page)
 
-    // Wacht tot de Pot afsluiten-knop enabled is (vereist dat transacties geladen zijn)
-    const sluitKnop = page.getByRole('button', { name: /Pot afsluiten/i })
+    // Wacht tot de Pot sluiten-knop enabled is (vereist dat transacties geladen zijn)
+    const sluitKnop = page.getByRole('button', { name: /Pot sluiten/i })
     await expect(sluitKnop).toBeEnabled({ timeout: 8000 })
     await sluitKnop.click()
 
@@ -163,7 +169,6 @@ test.describe('PW-11: Realtime sluiting', () => {
       await page.getByRole('button', { name: 'Storten →' }).click()
 
       // Na submit: ofwel een foutmelding (elk type), ofwel doorgestuurd weg van storten
-      // De exacte foutmelding hangt af van timing (React-state vs DB-check)
       await page.waitForTimeout(2000)
 
       const url = page.url()
