@@ -32,7 +32,7 @@ function PaginaStorten() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const { potje, deelnemers, transacties, deelnemer, laden, fout } = usePotje(id)
+  const { potje, deelnemer, laden, fout } = usePotje(id)
 
   // B5: buffer één keer uitlezen via useState lazy initializer.
   const [bufferInit] = useState(() => leesEnWisBuffer(id))
