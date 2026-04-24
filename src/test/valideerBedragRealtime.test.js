@@ -1,0 +1,95 @@
+/**
+ * valideerBedragRealtime.test.js
+ *
+ * Unit tests voor valideerBedragRealtime() — realtime MAX-validatie
+ * die tijdens typen wordt aangeroepen vanuit onChange-handlers.
+ *
+ * Gedrag:
+ * - Lege of onvolledige invoer → null (geen fout tijdens typen)
+ * - Bedrag ≤ MAX → null
+ * - Bedrag > MAX → foutmelding
+ * - Accepteert komma én punt als decimaalteken
+ */
+
+import { describe, it, expect } from 'vitest'
+import { valideerBedragRealtime } from '../utils/valideer'
+
+const MAX = 999.99
+
+describe('valideerBedragRealtime', () => {
+  describe('lege of onvolledige invoer → null', () => {
+    it('lege string geeft null', () => {
+      expect(valideerBedragRealtime('')).toBeNull()
+    })
+
+    it('alleen spaties geeft null', () => {
+      expect(valideerBedragRealtime('   ')).toBeNull()
+    })
+
+    it('null geeft null', () => {
+      expect(valideerBedragRealtime(null)).toBeNull()
+    })
+
+    it('undefined geeft null', () => {
+      expect(valideerBedragRealtime(undefined)).toBeNull()
+    })
+
+    it('niet-numerieke invoer geeft null (gebruiker is nog aan het typen)', () => {
+      expect(valideerBedragRealtime('abc')).toBeNull()
+    })
+
+    it('komma zonder getal geeft null', () => {
+      expect(valideerBedragRealtime(',')).toBeNull()
+    })
+  })
+
+  describe('geldige bedragen ≤ MAX → null', () => {
+    it('1 geeft null', () => {
+      expect(valideerBedragRealtime('1')).toBeNull()
+    })
+
+    it('999,99 (komma) geeft null', () => {
+      expect(valideerBedragRealtime('999,99')).toBeNull()
+    })
+
+    it('999.99 (punt) geeft null', () => {
+      expect(valideerBedragRealtime('999.99')).toBeNull()
+    })
+
+    it('0,01 geeft null', () => {
+      expect(valideerBedragRealtime('0,01')).toBeNull()
+    })
+
+    it('50 geeft null', () => {
+      expect(valideerBedragRealtime('50')).toBeNull()
+    })
+  })
+
+  describe('bedrag > MAX → foutmelding', () => {
+    it('1000 geeft foutmelding', () => {
+      expect(valideerBedragRealtime('1000')).toMatch(/999,99/)
+    })
+
+    it('1000,00 geeft foutmelding', () => {
+      expect(valideerBedragRealtime('1000,00')).toMatch(/999,99/)
+    })
+
+    it('9999999999 geeft foutmelding', () => {
+      expect(valideerBedragRealtime('9999999999')).toMatch(/999,99/)
+    })
+
+    it('1000.00 (punt) geeft foutmelding', () => {
+      expect(valideerBedragRealtime('1000.00')).toMatch(/999,99/)
+    })
+  })
+
+  describe('aangepaste max-waarde', () => {
+    it('50 boven max=49 geeft foutmelding', () => {
+      expect(valideerBedragRealtime('50', 49)).not.toBeNull()
+    })
+
+    it('49 onder max=49 geeft null', () => {
+      expect(valideerBedragRealtime('49', 49)).toBeNull()
+    })
+  })
+})

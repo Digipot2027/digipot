@@ -107,9 +107,27 @@ export function valideerDeelnemerNaam(naam, deelnemers, { maxNaam = 30, maxDeeln
 }
 
 /**
- * Valideert het bedrag dat een gebruiker invoert voor een storting of betaling.
+ * Valideert een bedrag-invoerstring realtime (tijdens typen).
  *
- * Volgorde van checks (identiek aan de oorspronkelijke volgorde in ModalTransactie):
+ * Bedoeld voor gebruik in onChange-handlers. Geeft alleen een fout terug
+ * als het bedrag boven MAX uitkomt — lege of onvolledige invoer geeft null
+ * zodat de gebruiker rustig kan typen.
+ *
+ * @param {string} invoer - De ruwe invoerstring
+ * @param {number} [max=999.99] - Maximaal toegestaan bedrag
+ * @returns {string|null} Foutmelding of null
+ */
+export function valideerBedragRealtime(invoer, max = 999.99) {
+  const s = String(invoer ?? '').trim()
+  if (!s) return null
+  const num = Number(s.replace(',', '.'))
+  if (isNaN(num)) return null
+  if (num > max) return 'Het maximale bedrag per storting is €999,99.'
+  return null
+}
+
+/**
+ * Valideert het bedrag dat een gebruiker invoert voor een storting of betaling.
  *   1. Bedrag moet aanwezig, numeriek en groter dan 0 zijn
  *   2. Bedrag mag niet boven MAX uitkomen
  *   3. Bij betaling: bedrag mag het potsaldo niet overschrijden (client-side check)

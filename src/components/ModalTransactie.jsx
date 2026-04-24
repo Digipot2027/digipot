@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
-import { valideerTransactieBedrag, beperkDecimalen } from '../utils/valideer'
+import { valideerTransactieBedrag, beperkDecimalen, valideerBedragRealtime } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { slaagFormulierOp, wisFormulier } from '../utils/formulierBuffer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
@@ -170,7 +170,19 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
               inputMode="decimal"
               placeholder="0,00"
               value={bedrag}
-              onChange={e => { setBedrag(beperkDecimalen(e.target.value)); setFout('') }}
+              onChange={e => {
+              const nieuw = beperkDecimalen(e.target.value)
+              setBedrag(nieuw)
+              const num = parseBedrag(nieuw)
+              const maxFout = valideerBedragRealtime(nieuw, MAX)
+              if (maxFout) {
+                setFout(maxFout)
+              } else if (!isStorting && nieuw.trim() && !isNaN(num) && num > 0 && num > potSaldo) {
+                setFout(`Maximaal beschikbaar: ${formatBedrag(potSaldo, valuta)}.`)
+              } else {
+                setFout('')
+              }
+            }}
               disabled={!ikBenActief}
               autoFocus
               aria-describedby={fout ? 'bedrag-invoer-fout' : undefined}
