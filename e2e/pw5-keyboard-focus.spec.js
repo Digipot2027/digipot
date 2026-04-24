@@ -1,15 +1,12 @@
 /**
  * e2e/pw5-keyboard-focus.spec.js — PW-5: Keyboard-navigatie en focus management
  *
- * Risico: useFocusTrap wordt gebruikt in 5 modals/sheets. Als Escape of Tab
- * niet werkt, zijn modals niet via toetsenbord sluitbaar (WCAG 2.1.1 kritiek).
+ * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
+ * Nieuwe anchor: tabelcel met naam "(jij)".
+ * Knoplabels bijgewerkt: "Betaling registreren" → "Betaling", "Pot afsluiten" → "Pot sluiten".
  *
  * PW-5c noot: Safari (WebKit/Mobile Safari) focust standaard geen <button>-elementen
- * via Tab — dit is een platformbeperking van macOS/iOS, geen bug in de code.
- * De WCAG-vereiste geldt voor toetsenbordgebruikers die Full Keyboard Access
- * hebben ingeschakeld. De test wordt daarom beperkt tot Chromium voor dit scenario.
- * PW-5b (Tab-focus blijft binnen modal) werkt wel op alle browsers omdat het
- * controleert of focus de modal verlaat, niet of een specifieke knop gefocust is.
+ * via Tab — platformbeperking, geen codebug.
  */
 
 import { test, expect } from '@playwright/test'
@@ -41,12 +38,14 @@ test.describe('PW-5: Keyboard-navigatie en focus management', () => {
     await page.goto('/')
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
     await page.goto(`/potje/${potje.id}`)
-    await expect(page.getByText('Welkom, Toetsenborder', { exact: true })).toBeVisible({ timeout: 8000 })
+    await expect(
+      page.getByRole('cell', { name: /Toetsenborder.*jij|jij.*Toetsenborder/i })
+    ).toBeVisible({ timeout: 8000 })
   }
 
   test('PW-5a: Escape sluit de betaalmodal', async ({ page }) => {
     await openOverzicht(page)
-    await page.getByRole('button', { name: /Betaling registreren/i }).click()
+    await page.getByRole('button', { name: /^Betaling$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     await page.keyboard.press('Escape')
@@ -56,10 +55,9 @@ test.describe('PW-5: Keyboard-navigatie en focus management', () => {
 
   test('PW-5b: Tab-focus blijft binnen de betaalmodal', async ({ page }) => {
     await openOverzicht(page)
-    await page.getByRole('button', { name: /Betaling registreren/i }).click()
+    await page.getByRole('button', { name: /^Betaling$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
-    // Druk meerdere keren Tab — focus mag de modal nooit verlaten
     for (let i = 0; i < 6; i++) {
       await page.keyboard.press('Tab')
     }
@@ -71,13 +69,11 @@ test.describe('PW-5: Keyboard-navigatie en focus management', () => {
     expect(focusInDialog).toBe(true)
   })
 
-  // Safari focust standaard geen knoppen via Tab (platformbeperking macOS/iOS).
-  // Dit scenario is daarom alleen relevant voor Chromium.
   test('PW-5c: Annuleren bereikbaar via Tab in betaalmodal (Chromium only)', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'Safari focust geen knoppen via Tab — platformbeperking, geen codebug')
 
     await openOverzicht(page)
-    await page.getByRole('button', { name: /Betaling registreren/i }).click()
+    await page.getByRole('button', { name: /^Betaling$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     let gevonden = false
@@ -94,7 +90,7 @@ test.describe('PW-5: Keyboard-navigatie en focus management', () => {
 
   test('PW-5d: betaalmodal opent met focus op het bedrag-invoerveld', async ({ page }) => {
     await openOverzicht(page)
-    await page.getByRole('button', { name: /Betaling registreren/i }).click()
+    await page.getByRole('button', { name: /^Betaling$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     const focusId = await page.evaluate(() => document.activeElement?.id)
@@ -103,7 +99,7 @@ test.describe('PW-5: Keyboard-navigatie en focus management', () => {
 
   test('PW-5e: Escape sluit de sluitingsmodal', async ({ page }) => {
     await openOverzicht(page)
-    await page.getByRole('button', { name: /Pot afsluiten/i }).click()
+    await page.getByRole('button', { name: /^Pot sluiten$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
 
     await page.keyboard.press('Escape')

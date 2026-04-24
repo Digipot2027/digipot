@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { UserPlus, Link, CheckCircle, AlertTriangle } from 'lucide-react'
 import { deelLink } from '../utils/deelLink'
 
 /**
@@ -7,14 +8,14 @@ import { deelLink } from '../utils/deelLink'
  * - Mobiel (iOS/Android): native share sheet met Signal, WhatsApp etc.
  * - Desktop (macOS, Windows): kopieert URL direct naar klembord + visuele feedback
  *
- * Knoptekst: "Nodig vrienden uit" (mobiel) / "Link kopiëren" (desktop).
- * "Nodig vrienden uit" maakt het doel expliciet — anderen laten meedoen —
- * in plaats van het technische middel (een potje delen).
+ * Knoptekst: "Vrienden uitnodigen" (mobiel) / "Link kopiëren" (desktop).
+ *
+ * Lucide-migratie (2026-04-24): emoji's vervangen door Lucide-icons.
+ * Icons zijn aria-hidden — knoptekst is de toegankelijke label.
  */
 function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
   const [status, setStatus] = useState('idle') // 'idle' | 'gekopieerd' | 'fout'
 
-  // Op mobiel verschijnt native share sheet, op desktop kopiëren we direct
   const isMobiel = navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
 
   async function handleDelen() {
@@ -25,7 +26,6 @@ function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
           setStatus('gekopieerd')
           setTimeout(() => setStatus('idle'), 2500)
         }
-        // Bij native share: geen statuswijziging, OS geeft eigen feedback
       },
       () => {
         setStatus('fout')
@@ -35,10 +35,16 @@ function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
   }
 
   const label = status === 'gekopieerd'
-    ? '✅ Link gekopieerd!'
+    ? 'Link gekopieerd!'
     : status === 'fout'
-    ? '⚠️ Kopiëren mislukt'
-    : isMobiel ? '👥 Nodig vrienden uit' : '🔗 Link kopiëren'
+    ? 'Kopiëren mislukt'
+    : isMobiel ? 'Vrienden uitnodigen' : 'Link kopiëren'
+
+  const Icon = status === 'gekopieerd'
+    ? CheckCircle
+    : status === 'fout'
+    ? AlertTriangle
+    : isMobiel ? UserPlus : Link
 
   return (
     <button
@@ -56,6 +62,7 @@ function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
           : 'Kopieer de link naar dit potje'
       }
     >
+      <Icon size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
       {label}
     </button>
   )

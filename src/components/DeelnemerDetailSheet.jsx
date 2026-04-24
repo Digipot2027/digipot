@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { X, TrendingDown, TrendingUp } from 'lucide-react'
 import { formatBedrag } from '../utils/formatBedrag'
 import { volledigTijdLabel } from '../utils/tijdUtils'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -6,8 +7,8 @@ import { STANDAARD_VALUTA } from '../constants'
 
 /**
  * BUG-1 fix (2026-04-16): valuta-prop toegevoegd.
- * BUG-2 fix (2026-04-16): volledigTijdLabel geïmporteerd uit tijdUtils.js
- *   i.p.v. lokaal gedefinieerd. Eén bron van waarheid voor tijdformattering.
+ * BUG-2 fix (2026-04-16): volledigTijdLabel geïmporteerd uit tijdUtils.js.
+ * Lucide-migratie (2026-04-24): emoji's vervangen door Lucide-icons.
  */
 function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten, valuta = STANDAARD_VALUTA }) {
   const panelRef = useRef(null)
@@ -49,7 +50,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten, valuta = STAN
             className="detail-sluit-knop"
             aria-label="Sluiten"
           >
-            ✕
+            <X size={18} aria-hidden="true" strokeWidth={2} />
           </button>
         </div>
 
@@ -80,7 +81,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten, valuta = STAN
             {stortingen.map(t => (
               <div key={t.id} className="detail-transactie-rij">
                 <div className="detail-transactie-rij__links">
-                  <span>🟢</span>
+                  <TrendingUp size={14} aria-hidden="true" strokeWidth={2} style={{ color: 'var(--groen)', flexShrink: 0 }} />
                   <span className="detail-transactie-rij__tijd">{volledigTijdLabel(t.aangemaakt_op)}</span>
                 </div>
                 <span className="detail-transactie-rij__bedrag detail-transactie-rij__bedrag--groen">
@@ -98,7 +99,7 @@ function DeelnemerDetailSheet({ deelnemer, transacties, onSluiten, valuta = STAN
             {betalingen.map(t => (
               <div key={t.id} className="detail-transactie-rij">
                 <div className="detail-transactie-rij__links">
-                  <span>🔴</span>
+                  <TrendingDown size={14} aria-hidden="true" strokeWidth={2} style={{ color: 'var(--rood)', flexShrink: 0 }} />
                   <span className="detail-transactie-rij__tijd">{volledigTijdLabel(t.aangemaakt_op)}</span>
                 </div>
                 <span className="detail-transactie-rij__bedrag detail-transactie-rij__bedrag--rood">

@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 3.8
+**Versie:** 3.9
 **Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -97,6 +97,12 @@ Business logic wordt getest als pure functies. Alle bekende regressiescenario's 
 | PW-12: Twee devices | Realtime sync, naamconflict, afmelding zichtbaar |
 | PW-13: Undo en afmelden | Undo flow, betaling bij saldo=0, geblokkeerde undo |
 
+### Icoonbibliotheek (2026-04-24)
+
+De applicatie gebruikt **Lucide React** (`lucide-react`) als icoonbibliotheek. Alle decoratieve emoji's in UI-componenten zijn vervangen door Lucide SVG-icons. Lucide is gekozen vanwege MIT-licentie, React 19-compatibiliteit, tree-shakeability (alleen gebruikte icons in de bundle), en consistente visuele lijn (1.5–2px strokeWidth, 16–22px grootte).
+
+Alle icons zijn voorzien van `aria-hidden="true"` — de toegankelijke naam zit altijd op de omliggende knop via `aria-label` of zichtbare knoptekst.
+
 ---
 
 ## 15. Validaties en begrenzingen
@@ -111,7 +117,7 @@ Alle invoervelden voor geldbedragen accepteren maximaal 2 cijfers achter de komm
 
 De beperking werkt op twee lagen:
 1. **Preventief (UI-laag):** de `onChange`-handler roept `beperkDecimalen()` aan, die de invoerstring direct afkapt tot 2 decimalen. De gebruiker ziet de extra cijfers dus niet verschijnen.
-2. **Verdediging in de diepte (validatielaag):** `valideerTransactieBedrag()` controleert ook op meer dan 2 decimalen en geeft de melding *“Voer maximaal 2 cijfers achter de komma in.”* terug als die check mislukt. Dit vangt edge-cases op zoals programmatisch ingestelde waarden.
+2. **Verdediging in de diepte (validatielaag):** `valideerTransactieBedrag()` controleert ook op meer dan 2 decimalen en geeft de melding *"Voer maximaal 2 cijfers achter de komma in."* terug als die check mislukt. Dit vangt edge-cases op zoals programmatisch ingestelde waarden.
 
 Snelknoppen op het stortenscherm zijn vaste gehele getallen en zijn niet geraakt door deze wijziging.
 
@@ -131,6 +137,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 3.9 | 2026-04-24 | **Lucide-icoonmigratie:** `lucide-react` toegevoegd als dependency. Alle decoratieve emoji's in UI-componenten vervangen door Lucide SVG-icons. Iconen zijn `aria-hidden="true"`; toegankelijke naam zit op de knop. Kolomnamen deelnemerstafel gewijzigd: "In de pot" → "Gestort", "Betaald" → "Uitgegeven". Welkomsttekst "Welkom, [naam]" verwijderd uit Overzichtscherm. Potbedrag nu direct onder naam als "[bedrag] in de pot". | Consistente icoonset; betere leesbaarheid; UX-review 2026-04-24 |
 | 3.8 | 2026-04-24 | **UX stortenscherm:** naam deelnemer verwijderd uit subtitel (alleen pottitel blijft); gestort-banner verwijderd; preview-kaart verwijderd; knop altijd enabled (bij klikken zonder bedrag: inline foutmelding); inline successtate op knop (`✓ €X,XX gestort`, 1,2s, daarna automatisch navigeren naar overzicht); state-toast na storten verwijderd. Terminologie geüniformeerd: 'inleggen' vervangen door 'storten' in alle UI, FO en TO. `useLocation` en state-toast-handler verwijderd uit `PaginaPotje.jsx`. | UX-review 2026-04-24 |
 | 3.7 | 2026-04-23 | **Audit 2026-04-23:** `sessionStorage.`-patroon toegevoegd aan `controleer-patronen.js`; partial failure in `usePotje.js` verduidelijkt; UX-wijzigingen stortenscherm (knop toont bedrag, infoblok verwijderd) en modals gedocumenteerd. | Periodieke code-audit 2026-04-23 |
 | 3.6 | 2026-04-23 | **§15 Validaties bijgewerkt — max. 2 decimalen bij bedragvelden:** invoervelden voor geldbedragen (`ModalTransactie`, `PaginaStorten` vrij bedrag) beperken invoer actief tot maximaal 2 decimalen via `beperkDecimalen()` in de `onChange`-handler. Als verdediging in de diepte weigert `valideerTransactieBedrag()` ook programmatisch ingevoerde waarden met meer dan 2 decimalen. | Gebruikers konden meer dan 2 decimalen invullen in bedragvelden, wat niet overeenkomt met een geldig eurobedrag |

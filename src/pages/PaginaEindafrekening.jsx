@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { SlidersHorizontal, Lock, Send, PartyPopper } from 'lucide-react'
 import { berekenEindafrekening } from '../utils/berekenEindafrekening'
 import { berekenVereffening } from '../utils/berekenVereffening'
 import { formatBedrag } from '../utils/formatBedrag'
@@ -7,17 +8,11 @@ import { tijdLabel } from '../utils/tijdUtils'
 import { STANDAARD_VALUTA } from '../constants'
 
 /**
- * BUG-2 fix (2026-04-16): tijdLabel geïmporteerd uit tijdUtils.js
- *   i.p.v. lokaal gedefinieerd. Eén bron van waarheid voor tijdformattering.
- *
- * Opent de Tikkie-app via deep link.
- * Fallback naar tikkie.me als de app niet geïnstalleerd is.
- *
- * SEC-FIX (2026-04-04): window.open krijgt 'noopener,noreferrer' als derde
- * argument om tab-napping te voorkomen.
- *
+ * BUG-2 fix (2026-04-16): tijdLabel geïmporteerd uit tijdUtils.js.
+ * SEC-FIX (2026-04-04): window.open krijgt 'noopener,noreferrer'.
  * Hoog-5 fix (2026-04-12): Page Visibility API i.p.v. timing-conditie.
- * Cleanup: de listener wordt altijd verwijderd om geheugenlekken te voorkomen.
+ * Lucide-migratie (2026-04-24): emoji's vervangen door Lucide-icons.
+ *   🔒 → Lock, 💸 → Send, 🎉 → PartyPopper, ⚙️ → SlidersHorizontal.
  */
 function openTikkie() {
   window.location.href = 'tikkie://'
@@ -79,20 +74,16 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
       {/* ── Header ── */}
       <div className="kaart">
         <div className="eindafrekening-header">
-          <h1 className="titel mb-0">🔒 {potje.naam}</h1>
+          <h1 className="titel mb-0">
+            <Lock size={20} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            {potje.naam}
+          </h1>
           <button
             onClick={() => navigate('/instellingen')}
             className="knop-icoon"
             aria-label="Instellingen openen"
           >
-            <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <line x1="2" y1="5" x2="20" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="8" cy="5" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
-              <line x1="2" y1="11" x2="20" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="14" cy="11" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
-              <line x1="2" y1="17" x2="20" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="9" cy="17" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
-            </svg>
+            <SlidersHorizontal size={20} aria-hidden="true" strokeWidth={1.5} />
           </button>
         </div>
 
@@ -167,7 +158,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
               </button>
 
               <div className={`ea-deelnemer__status${d.verrekening >= 0 ? ' ea-deelnemer__status--positief' : ' ea-deelnemer__status--negatief'}`}>
-                {d.verrekening >= 0 ? '✅ Ontvangt geld terug' : '⚠️ Moet bijbetalen'}
+                {d.verrekening >= 0 ? '✓ Ontvangt geld terug' : '! Moet bijbetalen'}
               </div>
 
               <div id={detailId}>
@@ -235,7 +226,8 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
                 onClick={openTikkie}
                 aria-label={`Stuur Tikkie naar ${v.van} voor ${formatBedrag(v.bedrag, valuta)}`}
               >
-                💸 {v.aan}: stuur Tikkie naar {v.van}
+                <Send size={14} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+                {v.aan}: stuur Tikkie naar {v.van}
               </button>
             </div>
           ))}
@@ -244,7 +236,9 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
 
       {vereffening.length === 0 && saldi.deelnemersSaldi.length > 0 && (
         <div className="kaart alles-vereffend">
-          <div className="alles-vereffend__emoji">🎉</div>
+          <div className="alles-vereffend__emoji" aria-hidden="true">
+            <PartyPopper size={32} strokeWidth={1.5} />
+          </div>
           <p className="font-semibold mb-1">Alles vereffend</p>
           <p className="alles-vereffend__sub">Er hoeft niemand meer bij te betalen.</p>
         </div>
@@ -253,7 +247,7 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
       {/* ── Knoppen ── */}
       <div className="kaart actie-kaart">
         <button className="knop knop-primair" onClick={() => navigate('/')}>
-          🍺 Nieuw potje starten
+          Nieuw potje starten
         </button>
         <button className="knop knop-secundair" onClick={() => navigate('/instellingen')}>
           Naar instellingen
