@@ -1,16 +1,19 @@
 import { useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
 import { useMijnPotjes } from '../hooks/useMijnPotjes'
 import { formatBedrag } from '../utils/formatBedrag'
 
+/**
+ * Lucide-migratie (2026-04-24): ← vervangen door ChevronLeft.
+ * Emoji's in lege staat en lijstheader zijn decoratief — behouden als tekst.
+ */
 function PaginaOpenPotjes() {
   const navigate = useNavigate()
   const { potjes, laden, fout, herlaad } = useMijnPotjes('open')
 
-  // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Open potjes — Digipot' }, [])
 
-  // WCAG 4.1.3: focus op foutmelding zodat screenreaders de fout aankondigen
   const foutRef = useCallback(node => {
     if (node && fout) node.focus()
   }, [fout])
@@ -47,13 +50,12 @@ function PaginaOpenPotjes() {
             style={{ fontSize: '1.25rem', padding: '4px 0' }}
             aria-label="Terug"
           >
-            ←
+            <ChevronLeft size={22} aria-hidden="true" strokeWidth={2} />
           </button>
-          <h1 className="titel" style={{ marginBottom: 0 }}>🟢 Open potjes</h1>
+          <h1 className="titel" style={{ marginBottom: 0 }}>Open potjes</h1>
         </div>
       </div>
 
-      {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
         <div ref={foutRef} role="alert" tabIndex={-1} className="kaart fout-kaart">
           <p className="text-sm tekst-rood mb-3">{fout}</p>
@@ -63,7 +65,6 @@ function PaginaOpenPotjes() {
         </div>
       )}
 
-      {/* Lege staat */}
       {!fout && potjes.length === 0 && (
         <div className="kaart lege-staat">
           <div className="lege-staat__emoji">🍺</div>
@@ -77,9 +78,6 @@ function PaginaOpenPotjes() {
         </div>
       )}
 
-      {/* Lijst
-          WCAG 21: <ul>/<li> zodat screenreaders het aantal items aankondigen.
-          Knoppen zitten binnen <li> — dit behoudt de semantiek en de klikbaarheid. */}
       {potjes.length > 0 && (
         <ul
           className="kaart p-0 overflow-hidden"

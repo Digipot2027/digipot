@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { ChevronLeft, ArrowUp, RotateCcw } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
@@ -9,15 +10,11 @@ import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulie
 import { beperkDecimalen, valideerBedragRealtime } from '../utils/valideer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
-// Standaardbedragen — primaire keuzemethode
 const SNELBEDRAGEN = [5, 10, 20, 50]
 
 /**
- * leesEnWisBuffer — lees de sessionStorage-buffer voor een potje-ID.
- *
- * B5: aangeroepen op module-niveau (buiten de component) zodat de waarde
- * beschikbaar is vóór de eerste render. laadFormulier() wist de buffer
- * direct na lezen — het aanbod is eenmalig per paginalaad.
+ * Lucide-migratie (2026-04-24): ← → ChevronLeft, 🔄 → RotateCcw.
+ * Storten-knop gebruikt ArrowUp consistent met overzichtscherm.
  */
 function leesEnWisBuffer(potjeId) {
   if (!potjeId) return { bedrag: '', actief: false }
@@ -88,7 +85,6 @@ function PaginaStorten() {
     setGekozenBedrag(null)
     setBufferHersteld(false)
 
-    // Realtime MAX-validatie: toon fout zodra bedrag boven €999,99 uitkomt
     const realtimeFout = valideerBedragRealtime(nieuw, MAX)
     setInvoerFout(realtimeFout ?? '')
   }
@@ -175,7 +171,8 @@ function PaginaStorten() {
       <div className="kaart">
         <p className="tekst-rood">{fout}</p>
         <button className="knop knop-secundair mt-4" onClick={() => navigate(`/potje/${id}`)}>
-          {'\u2190'} Terug
+          <ChevronLeft size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+          Terug
         </button>
       </div>
     </div>
@@ -192,9 +189,12 @@ function PaginaStorten() {
             style={{ fontSize: '1.25rem', padding: '4px 0', minHeight: '44px', minWidth: '44px' }}
             aria-label="Terug naar overzicht"
           >
-            {'\u2190'}
+            <ChevronLeft size={22} aria-hidden="true" strokeWidth={2} />
           </button>
-          <h1 className="titel mb-0">{'\ud83d\udcb0'} Storten</h1>
+          <h1 className="titel mb-0">
+            <ArrowUp size={20} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            Storten
+          </h1>
         </div>
         <p className="subtitel subtitel-ingesprongen">
           {potje?.naam}
@@ -204,7 +204,8 @@ function PaginaStorten() {
       {bufferHersteld && (
         <div className="kaart herstel-melding" role="status">
           <p className="herstel-melding__tekst">
-            🔄 Je vorige bedrag is hersteld. Controleer het en probeer opnieuw te storten.
+            <RotateCcw size={14} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            Je vorige bedrag is hersteld. Controleer het en probeer opnieuw te storten.
           </p>
         </div>
       )}

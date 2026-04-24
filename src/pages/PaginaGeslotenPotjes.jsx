@@ -1,16 +1,18 @@
 import { useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
 import { useMijnPotjes } from '../hooks/useMijnPotjes'
 import { formatBedrag } from '../utils/formatBedrag'
 
+/**
+ * Lucide-migratie (2026-04-24): ← vervangen door ChevronLeft.
+ */
 function PaginaGeslotenPotjes() {
   const navigate = useNavigate()
   const { potjes, laden, fout, herlaad } = useMijnPotjes('gesloten')
 
-  // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Gesloten potjes — Digipot' }, [])
 
-  // WCAG 4.1.3: focus op foutmelding zodat screenreaders de fout aankondigen
   const foutRef = useCallback(node => {
     if (node && fout) node.focus()
   }, [fout])
@@ -47,13 +49,12 @@ function PaginaGeslotenPotjes() {
             style={{ fontSize: '1.25rem', padding: '4px 0' }}
             aria-label="Terug"
           >
-            ←
+            <ChevronLeft size={22} aria-hidden="true" strokeWidth={2} />
           </button>
-          <h1 className="titel" style={{ marginBottom: 0 }}>🔒 Gesloten potjes</h1>
+          <h1 className="titel" style={{ marginBottom: 0 }}>Gesloten potjes</h1>
         </div>
       </div>
 
-      {/* Foutmelding met retry-knop (WCAG 4.1.3: role=alert + focus) */}
       {fout && (
         <div ref={foutRef} role="alert" tabIndex={-1} className="kaart fout-kaart">
           <p className="text-sm tekst-rood mb-3">{fout}</p>
@@ -63,7 +64,6 @@ function PaginaGeslotenPotjes() {
         </div>
       )}
 
-      {/* Lege staat */}
       {!fout && potjes.length === 0 && (
         <div className="kaart lege-staat">
           <div className="lege-staat__emoji">🔒</div>
@@ -77,8 +77,6 @@ function PaginaGeslotenPotjes() {
         </div>
       )}
 
-      {/* Lijst
-          WCAG 21: <ul>/<li> zodat screenreaders het aantal items aankondigen. */}
       {potjes.length > 0 && (
         <ul
           className="kaart p-0 overflow-hidden"
@@ -108,11 +106,6 @@ function PaginaGeslotenPotjes() {
                           ? `+${formatBedrag(potje.mijnVerrekening, potje.valuta)}`
                           : `-${formatBedrag(Math.abs(potje.mijnVerrekening), potje.valuta)}`}
                       </div>
-                      {/*
-                        UX-5: was 'ontvangen' / 'bijbetaald' — die labels impliceren
-                        dat de vereffening al heeft plaatsgevonden.
-                        Correcte labels zijn 'te ontvangen' / 'bij te betalen'.
-                      */}
                       <div className="potje-rij__saldo-label">
                         {potje.mijnVerrekening >= 0 ? 'te ontvangen' : 'bij te betalen'}
                       </div>

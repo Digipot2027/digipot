@@ -1,7 +1,9 @@
 /**
  * e2e/pw6-responsive.spec.js — PW-6: Responsive gedrag op kritieke viewports
  *
- * Fix v2: potjenaam verkort tot max 30 tekens (DB-constraint potjes_naam_check).
+ * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
+ * Knoplabels bijgewerkt: "In pot storten" → "Storten", "Betaling registreren" → "Betaling".
+ * Nieuwe anchor voor PW-6d: tabelcel met naam "(jij)".
  */
 
 import { test, expect } from '@playwright/test'
@@ -27,7 +29,6 @@ test.describe('PW-6: Responsive gedrag', () => {
   test.beforeEach(async () => {
     supabase = maakSupabaseClient()
     deviceId = nieuweTestDeviceId()
-    // Naam max 30 tekens (DB-constraint)
     potje = await maakTestPotje(supabase, '[E2E] PW-6 Responsive')
     deelnemer = await maakDeelnemer(supabase, potje.id, 'LangeDeelnemersnaam', deviceId)
     await maakTransactie(potje.id, deelnemer.id, 'storting', 25.00, deviceId)
@@ -60,8 +61,8 @@ test.describe('PW-6: Responsive gedrag', () => {
       await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
       await page.goto(`/potje/${potje.id}`)
 
-      const stortenKnop = page.getByRole('button', { name: /In pot storten/i })
-      const betaalKnop  = page.getByRole('button', { name: /Betaling registreren/i })
+      const stortenKnop = page.getByRole('button', { name: /^Storten$/i })
+      const betaalKnop  = page.getByRole('button', { name: /^Betaling$/i })
 
       await expect(stortenKnop).toBeVisible({ timeout: 8000 })
       await expect(betaalKnop).toBeVisible()
@@ -102,12 +103,15 @@ test.describe('PW-6: Responsive gedrag', () => {
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
     await page.goto(`/potje/${potje.id}`)
 
-    await expect(page.getByText('Welkom, LangeDeelnemersnaam')).toBeVisible({ timeout: 8000 })
+    // Anchor: tabelcel met naam (jij) — vervangt "Welkom, [naam]"
+    await expect(
+      page.getByRole('cell', { name: /LangeDeelnemersnaam.*jij|jij.*LangeDeelnemersnaam/i })
+    ).toBeVisible({ timeout: 8000 })
 
     const maxRechts = await page.evaluate(() => {
       const kaarten = document.querySelectorAll('.kaart')
       return Math.max(...[...kaarten].map(k => k.getBoundingClientRect().right))
     })
-    expect(maxRechts).toBeLessThanOrEqual(379) // 375 + 4px marge
+    expect(maxRechts).toBeLessThanOrEqual(379)
   })
 })

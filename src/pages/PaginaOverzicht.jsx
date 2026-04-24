@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock } from 'lucide-react'
 import { berekenSaldi, heeftGestort, berekenAchtergelatenBedrag } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { STANDAARD_VALUTA } from '../constants'
@@ -10,11 +11,14 @@ import ModalAfmelden from '../components/ModalAfmelden.jsx'
 
 /**
  * TECH-3 fix (2026-04-16): ikBenGestort gebruikt nu heeftGestort() uit
- * berekenSaldi.js i.p.v. een inline check. Eén bron van waarheid voor
- * de afmeld-drempel.
+ * berekenSaldi.js i.p.v. een inline check.
  *
  * UX-1 fix (2026-04-16): helptekst "Iedereen kan het potje afsluiten"
  * toegevoegd onder de Pot afsluiten-knop.
+ *
+ * Lucide-migratie (2026-04-24): alle emoji's vervangen door Lucide-icons.
+ * Instellingen-SVG vervangen door SlidersHorizontal. Actieknoppen gebruiken
+ * ArrowUp (storten), CreditCard (betaling), LogOut (afmelden), Lock (sluiten).
  */
 function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, onStorten, onBetalen, onSluiten, onAfmelden, afmeldenLaden }) {
   const navigate = useNavigate()
@@ -29,7 +33,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
     : 0
   const ikBenActief = ikzelf?.actief !== false
   const heeftTransacties = transacties.length > 0
-  // TECH-3 fix: heeftGestort() uit berekenSaldi.js i.p.v. inline check
   const ikBenGestort = heeftGestort(saldi.deelnemersSaldi, ikzelf?.id)
   const achtergelatenBedrag = ikBenActief
     ? berekenAchtergelatenBedrag(saldi.deelnemersSaldi, ikzelf?.id, saldi.potSaldo, saldi.potTotaal)
@@ -44,14 +47,10 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
           <div className="overzicht-header">
             <div className="overzicht-header__links">
               <h1 className="titel">🍺 {potje?.naam}</h1>
-              <p className="subtitel mb-0">Welkom, {ikzelf?.naam}</p>
+              <p className="subtitel mb-0">{formatBedrag(saldi.potSaldo, valuta)} in de pot</p>
             </div>
             <div className="overzicht-header__rechts">
               <div className="saldo-rechts">
-                <div className={`saldo-display${saldi.potSaldo > 0 ? ' saldo-display--positief' : ' saldo-display--nul'}`}>
-                  {formatBedrag(saldi.potSaldo, valuta)}
-                </div>
-                <div className="sectie-label">nog te besteden</div>
                 {actieveDeelnemers.length > 1 && (
                   <div className="saldo-display__gem">
                     {formatBedrag(gemiddeldePerPersoon, valuta)} gem. p.p.
@@ -63,14 +62,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 className="knop-icoon knop-icoon-instellingen"
                 aria-label="Instellingen openen"
               >
-                <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <line x1="2" y1="5" x2="20" y2="5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="8" cy="5" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
-                  <line x1="2" y1="11" x2="20" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="14" cy="11" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
-                  <line x1="2" y1="17" x2="20" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="9" cy="17" r="2.5" fill="white" stroke="currentColor" strokeWidth="1.5"/>
-                </svg>
+                <SlidersHorizontal size={20} aria-hidden="true" strokeWidth={1.5} />
               </button>
             </div>
           </div>
@@ -104,8 +96,8 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               <thead>
                 <tr>
                   <th scope="col">Naam</th>
-                  <th scope="col">In de pot</th>
-                  <th scope="col">Betaald</th>
+                  <th scope="col">Gestort</th>
+                  <th scope="col">Uitgegeven</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,10 +121,12 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
           <div className="grid-2">
             <button className="knop knop-primair knop-in-grid" onClick={onStorten} disabled={!ikBenActief}>
-              💰 In pot storten
+              <ArrowUp size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+              Storten
             </button>
             <button className="knop knop-secundair knop-in-grid" onClick={onBetalen} disabled={!ikBenActief || saldi.potSaldo === 0}>
-              🍺 Betaling registreren
+              <CreditCard size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+              Betaling
             </button>
           </div>
 
@@ -158,7 +152,8 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
                 title={ikBenActief && !ikBenGestort ? 'Eerst storten om je te kunnen afmelden' : undefined}
               >
-                {afmeldenLaden ? 'Bezig...' : ikBenActief ? '👋 Jezelf afmelden' : '✅ Afgemeld'}
+                <LogOut size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+                {afmeldenLaden ? 'Bezig...' : ikBenActief ? 'Afmelden' : 'Afgemeld'}
               </button>
               <button
                 className="knop knop-gevaar knop-beheer"
@@ -166,7 +161,8 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 onClick={onSluiten}
                 disabled={!heeftTransacties}
               >
-                🔒 Pot afsluiten
+                <Lock size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+                Pot sluiten
               </button>
             </div>
 
@@ -175,8 +171,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                 Eerst storten om je te kunnen afmelden.
               </p>
             )}
-            {/* Helptekst direct onder "Pot afsluiten" — rechts uitgelijnd zodat
-                hij visueel associeert met de rechterknop in het grid */}
             {heeftTransacties && (
               <p className="text-xs tekst-grijs-5 text-right helptekst-rechts">
                 Iedereen kan het potje afsluiten.
@@ -188,7 +182,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               </p>
             )}
 
-            {/* Scheidingslijn + tekstlink voor niet-destructieve actie */}
             <div className="deelknop-scheiding">
               <DeelKnop
                 potjeNaam={potje?.naam}
@@ -202,7 +195,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
 
       </div>
 
-      {/* Deelnemer detail sheet */}
       {gekozenDeelnemer && (
         <DeelnemerDetailSheet
           deelnemer={gekozenDeelnemer}
@@ -212,7 +204,6 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
         />
       )}
 
-      {/* Afmeld-bevestigingsmodal */}
       {afmeldenModaal && (
         <ModalAfmelden
           deelnemerNaam={ikzelf?.naam}

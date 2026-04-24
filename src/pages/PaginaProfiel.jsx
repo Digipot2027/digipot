@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, User, Trash2 } from 'lucide-react'
 import { PROFIEL_NAAM_KEY, TEKSTGROOTTE_KEY, MAX_NAAM } from '../constants'
 import { getItem, setItem, removeItem } from '../utils/storage'
 
@@ -11,9 +12,7 @@ const TEKSTGROOTTES = [
 
 /**
  * BUG-5 fix (2026-04-16): lege naam na trim leidt niet meer tot stille verwijdering.
- * Vóór de fix kon een gebruiker een spatie invullen, op Opslaan klikken, en werd
- * de profielnaam zonder bevestiging verwijderd. Nu toont het formulier een
- * informatieve melding en behandelt leegmaken via de expliciete "Naam verwijderen"-knop.
+ * Lucide-migratie (2026-04-24): 👤 → User, 🗑 → Trash2, ← → ChevronLeft.
  */
 function PaginaProfiel() {
   const navigate = useNavigate()
@@ -48,8 +47,6 @@ function PaginaProfiel() {
       return
     }
 
-    // BUG-5 fix: lege naam via het formulier wordt geblokkeerd met een
-    // informatieve melding. Leegmaken verloopt via de expliciete knop.
     if (!naamTrimmed) {
       setFout('Vul een naam in of gebruik "Naam verwijderen" om je naam te wissen.')
       return
@@ -84,9 +81,12 @@ function PaginaProfiel() {
             style={{ fontSize: '1.25rem', padding: '4px 0' }}
             aria-label="Terug"
           >
-            ←
+            <ChevronLeft size={22} aria-hidden="true" strokeWidth={2} />
           </button>
-          <h1 className="titel" style={{ marginBottom: 0 }}>👤 Profiel</h1>
+          <h1 className="titel" style={{ marginBottom: 0 }}>
+            <User size={20} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            Profiel
+          </h1>
         </div>
         <p className="subtitel" style={{ marginBottom: 0, paddingLeft: 36 }}>
           Je naam wordt automatisch ingevuld als je meedoet aan een nieuw potje.
@@ -120,7 +120,7 @@ function PaginaProfiel() {
             className="knop knop-primair"
             disabled={!heeftWijziging && !opgeslagen}
           >
-            {opgeslagen ? '✅ Opgeslagen!' : 'Opslaan →'}
+            {opgeslagen ? '✓ Opgeslagen!' : 'Opslaan →'}
           </button>
         </form>
       </div>
@@ -182,7 +182,8 @@ function PaginaProfiel() {
             className="knop knop-secundair"
             onClick={handleVerwijderen}
           >
-            🗑 Naam verwijderen
+            <Trash2 size={14} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            Naam verwijderen
           </button>
         </div>
       )}
