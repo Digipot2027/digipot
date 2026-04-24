@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 6.9
+**Versie:** 7.1
 **Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -176,7 +176,7 @@ Business logic en pure functies via unit tests — geen Supabase-mock, geen comp
 E2e-tests draaien tegen echte Supabase met `[E2E]`-prefix en cleanup via `afterEach`.
 Testprioriteit op basis van risico, niet op regelcoverage.
 
-### Unit/regressie — 841 tests
+### Unit/regressie — 834 tests
 
 | Categorie | Wat gedekt |
 |---|---|
@@ -197,8 +197,8 @@ Testprioriteit op basis van risico, niet op regelcoverage.
 | `pw2-geen-device-id.spec.js` | PW-2a/b/c | Geen device_id, geen RLS-crash, bootstrapDeviceId |
 | `pw3-betaling-modal.spec.js` | PW-3a/b/c | Modal betaling, saldo-check, annuleren |
 | `pw4-deelnemen.spec.js` | PW-4a..e | Deelnemen-flow, validatie, profielnaam, localStorage |
-| `pw5-keyboard-focus.spec.js` | PW-5a..f | Escape, Tab-trap, focus op invoerveld, Enter, detail-sheet |
-| `pw6-responsive.spec.js` | PW-6a..d × 4 viewports | Tabel op 320/375/768/1440px, knoppen, snelknoppen |
+| `pw5-keyboard-focus.spec.js` | PW-5a..h | Escape, Tab-trap, focus op invoerveld, Enter, detail-sheet, uitnodigknop focusbaar, action-list Tab-focus |
+| `pw6-responsive.spec.js` | PW-6a..e × 4 viewports (PW-6e afzonderlijk) | Tabel op 320/375/768/1440px, knoppen, snelknoppen, action-list op 320px |
 | `pw7-profiel-instellingen.spec.js` | PW-7a..h | Naam opslaan/verwijderen, navigatie, radiogroep |
 | `pw8-potjeslijsten-en-routing.spec.js` | PW-8a..g | Lege staat, potje in lijst, 404, aanmaken |
 | `pw9-terugkerende-deelnemer.spec.js` | PW-9a..e | Terugkerende deelnemer herkend op device_id, afgemelde terugkomer |
@@ -313,6 +313,8 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 7.1 | 2026-04-24 | **Tests gesynchroniseerd met traject-2:** Unit UX-01/02 verwijderd (conditionele helptekst-logica bestaat niet meer); UX-03/04/05 toegevoegd (vaste helptekst). E2e: PW-5g (`.knop-uitnodigen` focusbaar via `focus()`), PW-5h (action-list `aria-label` bereikbaar via Tab, Chromium only), PW-6e (action-list verticaal gestapeld op 320px, niet buiten viewport). `pw5-keyboard-focus.spec.js` en `pw6-responsive.spec.js` bijgewerkt. | Testdekking actueel na overzichtscherm redesign |
+| 7.0 | 2026-04-24 | **Traject-2: overzichtscherm redesign:** `PaginaOverzicht.jsx` herschreven. Nieuwe `variant="uitnodigen"` op `DeelKnop` voor dashed-border knop boven het actiegrid. Beheer-sectie: van `grid-2` naar `actie-lijst` (BEM) — twee rijen met `ChevronRight`-icon rechts; `aria-label` op beide rijen. Helptekst altijd zichtbaar (`actie-lijst__helptekst`). CSS: `.knop-uitnodigen` (dashed border, hover), `.actie-lijst` en alle BEM-subklassen toegevoegd aan `index.css`. `ChevronRight` geïmporteerd uit `lucide-react`. `DeelKnop.jsx`: `variant="uitnodigen"` afgehandeld als derde classnaam-tak. | UX-review traject 2 |
 | 6.9 | 2026-04-24 | **Lucide-icoonmigratie:** `lucide-react` toegevoegd aan `dependencies` in `package.json`. Alle decoratieve emoji's en de custom instellingen-SVG vervangen door Lucide SVG-icons in alle componenten en pagina's (`DeelKnop`, `DeelnemerDetailSheet`, `ModalAfmelden`, `ModalSluiten`, `PaginaOverzicht`, `PaginaNieuwPotje`, `PaginaEindafrekening`, `PaginaInstellingen`, `PaginaOpenPotjes`, `PaginaGeslotenPotjes`, `PaginaProfiel`, `PaginaStorten`, `PaginaNietGevonden`). Conventies: `aria-hidden="true"` op alle icons; size 16/20/22px; strokeWidth 1.5 decoratief / 2 functioneel. §2 dependency-tabel bijgewerkt. | Consistente, styleerbare icoonset; cross-platform gelijke weergave; emoji's niet styleerbaar via CSS |
 | 6.8 | 2026-04-24 | **UX stortenscherm:** `PaginaStorten.jsx` — naam deelnemer uit subtitel; gestort-banner verwijderd; preview-kaart verwijderd; knop altijd enabled + inline foutmelding bij klikken zonder bedrag; `geslaagd`-state toegevoegd voor inline successtate ("✓ €X,XX gestort", 1,2s timeout, daarna `navigate`); `setBezig(false)` alleen nog in catch (niet finally, want bij succes navigeert de component weg). `PaginaPotje.jsx` — `useLocation`-import en state-toast-handler verwijderd; `location`-variabele verwijderd. Terminologie: 'inleggen' → 'storten' uniform in UI, FO, TO. E2e PW-1 selector bijgewerkt (knoptekst zonder preview). | UX-review 2026-04-24 |
 | 6.7 | 2026-04-23 | **Audit 2026-04-23 — drie bevindingen opgelost:** (#1) `usePotje.js` partial failure commentaar verduidelijkt — `Promise.all` gooit de meest specifieke fout per query zodat `vertaalFout()` een begrijpelijke melding geeft. (#2) `scripts/controleer-patronen.js` uitgebreid met zesde patroon: directe `sessionStorage.`-aanroepen buiten `formulierBuffer.js` zijn nu geblokkeerd in CI. (#3) TO en FO wijzigingslogs bijgewerkt. | Periodieke code-audit 2026-04-23 |

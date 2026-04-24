@@ -143,19 +143,25 @@ describe('TECH-3 — heeftGestort() uit berekenSaldi.js', () => {
 })
 
 // ── UX-1: Pot afsluiten helptekst ────────────────────────────────────────────
-// De helptekst is UI-logica — getest als pure conditielogica.
+// Traject-2 (2026-04-24): de helptekst is niet langer conditioneel op
+// heeftTransacties. Ze is altijd zichtbaar, altijd dezelfde tekst.
+// De oude bepaalHelpTekst-functie en de conditionele tak zijn verwijderd.
+// UX-01 en UX-02 (conditionele logica) zijn verwijderd.
+// UX-03 borgt het nieuwe gedrag: vaste tekst, geen conditie.
 
-describe('UX-1 — Pot afsluiten helptekst conditie', () => {
-  function bepaalHelpTekst(heeftTransacties) {
-    if (heeftTransacties) return 'Iedereen kan het potje afsluiten.'
-    return 'Afsluiten kan pas als er transacties zijn.'
-  }
+describe('UX-1 — Pot afsluiten helptekst altijd zichtbaar (traject-2)', () => {
+  // Reproduceert het nieuwe gedrag: helptekst is een constante, geen functie.
+  const helptekst = 'Iedereen kan het potje afsluiten.'
 
-  it('UX-01: bij transacties → uitleg dat iedereen kan afsluiten', () => {
-    expect(bepaalHelpTekst(true)).toMatch(/Iedereen/)
+  it('UX-03: helptekst is een vaste constante, ongeacht transacties', () => {
+    expect(helptekst).toMatch(/Iedereen kan het potje afsluiten/)
   })
 
-  it('UX-02: zonder transacties → melding dat afsluiten niet kan', () => {
-    expect(bepaalHelpTekst(false)).toMatch(/transacties/)
+  it('UX-04: helptekst eindigt met een punt (volledige zin)', () => {
+    expect(helptekst.endsWith('.')).toBe(true)
+  })
+
+  it('UX-05: helptekst is niet leeg', () => {
+    expect(helptekst.length).toBeGreaterThan(0)
   })
 })

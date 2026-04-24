@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock } from 'lucide-react'
+import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock, ChevronRight } from 'lucide-react'
 import { berekenSaldi, heeftGestort, berekenAchtergelatenBedrag } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { STANDAARD_VALUTA } from '../constants'
@@ -10,15 +10,19 @@ import DeelKnop from '../components/DeelKnop.jsx'
 import ModalAfmelden from '../components/ModalAfmelden.jsx'
 
 /**
- * TECH-3 fix (2026-04-16): ikBenGestort gebruikt nu heeftGestort() uit
- * berekenSaldi.js i.p.v. een inline check.
+ * Traject-2 redesign (2026-04-24):
+ * - "Welkom, [naam]" verwijderd (was al weg na Lucide-migratie).
+ * - Knopstructuur herschreven:
+ *     • "Vrienden uitnodigen" als dashed-border knop bóven het primaire grid.
+ *     • "Storten" (groen, knop-primair) en "Betaling" (outline, knop-secundair)
+ *       blijven in grid-2 als primaire acties.
+ *     • Beheer-sectie: action-list (volledige rijen met ChevronRight) voor
+ *       "Afmelden" en "Pot sluiten" — geen grid-2 meer.
+ * - Helptekst "Iedereen kan het potje afsluiten." altijd zichtbaar (niet
+ *   conditioneel op heeftTransacties).
+ * - DeelKnop (tekstlink + "Link kopiëren") verwijderd uit Beheer-sectie.
  *
- * UX-1 fix (2026-04-16): helptekst "Iedereen kan het potje afsluiten"
- * toegevoegd onder de Pot afsluiten-knop.
- *
- * Lucide-migratie (2026-04-24): alle emoji's vervangen door Lucide-icons.
- * Instellingen-SVG vervangen door SlidersHorizontal. Actieknoppen gebruiken
- * ArrowUp (storten), CreditCard (betaling), LogOut (afmelden), Lock (sluiten).
+ * Lucide-migratie (2026-04-24): ChevronRight toegevoegd voor action-list pijlen.
  */
 function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, onStorten, onBetalen, onSluiten, onAfmelden, afmeldenLaden }) {
   const navigate = useNavigate()
@@ -119,6 +123,13 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
         {/* Actieknoppen */}
         <div className="kaart actie-kaart">
 
+          {/* Vrienden uitnodigen — dashed-border knop boven primaire acties */}
+          <DeelKnop
+            potjeNaam={potje?.naam}
+            variant="uitnodigen"
+          />
+
+          {/* Primaire acties: Storten + Betaling */}
           <div className="grid-2">
             <button className="knop knop-primair knop-in-grid" onClick={onStorten} disabled={!ikBenActief}>
               <ArrowUp size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
@@ -142,53 +153,56 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             </p>
           )}
 
+          {/* Beheer — action-list */}
           <div className="actie-sectie">
             <h2 className="sectie-label mb-0">Beheer</h2>
 
-            <div className="grid-2">
+            <div className="actie-lijst">
+              {/* Afmelden */}
               <button
-                className={`knop ${ikBenActief ? 'knop-afmelden' : 'knop-aanmelden'} knop-beheer`}
+                className={`actie-lijst__rij${ikBenActief ? '' : ' actie-lijst__rij--uitgeschakeld'}`}
                 onClick={() => ikBenActief && setAfmeldenModaal(true)}
                 disabled={afmeldenLaden || (ikBenActief && !ikBenGestort)}
                 title={ikBenActief && !ikBenGestort ? 'Eerst storten om je te kunnen afmelden' : undefined}
+                aria-label={afmeldenLaden ? 'Bezig met afmelden' : ikBenActief ? 'Afmelden' : 'Al afgemeld'}
               >
-                <LogOut size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
-                {afmeldenLaden ? 'Bezig...' : ikBenActief ? 'Afmelden' : 'Afgemeld'}
+                <span className="actie-lijst__rij-links">
+                  <LogOut size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__icoon" />
+                  <span className="actie-lijst__label">
+                    {afmeldenLaden ? 'Bezig...' : ikBenActief ? 'Afmelden' : 'Afgemeld'}
+                  </span>
+                </span>
+                <ChevronRight size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__chevron" />
               </button>
+
+              {ikBenActief && !ikBenGestort && (
+                <p className="text-xs tekst-grijs-5 actie-lijst__hint">
+                  Eerst storten om je te kunnen afmelden.
+                </p>
+              )}
+
+              {/* Scheidingslijn */}
+              <div className="actie-lijst__scheiding" aria-hidden="true" />
+
+              {/* Pot sluiten */}
               <button
-                className="knop knop-gevaar knop-beheer"
-                style={{ opacity: heeftTransacties ? 0.7 : 0.35 }}
+                className="actie-lijst__rij actie-lijst__rij--gevaar"
                 onClick={onSluiten}
                 disabled={!heeftTransacties}
+                aria-label="Pot sluiten"
               >
-                <Lock size={16} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
-                Pot sluiten
+                <span className="actie-lijst__rij-links">
+                  <Lock size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__icoon" />
+                  <span className="actie-lijst__label">Pot sluiten</span>
+                </span>
+                <ChevronRight size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__chevron" />
               </button>
             </div>
 
-            {ikBenActief && !ikBenGestort && (
-              <p className="text-xs tekst-grijs-5 text-left helptekst-links">
-                Eerst storten om je te kunnen afmelden.
-              </p>
-            )}
-            {heeftTransacties && (
-              <p className="text-xs tekst-grijs-5 text-right helptekst-rechts">
-                Iedereen kan het potje afsluiten.
-              </p>
-            )}
-            {!heeftTransacties && (
-              <p className="text-xs tekst-grijs-5 text-right helptekst-rechts">
-                Afsluiten kan pas als er transacties zijn.
-              </p>
-            )}
-
-            <div className="deelknop-scheiding">
-              <DeelKnop
-                potjeNaam={potje?.naam}
-                variant="tekstlink"
-                className="deelknop-tekstlink"
-              />
-            </div>
+            {/* Helptekst — altijd zichtbaar */}
+            <p className="text-xs tekst-grijs-5 actie-lijst__helptekst">
+              Iedereen kan het potje afsluiten.
+            </p>
           </div>
 
         </div>

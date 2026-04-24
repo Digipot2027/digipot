@@ -7,6 +7,9 @@
  *
  * PW-5c noot: Safari (WebKit/Mobile Safari) focust standaard geen <button>-elementen
  * via Tab — platformbeperking, geen codebug.
+ *
+ * PW-5g (traject-2, 2026-04-24): "Vrienden uitnodigen"-knop focusbaar via Tab.
+ * PW-5h (traject-2, 2026-04-24): action-list rijen focusbaar via Tab (Chromium only).
  */
 
 import { test, expect } from '@playwright/test'
@@ -117,5 +120,42 @@ test.describe('PW-5: Keyboard-navigatie en focus management', () => {
 
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 3000 })
+  })
+
+  test('PW-5g: "Vrienden uitnodigen"-knop is focusbaar via keyboard', async ({ page }) => {
+    await openOverzicht(page)
+
+    // aria-label varieert op mobiel/desktop en status:
+    //   desktop idle   → 'Kopieer de link naar dit potje'
+    //   mobiel  idle   → 'Nodig vrienden uit voor dit potje'
+    //   gekopieerd     → 'Link gekopieerd naar klembord'
+    // In Playwright (Chromium desktop) is het altijd de desktop-variant.
+    const uitnodigKnop = page.getByRole('button', { name: /Kopieer de link|Nodig vrienden uit/i })
+    await expect(uitnodigKnop).toBeVisible({ timeout: 5000 })
+    await uitnodigKnop.focus()
+
+    const isFocused = await page.evaluate(() => {
+      const btn = document.activeElement
+      return btn?.matches('.knop-uitnodigen') ?? false
+    })
+    expect(isFocused).toBe(true)
+  })
+
+  test('PW-5h: action-list rijen zijn focusbaar via Tab (Chromium only)', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Safari focust geen <button>-elementen via Tab — platformbeperking')
+
+    await openOverzicht(page)
+
+    // Tab door de pagina heen; zoek naar de Afmelden-rij in de action-list
+    let gevonden = false
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.press('Tab')
+      const label = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')
+      if (/Afmelden|Pot sluiten/i.test(label)) {
+        gevonden = true
+        break
+      }
+    }
+    expect(gevonden).toBe(true)
   })
 })

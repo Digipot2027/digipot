@@ -4,6 +4,7 @@
  * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
  * Knoplabels bijgewerkt: "In pot storten" → "Storten", "Betaling registreren" → "Betaling".
  * Nieuwe anchor voor PW-6d: tabelcel met naam "(jij)".
+ * PW-6e (traject-2, 2026-04-24): action-list rijen zichtbaar en niet overlappend op 320px.
  */
 
 import { test, expect } from '@playwright/test'
@@ -113,5 +114,36 @@ test.describe('PW-6: Responsive gedrag', () => {
       return Math.max(...[...kaarten].map(k => k.getBoundingClientRect().right))
     })
     expect(maxRechts).toBeLessThanOrEqual(379)
+  })
+
+  test('PW-6e [klein-mobiel 320px]: action-list rijen zichtbaar en niet overlappend', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto('/')
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
+    await page.goto(`/potje/${potje.id}`)
+
+    // Wacht op overzicht
+    await expect(
+      page.getByRole('cell', { name: /LangeDeelnemersnaam.*jij|jij.*LangeDeelnemersnaam/i })
+    ).toBeVisible({ timeout: 8000 })
+
+    const afmeldenKnop = page.getByRole('button', { name: /Afmelden/i })
+    const sluitKnop    = page.getByRole('button', { name: /Pot sluiten/i })
+
+    await expect(afmeldenKnop).toBeVisible()
+    await expect(sluitKnop).toBeVisible()
+
+    const afmeldenBox = await afmeldenKnop.boundingBox()
+    const sluitBox    = await sluitKnop.boundingBox()
+    expect(afmeldenBox).not.toBeNull()
+    expect(sluitBox).not.toBeNull()
+
+    // Rijen staan verticaal gestapeld — geen horizontale overlap
+    // Afmelden staat boven Pot sluiten (lower y-waarde)
+    expect(afmeldenBox.y + afmeldenBox.height).toBeLessThanOrEqual(sluitBox.y + 2)
+
+    // Beide rijen steken niet buiten het 320px viewport
+    expect(afmeldenBox.x + afmeldenBox.width).toBeLessThanOrEqual(322)
+    expect(sluitBox.x + sluitBox.width).toBeLessThanOrEqual(322)
   })
 })

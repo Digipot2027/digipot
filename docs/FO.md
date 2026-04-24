@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 3.9
+**Versie:** 4.1
 **Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -137,6 +137,8 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 4.1 | 2026-04-24 | **Tests gesynchroniseerd met traject-2:** UX-01/UX-02 (conditionele helptekst) vervangen door UX-03/04/05 (vaste helptekst altijd aanwezig). E2e PW-5g (uitnodigknop focusbaar), PW-5h (action-list Tab-focus), PW-6e (action-list verticale stapeling op 320px) toegevoegd. | Dekking actueel houden na overzichtscherm redesign |
+| 4.0 | 2026-04-24 | **Traject-2: overzichtscherm redesign:** knopstructuur herschreven — "Vrienden uitnodigen" als dashed-border knop boven het actiegrid; Beheer-sectie omgezet van grid-2 naar action-list (volledige rijen met chevron-pijl) voor "Afmelden" en "Pot sluiten" (rood); helptekst "Iedereen kan het potje afsluiten." altijd zichtbaar (niet conditioneel); DeelKnop tekstlink-variant en "Link kopiëren" verwijderd. | UX-review traject 2 |
 | 3.9 | 2026-04-24 | **Lucide-icoonmigratie:** `lucide-react` toegevoegd als dependency. Alle decoratieve emoji's in UI-componenten vervangen door Lucide SVG-icons. Iconen zijn `aria-hidden="true"`; toegankelijke naam zit op de knop. Kolomnamen deelnemerstafel gewijzigd: "In de pot" → "Gestort", "Betaald" → "Uitgegeven". Welkomsttekst "Welkom, [naam]" verwijderd uit Overzichtscherm. Potbedrag nu direct onder naam als "[bedrag] in de pot". | Consistente icoonset; betere leesbaarheid; UX-review 2026-04-24 |
 | 3.8 | 2026-04-24 | **UX stortenscherm:** naam deelnemer verwijderd uit subtitel (alleen pottitel blijft); gestort-banner verwijderd; preview-kaart verwijderd; knop altijd enabled (bij klikken zonder bedrag: inline foutmelding); inline successtate op knop (`✓ €X,XX gestort`, 1,2s, daarna automatisch navigeren naar overzicht); state-toast na storten verwijderd. Terminologie geüniformeerd: 'inleggen' vervangen door 'storten' in alle UI, FO en TO. `useLocation` en state-toast-handler verwijderd uit `PaginaPotje.jsx`. | UX-review 2026-04-24 |
 | 3.7 | 2026-04-23 | **Audit 2026-04-23:** `sessionStorage.`-patroon toegevoegd aan `controleer-patronen.js`; partial failure in `usePotje.js` verduidelijkt; UX-wijzigingen stortenscherm (knop toont bedrag, infoblok verwijderd) en modals gedocumenteerd. | Periodieke code-audit 2026-04-23 |
