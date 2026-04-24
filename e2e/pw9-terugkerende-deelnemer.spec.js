@@ -1,18 +1,20 @@
 /**
  * e2e/pw9-terugkerende-deelnemer.spec.js — PW-9: Terugkerende deelnemer
  *
- * Scenario: iemand opent een potje-link opnieuw op hetzelfde device.
- * De device_id staat al in localStorage én in de DB — de app moet de
- * deelnemer herkennen en direct het overzicht tonen, zonder deelneemscherm.
- *
- * Dit is het meest voorkomende scenario bij meerdere sessies over meerdere
- * dagen: je hebt gisteren meegedaan, opent de link vandaag opnieuw.
- *
- * PW-9a: terugkerende deelnemer → direct overzicht, geen modal
+ * PW-9a: terugkerende deelnemer → direct overzicht, geen deelneemscherm
  * PW-9b: terugkerende deelnemer → naam zichtbaar in UI
- * PW-9c: terugkerende deelnemer → storten-knop bereikbaar (niet geblokkeerd)
- * PW-9d: ander device, zelfde potje → deelneemscherm getoond (nieuwe deelnemer)
- * PW-9e: terugkerende afgemelde deelnemer → overzicht zichtbaar, knoppen disabled
+ * PW-9c: terugkerende deelnemer → storten-knop bereikbaar
+ * PW-9d: ander device, zelfde potje → deelneemscherm getoond
+ * PW-9e: afgemelde deelnemer → storten-knop disabled (via UI-afmeldflow)
+ * PW-9f: afgemelde deelnemer → URL-hack /storten → actief-guard toont foutmelding
+ *
+ * Bijgewerkt (2026-04-24):
+ * - PW-9e en PW-9f: tweede deelnemer toegevoegd zodat afmelden het potje
+ *   niet sluit (zombie-preventie trigger). Zonder tweede deelnemer sluit
+ *   de DB-trigger het potje direct bij afmelding van de laatste actieve
+ *   deelnemer, waarna de app naar de eindafrekening navigeert.
+ * - PW-9f: afmelden via UI (niet via directe DB-update) — realtime vanuit
+ *   test-client triggert de app-subscriptie niet betrouwbaar.
  */
 
 import { test, expect } from '@playwright/test'
@@ -49,10 +51,7 @@ test.describe('PW-9: Terugkerende deelnemer', () => {
     await setDeviceId(page)
     await page.goto(`/potje/${potje.id}`)
 
-    // Deelneemscherm mag NIET verschijnen
     await expect(page.getByRole('heading', { name: /Meedoen aan/i })).not.toBeVisible({ timeout: 3000 })
-
-    // Overzicht WEL zichtbaar
     await expect(page.getByText('Welkom, Terugkomer', { exact: true })).toBeVisible({ timeout: 8000 })
   })
 
@@ -61,8 +60,6 @@ test.describe('PW-9: Terugkerende deelnemer', () => {
     await page.goto(`/potje/${potje.id}`)
 
     await expect(page.getByText('Welkom, Terugkomer', { exact: true })).toBeVisible({ timeout: 8000 })
-
-    // Naam met (jij)-suffix staat in de deelnemerstabel
     await expect(page.getByText(/Terugkomer.*jij|jij.*Terugkomer/i)).toBeVisible()
   })
 
@@ -81,48 +78,67 @@ test.describe('PW-9: Terugkerende deelnemer', () => {
   })
 
   test('PW-9d: ander device, zelfde potje → deelneemscherm getoond', async ({ page }) => {
-    // Nieuw device_id — dit device kent het potje niet
     const anderDeviceId = nieuweTestDeviceId()
     await page.goto('/')
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', anderDeviceId])
 
     await page.goto(`/potje/${potje.id}`)
 
-    // Deelneemscherm MOET verschijnen voor het nieuwe device
     await expect(page.getByRole('heading', { name: /Meedoen aan/i })).toBeVisible({ timeout: 8000 })
   })
 
-  test('PW-9e: terugkerende afgemelde deelnemer → overzicht zichtbaar, storten-knop afwezig of geblokkeerd', async ({ page }) => {
-    // Meld de deelnemer af via de DB
-    await supabase
-      .from('deelnemers')
-      .update({ actief: false, afgemeld_op: new Date().toISOString() })
-      .eq('id', deelnemer.id)
+  test('PW-9e: afgemelde deelnemer → storten-knop disabled (via UI-afmeldflow)', async ({ page }) => {
+    // Voeg een tweede deelnemer toe zodat afmelden het potje niet sluit.
+    // Zonder tweede deelnemer triggert de zombie-preventie DB-trigger en
+    // navigeert de app naar de eindafrekening in plaats van het overzicht.
+    const andereDeviceId = nieuweTestDeviceId()
+    const tweedeDeelnemer = await maakDeelnemer(supabase, potje.id, 'Medewerker', andereDeviceId)
+    await maakTransactie(potje.id, tweedeDeelnemer.id, 'storting', 10.00, andereDeviceId)
 
     await setDeviceId(page)
     await page.goto(`/potje/${potje.id}`)
-
-    // Overzicht WEL zichtbaar (afgemelde deelnemers zien het overzicht nog)
     await expect(page.getByText('Welkom, Terugkomer', { exact: true })).toBeVisible({ timeout: 8000 })
 
-    // Storten-knop is afwezig of leidt niet naar het stortenscherm.
-    // De app verbergt de knop voor afgemelde deelnemers (ikBenActief = false).
-    // Als de knop toch zichtbaar is, mag navigeren naar /storten niet tot een
-    // werkend formulier leiden.
-    const stortenKnop = page.getByRole('button', { name: /In pot storten/i })
-    const knopZichtbaar = await stortenKnop.isVisible({ timeout: 2000 }).catch(() => false)
-    if (knopZichtbaar) {
-      // Knop zichtbaar → klik erop en verwacht dat storten geblokkeerd wordt
-      await stortenKnop.click()
-      // Na klik: ofwel op stortenpagina maar formulier uitgeschakeld,
-      // ofwel geen navigatie
-      await page.waitForTimeout(1000)
-      const url = page.url()
-      if (url.includes('/storten')) {
-        // Storten-knop op de stortenpagina zelf moet disabled zijn
-        await expect(page.getByRole('button', { name: 'Storten →' })).toBeDisabled()
-      }
-    }
-    // Knop afwezig = correct gedrag, test slaagt
+    // Afmelden via de UI — de app doet de DB-update, React-state wordt direct bijgewerkt
+    await page.getByRole('button', { name: /Jezelf afmelden/i }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('button', { name: /Ja, meld me af/i }).click()
+
+    // Wacht op de afgemeld-badge in de header-kaart (specifieke selector)
+    await expect(page.locator('.badge.badge-afgemeld').first()).toBeVisible({ timeout: 8000 })
+
+    // Storten-knop is nu disabled
+    await expect(page.getByRole('button', { name: /In pot storten/i })).toBeDisabled()
+  })
+
+  test('PW-9f: afgemelde deelnemer → URL-hack /storten → actief-guard toont foutmelding', async ({ page }) => {
+    // Tweede deelnemer zodat afmelden het potje niet sluit
+    const andereDeviceId = nieuweTestDeviceId()
+    const tweedeDeelnemer = await maakDeelnemer(supabase, potje.id, 'Medewerker', andereDeviceId)
+    await maakTransactie(potje.id, tweedeDeelnemer.id, 'storting', 10.00, andereDeviceId)
+
+    await setDeviceId(page)
+    await page.goto(`/potje/${potje.id}`)
+    await expect(page.getByText('Welkom, Terugkomer', { exact: true })).toBeVisible({ timeout: 8000 })
+
+    // Afmelden via UI — betrouwbaarder dan directe DB-update voor realtime
+    await page.getByRole('button', { name: /Jezelf afmelden/i }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('button', { name: /Ja, meld me af/i }).click()
+
+    // Wacht op afgemeld-staat
+    await expect(page.locator('.badge.badge-afgemeld').first()).toBeVisible({ timeout: 8000 })
+
+    // Navigeer direct naar stortenpagina (URL-hack)
+    await page.goto(`/potje/${potje.id}/storten`)
+    await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible()
+
+    // Kies bedrag en probeer te storten
+    await page.getByRole('button', { name: '€ 10,00', exact: true }).click()
+    await page.getByRole('button', { name: /storten →/i }).click()
+
+    // Actief-guard toont foutmelding — geen navigatie
+    await expect(page.getByRole('alert')).toContainText('afgemeld')
+    await expect(page).toHaveURL(new RegExp(`/storten$`))
   })
 })
