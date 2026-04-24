@@ -4,7 +4,6 @@ import { supabase } from '../supabaseClient'
 import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
 import { metTimeout } from '../utils/requestTimeout'
-import { berekenSaldi } from '../utils/berekenSaldi'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulierBuffer'
 import { beperkDecimalen } from '../utils/valideer'
@@ -19,9 +18,6 @@ const SNELBEDRAGEN = [5, 10, 20, 50]
  * B5: aangeroepen op module-niveau (buiten de component) zodat de waarde
  * beschikbaar is vóór de eerste render. laadFormulier() wist de buffer
  * direct na lezen — het aanbod is eenmalig per paginalaad.
- *
- * Wordt één keer per module-evaluatie aangeroepen; bij SPA-navigatie
- * terug naar dit scherm evalueert React Router de module opnieuw.
  */
 function leesEnWisBuffer(potjeId) {
   if (!potjeId) return { bedrag: '', actief: false }
@@ -39,8 +35,6 @@ function PaginaStorten() {
   const { potje, deelnemers, transacties, deelnemer, laden, fout } = usePotje(id)
 
   // B5: buffer één keer uitlezen via useState lazy initializer.
-  // De initializer wordt alleen bij mount aangeroepen, niet bij re-renders.
-  // leesEnWisBuffer() wist de buffer direct — eenmalig aanbod.
   const [bufferInit] = useState(() => leesEnWisBuffer(id))
 
   const [gekozenBedrag, setGekozenBedrag] = useState(null)
@@ -48,17 +42,17 @@ function PaginaStorten() {
   const [vrijeInvoerActief, setVrijeInvoerActief] = useState(bufferInit.actief)
   const [invoerFout, setInvoerFout] = useState('')
   const [bezig, setBezig] = useState(false)
+  const [geslaagd, setGeslaagd] = useState(false)
   const [bufferHersteld, setBufferHersteld] = useState(bufferInit.actief)
   const vrijeInvoerRef = useRef(null)
 
-  // Dubbele-submit-guard (fix dubbelstorten 2026-04-13)
+  // Dubbele-submit-guard
   const bezigRef = useRef(false)
 
   // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
 
   const MAX = MAX_BEDRAG
-  // SEC-4 fix (2026-04-16): STANDAARD_VALUTA uit constants.js i.p.v. hardcoded 'EUR'
   const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
   useEffect(() => {
@@ -134,27 +128,20 @@ function PaginaStorten() {
         .insert({ potje_id: id, deelnemer_id: deelnemerId, type: 'storting', bedrag: effectiefBedrag, idempotency_key: idempotencyKey }))
       if (error) throw error
 
-      // B5: submit geslaagd — verwijder eventuele buffer
       wisFormulier(`digipot:storten:${id}`)
 
-      navigate(`/potje/${id}`, {
-        state: {
-          toast: {
-            bericht: `Storting van ${formatBedrag(effectiefBedrag, valuta)} geregistreerd.`,
-            type: 'ok',
-          },
-        },
-      })
+      // Inline successtate: toon bevestiging 1,2s, navigeer dan automatisch
+      setGeslaagd(true)
+      setTimeout(() => {
+        navigate(`/potje/${id}`)
+      }, 1200)
     } catch (e) {
       bezigRef.current = false
       const foutmelding = logFout(e, { component: 'PaginaStorten', actie: 'storten' })
-      // B5: bij timeout of netwerkfout het bedrag bewaren zodat de gebruiker
-      // het niet opnieuw hoeft in te voeren na verversen of terugnavigeren
       if (e.message?.includes('REQUEST_TIMEOUT') || e.message?.includes('fetch') || e.message?.includes('NetworkError')) {
         slaagFormulierOp(`digipot:storten:${id}`, { bedrag: effectiefBedrag })
       }
       setInvoerFout(foutmelding)
-    } finally {
       setBezig(false)
     }
   }
@@ -187,9 +174,6 @@ function PaginaStorten() {
     </div>
   )
 
-  const mijnSaldi = berekenSaldi(deelnemers, transacties).deelnemersSaldi.find(s => s.id === deelnemer?.id)
-  const reedGestort = mijnSaldi?.gestort ?? 0
-
   return (
     <div className="pagina">
 
@@ -198,7 +182,7 @@ function PaginaStorten() {
           <button
             onClick={() => navigate(`/potje/${id}`)}
             className="knop-icoon"
-            style={{ fontSize: '1.25rem', padding: '4px 0' }}
+            style={{ fontSize: '1.25rem', padding: '4px 0', minHeight: '44px', minWidth: '44px' }}
             aria-label="Terug naar overzicht"
           >
             {'\u2190'}
@@ -206,7 +190,7 @@ function PaginaStorten() {
           <h1 className="titel mb-0">{'\ud83d\udcb0'} Storten</h1>
         </div>
         <p className="subtitel subtitel-ingesprongen">
-          {potje?.naam} {'\u00b7'} {deelnemer?.naam}
+          {potje?.naam}
         </p>
       </div>
 
@@ -215,14 +199,6 @@ function PaginaStorten() {
         <div className="kaart herstel-melding" role="status">
           <p className="herstel-melding__tekst">
             🔄 Je vorige bedrag is hersteld. Controleer het en probeer opnieuw te storten.
-          </p>
-        </div>
-      )}
-
-      {reedGestort > 0 && (
-        <div className="kaart storten-al-gestort">
-          <p className="storten-al-gestort__tekst">
-            Je hebt tot nu toe <strong>{formatBedrag(reedGestort, valuta)}</strong> ingelegd.
           </p>
         </div>
       )}
@@ -277,7 +253,6 @@ function PaginaStorten() {
               aria-describedby={invoerFout && vrijeInvoerActief ? 'vrij-bedrag-fout' : undefined}
               aria-invalid={invoerFout && vrijeInvoerActief ? 'true' : undefined}
             />
-
           </div>
         )}
 
@@ -293,31 +268,26 @@ function PaginaStorten() {
       </div>
 
       <div className="kaart">
-        {bedragGeldig && (
-          <div className="storten-preview">
-            <span className="storten-preview__label">Jouw storting</span>
-            <span className="storten-preview__bedrag">
-              {formatBedrag(effectiefBedrag, valuta)}
-            </span>
-          </div>
-        )}
-
-        <div className="modal-knoppen">
-          <button type="button" className="knop knop-secundair flex-1" onClick={() => navigate(`/potje/${id}`)}>
-            Annuleren
-          </button>
+        <div className="modal-knoppen--gestapeld">
           <button
             type="button"
-            className="knop knop-primair flex-1"
+            className={`knop ${geslaagd ? 'knop-primair' : bedragGeldig ? 'knop-primair' : 'knop-bevestig-inactief'}`}
             onClick={handleStorten}
-            disabled={bezig || !bedragGeldig}
+            disabled={bezig || geslaagd}
           >
-            {bezig ? 'Bezig...' : bedragGeldig ? `${formatBedrag(effectiefBedrag, valuta)} storten →` : 'Storten →'}
+            {geslaagd
+              ? `✓ ${formatBedrag(effectiefBedrag, valuta)} gestort`
+              : bezig
+                ? 'Bezig...'
+                : bedragGeldig
+                  ? `${formatBedrag(effectiefBedrag, valuta)} storten →`
+                  : 'Storten →'}
+          </button>
+          <button type="button" className="knop knop-sheet-annuleer" onClick={() => navigate(`/potje/${id}`)}>
+            Annuleren
           </button>
         </div>
       </div>
-
-
 
     </div>
   )

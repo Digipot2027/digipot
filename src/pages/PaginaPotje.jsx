@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { usePotje } from '../hooks/usePotje'
 import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
@@ -19,7 +19,6 @@ const TOAST_DUUR_KORT  = 3000
 function PaginaPotje() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
 
   const {
     potje,
@@ -48,15 +47,8 @@ function PaginaPotje() {
     toastTimerRef.current = setTimeout(() => setToast(null), duur)
   }, [])
 
-  useEffect(() => {
-    if (location.state?.toast) {
-      const { bericht, type } = location.state.toast
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      toonToast(bericht, type)
-      navigate(location.pathname, { replace: true, state: {} })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // State-toast verwijderd (2026-04-24): stortenscherm gebruikt inline successtate.
+  // Overige navigaties (bijv. vanuit andere schermen) gebruiken geen state-toast meer.
 
   const vorigeOnline = useRef(online)
   useEffect(() => {

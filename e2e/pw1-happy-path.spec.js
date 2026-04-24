@@ -1,14 +1,11 @@
 /**
  * e2e/pw1-happy-path.spec.js — PW-1: Happy path storten
  *
- * Fix t.o.v. v2:
- * - Toast-timing: de succesvol-toast verschijnt vlak na navigate() en
- *   verdwijnt na TOAST_DUUR_KORT (3000ms). wachtOpToastMetTekst() begon
- *   pas te zoeken nádat de URL-check al klaars was — te laat.
- *   Oplossing: eerst wachten op de URL-redirect, dan meteen daarna
- *   de toast afvangen met een ruimere timeout van 4000ms.
- *   Als de toast al verdwenen is voordat we kijken, controleren we
- *   de transactie direct in de UI (saldo zichtbaar in de tabel).
+ * Bijgewerkt (2026-04-24):
+ * - PW-1c: knop is nu altijd enabled; zonder bedrag volgt inline foutmelding
+ *   i.p.v. disabled-staat (UX-review 2026-04-24).
+ * - Commentaar over state-toast verwijderd — toast bestaat niet meer op
+ *   stortenscherm; succescheck via URL-redirect + saldo in tabel.
  */
 
 import { test, expect } from '@playwright/test'
@@ -51,11 +48,10 @@ test.describe('PW-1: Happy path storten', () => {
 
     await page.getByRole('button', { name: /storten →/i }).click()
 
-    // Wacht op redirect naar overzicht
+    // Wacht op redirect naar overzicht (inline successtate 1,2s, daarna navigate)
     await expect(page).toHaveURL(new RegExp(`/potje/${potje.id}$`), { timeout: 8000 })
 
     // Primaire check: storting is verwerkt — saldo zichtbaar in de tabel.
-    // Dit is betrouwbaarder dan toast-timing (toast verdwijnt na 3s).
     await expect(page.getByRole('cell', { name: '€ 10,00' })).toBeVisible({ timeout: 6000 })
   })
 
@@ -72,7 +68,7 @@ test.describe('PW-1: Happy path storten', () => {
     await page.getByRole('button', { name: /Ander bedrag invoeren/ }).click()
     await page.getByLabel(/Ander bedrag/).fill('7,50')
 
-    await page.getByRole('button', { name: 'Storten →' }).click()
+    await page.getByRole('button', { name: /storten →/i }).click()
 
     await expect(page).toHaveURL(new RegExp(`/potje/${potje.id}$`), { timeout: 8000 })
 
@@ -80,7 +76,7 @@ test.describe('PW-1: Happy path storten', () => {
     await expect(page.getByRole('cell', { name: '€ 7,50' })).toBeVisible({ timeout: 6000 })
   })
 
-  test('storten zonder bedrag → knop disabled, geen navigatie', async ({ page }) => {
+  test('storten zonder bedrag → inline foutmelding, geen navigatie', async ({ page }) => {
     await page.goto('/')
     await page.evaluate(
       ([key, id]) => localStorage.setItem(key, id),
@@ -90,7 +86,9 @@ test.describe('PW-1: Happy path storten', () => {
     await page.goto(`/potje/${potje.id}/storten`)
     await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible()
 
-    await expect(page.getByRole('button', { name: /storten/i }).first()).toBeDisabled()
+    // Knop is altijd enabled — klikken zonder bedrag toont inline foutmelding
+    await page.getByRole('button', { name: /storten/i }).first().click()
+    await expect(page.getByRole('alert')).toContainText('Kies een bedrag')
     await expect(page).toHaveURL(new RegExp(`/storten$`))
   })
 })
