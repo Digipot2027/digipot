@@ -6,7 +6,7 @@ import { logFout } from '../utils/logFout'
 import { metTimeout } from '../utils/requestTimeout'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulierBuffer'
-import { beperkDecimalen } from '../utils/valideer'
+import { beperkDecimalen, valideerBedragRealtime } from '../utils/valideer'
 import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
 
 // Standaardbedragen — primaire keuzemethode
@@ -34,7 +34,6 @@ function PaginaStorten() {
 
   const { potje, deelnemer, laden, fout } = usePotje(id)
 
-  // B5: buffer één keer uitlezen via useState lazy initializer.
   const [bufferInit] = useState(() => leesEnWisBuffer(id))
 
   const [gekozenBedrag, setGekozenBedrag] = useState(null)
@@ -46,10 +45,8 @@ function PaginaStorten() {
   const [bufferHersteld, setBufferHersteld] = useState(bufferInit.actief)
   const vrijeInvoerRef = useRef(null)
 
-  // Dubbele-submit-guard
   const bezigRef = useRef(false)
 
-  // WCAG 2.4.2: unieke paginatitel
   useEffect(() => { document.title = 'Storten — Digipot' }, [])
 
   const MAX = MAX_BEDRAG
@@ -86,10 +83,14 @@ function PaginaStorten() {
   }
 
   function handleVrijeInvoerWijziging(e) {
-    setVrijeInvoer(beperkDecimalen(e.target.value))
+    const nieuw = beperkDecimalen(e.target.value)
+    setVrijeInvoer(nieuw)
     setGekozenBedrag(null)
-    setInvoerFout('')
     setBufferHersteld(false)
+
+    // Realtime MAX-validatie: toon fout zodra bedrag boven €999,99 uitkomt
+    const realtimeFout = valideerBedragRealtime(nieuw, MAX)
+    setInvoerFout(realtimeFout ?? '')
   }
 
   async function handleStorten() {
@@ -136,7 +137,6 @@ function PaginaStorten() {
 
       wisFormulier(`digipot:storten:${id}`)
 
-      // Inline successtate: toon bevestiging 1,2s, navigeer dan automatisch
       setGeslaagd(true)
       setTimeout(() => {
         bezigRef.current = false
@@ -201,7 +201,6 @@ function PaginaStorten() {
         </p>
       </div>
 
-      {/* B5: melding dat het bedrag is hersteld na een eerdere mislukte poging */}
       {bufferHersteld && (
         <div className="kaart herstel-melding" role="status">
           <p className="herstel-melding__tekst">
@@ -240,7 +239,7 @@ function PaginaStorten() {
             className="knop knop-secundair text-sm"
             onClick={handleVrijeInvoerToggle}
           >
-            {'\u270f\ufe0f'} Ander bedrag invoeren
+            Ander bedrag
           </button>
         ) : (
           <div className="veld mb-0">
