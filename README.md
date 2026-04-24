@@ -42,6 +42,33 @@ npm run lint            # ESLint
 - `docs/FO.md` — Functioneel Ontwerp (gebruikersflows, schermen, validaties)
 - `docs/TO.md` — Technisch Ontwerp (architectuur, datamodel, security, testen)
 
+## Git hooks (eenmalige installatie)
+
+Dit project heeft twee git hooks die lokaal geïnstalleerd moeten worden:
+
+```bash
+cp scripts/pre-commit-hook.sh .git/hooks/pre-commit
+cp scripts/pre-push-hook.sh .git/hooks/pre-push
+chmod +x .git/hooks/pre-commit .git/hooks/pre-push
+```
+
+**pre-commit** — toont alle gewijzigde maar niet-gestagede bestanden vóór elke commit. Blokkeert niet, maar waarschuwt als je iets bent vergeten te stagen.
+
+**pre-push** — blokkeert een push naar `main` als lint, unit tests of e2e-tests niet recent en groen zijn.
+
+### Commit workflow
+
+Vóór elke commit:
+
+```bash
+git status                  # zie wat gewijzigd is
+git diff --stat             # zie welke bestanden geraakt zijn
+git add .                   # stage alles, of benoem bestanden expliciet
+git commit -m "..."
+```
+
+Nooit committen zonder eerst `git status` te hebben gezien — zo voorkom je dat gewijzigde bestanden achterblijven.
+
 ## Ontwikkelworkflow
 
 Dit project gebruikt twee vaste branches:
