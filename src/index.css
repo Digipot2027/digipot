@@ -995,6 +995,82 @@ tr[role="button"]:focus-visible,
   flex-direction: column;
   gap: 8px;
 }
+
+/* PaginaOverzicht — "Vrienden uitnodigen" dashed-border knop */
+.knop-uitnodigen {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem;
+  border: 1.5px dashed var(--grijs-400);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--grijs-600);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.knop-uitnodigen:hover {
+  border-color: var(--grijs-600);
+  color: var(--grijs-900);
+}
+.knop-uitnodigen:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: 2px;
+}
+
+/* PaginaOverzicht — action-list voor Afmelden en Pot sluiten */
+.actie-lijst {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid var(--grijs-200);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.actie-lijst__rij {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--wit);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-height: 52px;
+  transition: background 0.12s;
+}
+.actie-lijst__rij:hover { background: var(--grijs-50); }
+.actie-lijst__rij:disabled { opacity: 0.45; cursor: not-allowed; }
+.actie-lijst__rij:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: -2px;
+}
+.actie-lijst__rij--uitgeschakeld { opacity: 0.6; }
+.actie-lijst__rij--gevaar .actie-lijst__label { color: var(--rood); }
+.actie-lijst__rij--gevaar .actie-lijst__icoon { color: var(--rood); }
+.actie-lijst__rij-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.actie-lijst__icoon { color: var(--grijs-600); flex-shrink: 0; }
+.actie-lijst__label { font-size: 0.9375rem; font-weight: 500; color: var(--grijs-900); }
+.actie-lijst__chevron { color: var(--grijs-400); flex-shrink: 0; }
+.actie-lijst__scheiding { height: 1px; background: var(--grijs-200); }
+.actie-lijst__hint {
+  padding: 0 4px;
+  margin-top: -4px;
+}
+.actie-lijst__helptekst {
+  margin-top: 4px;
+  text-align: center;
+}
 /* C1: klassen voor inline stijlen in PaginaOverzicht en ModalDeelnemen */
 .knop-in-grid      { min-width: 0; }                        /* grid-2 knoppen zonder overflow */
 .knop-beheer       { min-width: 0; font-size: 0.85rem; }    /* afmeld/sluit-knoppen in Beheer */

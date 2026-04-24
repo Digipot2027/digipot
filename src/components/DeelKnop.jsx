@@ -50,6 +50,8 @@ function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
     <button
       className={variant === 'tekstlink'
         ? `deelknop-tekstlink${className ? ' ' + className : ''}`
+        : variant === 'uitnodigen'
+        ? `knop-uitnodigen${className ? ' ' + className : ''}`
         : `knop knop-${variant}${className ? ' ' + className : ''}`
       }
       onClick={handleDelen}
