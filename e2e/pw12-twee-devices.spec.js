@@ -12,6 +12,9 @@
  * PW-12b: device A stort → device B ziet saldo via realtime
  * PW-12c: device A en B proberen zelfde naam → tweede krijgt foutmelding
  * PW-12d: device A meldt zich af → device B ziet de afmelding
+ *
+ * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
+ * Nieuwe anchor: tabelcel met naam "(jij)".
  */
 
 import { test, expect } from '@playwright/test'
@@ -47,7 +50,10 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceA])
     await page.goto(`/potje/${potje.id}`)
 
-    await expect(page.getByText('Welkom, Alice', { exact: true })).toBeVisible({ timeout: 8000 })
+    // Anchor: tabelcel met "(jij)" — vervangt "Welkom, Alice"
+    await expect(
+      page.getByRole('cell', { name: /Alice.*jij|jij.*Alice/i })
+    ).toBeVisible({ timeout: 8000 })
 
     // Bob staat ook in de tabel
     await expect(page.getByRole('cell', { name: /Bob/i })).toBeVisible()
@@ -66,18 +72,21 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
       await pageA.goto('/')
       await pageA.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceA])
       await pageA.goto(`/potje/${potje.id}`)
-      await expect(pageA.getByText('Welkom, Alice', { exact: true })).toBeVisible({ timeout: 8000 })
+      await expect(
+        pageA.getByRole('cell', { name: /Alice.*jij|jij.*Alice/i })
+      ).toBeVisible({ timeout: 8000 })
 
       await pageB.goto('/')
       await pageB.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceB])
       await pageB.goto(`/potje/${potje.id}`)
-      await expect(pageB.getByText('Welkom, Bob', { exact: true })).toBeVisible({ timeout: 8000 })
+      await expect(
+        pageB.getByRole('cell', { name: /Bob.*jij|jij.*Bob/i })
+      ).toBeVisible({ timeout: 8000 })
 
       // Alice doet een betaling
       await maakTransactie(potje.id, deelnemerA.id, 'betaling', 10.00, deviceA)
 
       // Bob's pagina moet via realtime de betaling zien (saldo daalt)
-      // Wacht op een UI-update die de betaling weerspiegelt
       await expect(pageB.getByRole('cell', { name: /€ 10,00/i })).toBeVisible({ timeout: 20000 })
     } finally {
       await contextA.close()
@@ -114,7 +123,9 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
       await pageB.goto('/')
       await pageB.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceB])
       await pageB.goto(`/potje/${potje.id}`)
-      await expect(pageB.getByText('Welkom, Bob', { exact: true })).toBeVisible({ timeout: 8000 })
+      await expect(
+        pageB.getByRole('cell', { name: /Bob.*jij|jij.*Bob/i })
+      ).toBeVisible({ timeout: 8000 })
 
       // Alice meldt zich af via de DB — client met Alice's device_id voor RLS
       const supabaseAlice = maakSupabaseClient(deviceA)
@@ -125,7 +136,6 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
 
       // Bob's pagina moet via realtime de afmelding van Alice zien.
       // De <tr> van Alice krijgt de CSS-klasse deelnemer-rij--afgemeld.
-      // Realtime kan in CI 5-10s nodig hebben om de wijziging te propageren.
       await expect(
         pageB.locator('tr.deelnemer-rij--afgemeld').filter({ hasText: /Alice/i })
       ).toBeVisible({ timeout: 25000 })
