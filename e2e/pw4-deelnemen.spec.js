@@ -47,7 +47,9 @@ test.describe('PW-4: Deelnemen-flow', () => {
       new RegExp(`/potje/${potje.id}/storten`),
       { timeout: 8000 }
     )
-    await expect(page.getByText('Testdeelnemer')).toBeVisible({ timeout: 6000 })
+    // Naam deelnemer is verwijderd uit subtitel (UX-review 2026-04-24).
+    // Check op de pottitel — die blijft wél zichtbaar op het stortenscherm.
+    await expect(page.getByRole('heading', { name: /Storten/i })).toBeVisible({ timeout: 6000 })
   })
 
   test('PW-4b: lege naam → Meedoen-knop is disabled', async ({ page }) => {
