@@ -118,20 +118,34 @@ describe('beperkDecimalen — BD-11 t/m BD-15: randgevallen', () => {
 })
 
 describe('beperkDecimalen — BD-16 t/m BD-18: speciale invoerpatronen', () => {
-  it('BD-16: negatief getal met 3 decimalen → afgekapt tot 2', () => {
-    expect(beperkDecimalen('-5.123')).toBe('-5.12')
+  it('BD-16: minteken wordt gefilterd — negatieve bedragen zijn niet toegestaan in het veld', () => {
+    // Het minteken is geen cijfer, komma of punt en wordt gefilterd
+    expect(beperkDecimalen('-5.123')).toBe('5.12')
   })
 
-  it('BD-17: twee punten (ongeldig getal) → slice op het eerste scheidingsteken, 2 chars erna', () => {
-    // '5..3': eerste punt op index 1 → slice(0, 4) = '5..3'
-    // De tweede punt telt mee als één van de 2 toegestane posities na het scheidingsteken.
-    // Dit is consistent gedrag; parseBedrag() levert NaN op, wat valideerTransactieBedrag() afvangt.
+  it('BD-17: twee punten (ongeldig getal) → slice op het eerste scheidingsteken', () => {
+    // '5..3': eerste punt op index 1 → slice(0, 4) = '5..3' (punt telt mee in 2 posities)
     expect(beperkDecimalen('5..3')).toBe('5..3')
   })
 
   it('BD-18: komma daarna punt → afgekapt op komma (het eerste scheidingsteken)', () => {
-    // Gebruiker typt "5,123.45" — eerste scheidingsteken is komma
     expect(beperkDecimalen('5,123.45')).toBe('5,12')
+  })
+
+  it('BD-19: letters worden gefilterd — alleen cijfers, komma en punt blijven over', () => {
+    expect(beperkDecimalen('abc')).toBe('')
+  })
+
+  it('BD-20: mix van letters en cijfers → letters eruit, cijfers blijven', () => {
+    expect(beperkDecimalen('12a34')).toBe('1234')
+  })
+
+  it('BD-21: spatie wordt gefilterd', () => {
+    expect(beperkDecimalen('12 34')).toBe('1234')
+  })
+
+  it('BD-22: letters na decimaalteken worden gefilterd', () => {
+    expect(beperkDecimalen('12,ab')).toBe('12,')
   })
 })
 

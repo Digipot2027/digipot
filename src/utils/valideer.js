@@ -32,11 +32,13 @@
  */
 export function beperkDecimalen(waarde) {
   const s = String(waarde ?? '')
+  // Verwijder alle tekens die geen cijfer, komma of punt zijn
+  const gefilterd = s.replace(/[^0-9,.]/g, '')
   // Zoek het eerste komma- of puntscheidingsteken
-  const scheidingsIndex = s.search(/[,.]/);
-  if (scheidingsIndex === -1) return s
+  const scheidingsIndex = gefilterd.search(/[,.]/)
+  if (scheidingsIndex === -1) return gefilterd
   // Alles vóór het scheidingsteken + het scheidingsteken zelf + max 2 tekens erna
-  return s.slice(0, scheidingsIndex + 3)
+  return gefilterd.slice(0, scheidingsIndex + 3)
 }
 
 /**
@@ -120,9 +122,15 @@ export function valideerDeelnemerNaam(naam, deelnemers, { maxNaam = 30, maxDeeln
 export function valideerBedragRealtime(invoer, max = 999.99) {
   const s = String(invoer ?? '').trim()
   if (!s) return null
+
+  // Spaties of letters zijn nooit een geldig bedrag
+  // Uitzondering: een enkel decimaalteken (, of .) is nog-in-aantocht
+  if (s === ',' || s === '.') return null
+
   const num = Number(s.replace(',', '.'))
-  if (isNaN(num)) return null
-  if (num > max) return 'Het maximale bedrag per storting is €999,99.'
+  if (isNaN(num)) return 'Voer alleen cijfers in.'
+
+  if (num > max) return 'Het maximale bedrag per storting is \u20ac999,99.'
   return null
 }
 

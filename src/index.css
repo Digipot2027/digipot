@@ -916,10 +916,10 @@ tr[role="button"]:focus-visible,
 .snelkeuze-knop {
   padding: 16px 12px;
   border-radius: 10px;
-  border: 1.5px solid var(--grijs-200);
-  background: var(--grijs-50);
-  color: var(--grijs-900);
-  font-weight: 500;
+  border: 1.5px solid #bbf7d0;
+  background: var(--groen-licht);
+  color: var(--groen-700);
+  font-weight: 600;
   font-size: 1.125rem;
   cursor: pointer;
   transition: all 0.15s;
@@ -928,8 +928,8 @@ tr[role="button"]:focus-visible,
 }
 .snelkeuze-knop--actief {
   border: 2px solid var(--groen);
-  background: var(--groen-licht);
-  color: var(--groen);
+  background: var(--groen);
+  color: var(--wit);
   font-weight: 700;
 }
 .storten-preview {
