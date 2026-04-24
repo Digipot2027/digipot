@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 6.5
-**Datum:** 2026-04-22
+**Versie:** 6.8
+**Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -337,6 +337,7 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel na Supabase-downtime:** `src/utils/formulierBuffer.js` toegevoegd (`slaagFormulierOp`, `laadFormulier`, `wisFormulier`) — sessionStorage best-effort buffer. `PaginaStorten` bewaart ingevoerd bedrag bij REQUEST_TIMEOUT/netwerkfout en toont herstelbanner bij terugkeer. `ModalTransactie` krijgt prop `potjeId` (default `null`); buffer ook actief bij betalingen. `PaginaPotje` geeft `potjeId={id}` door. Buffer gewist na succesvolle submit. `formulierBuffer.test.js` toegevoegd (11 tests). Testcount: 815. §24 openstaande items bijgewerkt. | Technische schuld B5: bij timeout ging ingevulde data verloren zonder hersteloptie |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Technische schuld B4 en C1 afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm:** pottitel ellipsis, DeelKnop als tekstlink, helptekst op juiste plek, ademruimte Beheer. | UX-verbeteringen na screenshot-review |
+| 6.8 | 2026-04-24 | **UX stortenscherm:** `PaginaStorten.jsx` — naam deelnemer uit subtitel; gestort-banner verwijderd; preview-kaart verwijderd; knop altijd enabled + inline foutmelding bij klikken zonder bedrag; `geslaagd`-state toegevoegd voor inline successtate ("✓ €X,XX gestort", 1,2s timeout, daarna `navigate`); `setBezig(false)` alleen nog in catch (niet finally, want bij succes navigeert de component weg). `PaginaPotje.jsx` — `useLocation`-import en state-toast-handler verwijderd; `location`-variabele verwijderd. Terminologie: 'inleggen' → 'storten' uniform in UI, FO, TO. E2e PW-1 selector bijgewerkt (knoptekst zonder preview). | UX-review 2026-04-24 |
 | 6.7 | 2026-04-23 | **Audit 2026-04-23 — drie bevindingen opgelost:** (#1) `usePotje.js` partial failure commentaar verduidelijkt — `Promise.all` gooit de meest specifieke fout per query zodat `vertaalFout()` een begrijpelijke melding geeft. (#2) `scripts/controleer-patronen.js` uitgebreid met zesde patroon: directe `sessionStorage.`-aanroepen buiten `formulierBuffer.js` zijn nu geblokkeerd in CI. (#3) TO en FO wijzigingslogs bijgewerkt. | Periodieke code-audit 2026-04-23 |
 | 6.6 | 2026-04-23 | **`beperkDecimalen()` toegevoegd aan `valideer.js`:** pure exportfunctie kapt invoerstrings af tot maximaal 2 decimalen (komma én punt als scheidingsteken). Geïmporteerd en aangeroepen in `onChange`-handlers van `ModalTransactie` en `PaginaStorten`. `valideerTransactieBedrag()` uitgebreid met decimalen-check als verdediging in de diepte (na de nul-check, vóór de max-check). Testbestand `beperkDecimalen.test.js` toegevoegd (26 tests: 18 voor `beperkDecimalen`, 8 voor de decimalen-check in `valideerTransactieBedrag`). Testcount: 841. | Gebruikers konden meer dan 2 decimalen invullen in bedragvelden |
 | 6.5 | 2026-04-22 | **Bottom-sheet restyling `ModalAfmelden`:** titel 'Afmelden?' zonder emoji; subtekst `.modal-afmelden-subtekst`; genummerde lijst `.modal-afmelden-lijst` met `.modal-afmelden-lijst__nummer` cirkels; oranje banner `.modal-afmelden-banner` met icoon (los van de lijst, alleen bij `achtergelatenBedrag > 0`); knoppen gestapeld via `.modal-knoppen--gestapeld`; knoptekst 'Ja, meld me af' (`.knop-gevaar`); drag handle, outside-click, swipe-down. `deelnemerNaam`-prop vervallen uit JSX (niet meer zichtbaar in titel). | UX-restyling conform mockup |

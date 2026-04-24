@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 3.5
-**Datum:** 2026-04-22
+**Versie:** 3.8
+**Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -131,6 +131,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 3.8 | 2026-04-24 | **UX stortenscherm:** naam deelnemer verwijderd uit subtitel (alleen pottitel blijft); gestort-banner verwijderd; preview-kaart verwijderd; knop altijd enabled (bij klikken zonder bedrag: inline foutmelding); inline successtate op knop (`✓ €X,XX gestort`, 1,2s, daarna automatisch navigeren naar overzicht); state-toast na storten verwijderd. Terminologie geüniformeerd: 'inleggen' vervangen door 'storten' in alle UI, FO en TO. `useLocation` en state-toast-handler verwijderd uit `PaginaPotje.jsx`. | UX-review 2026-04-24 |
 | 3.7 | 2026-04-23 | **Audit 2026-04-23:** `sessionStorage.`-patroon toegevoegd aan `controleer-patronen.js`; partial failure in `usePotje.js` verduidelijkt; UX-wijzigingen stortenscherm (knop toont bedrag, infoblok verwijderd) en modals gedocumenteerd. | Periodieke code-audit 2026-04-23 |
 | 3.6 | 2026-04-23 | **§15 Validaties bijgewerkt — max. 2 decimalen bij bedragvelden:** invoervelden voor geldbedragen (`ModalTransactie`, `PaginaStorten` vrij bedrag) beperken invoer actief tot maximaal 2 decimalen via `beperkDecimalen()` in de `onChange`-handler. Als verdediging in de diepte weigert `valideerTransactieBedrag()` ook programmatisch ingevoerde waarden met meer dan 2 decimalen. | Gebruikers konden meer dan 2 decimalen invullen in bedragvelden, wat niet overeenkomt met een geldig eurobedrag |
 | 3.5 | 2026-04-22 | **§7 Afmelden modal — bottom-sheet restyling:** titel 'Afmelden?' zonder emoji; subtekst 'Dit is onomkeerbaar. Na het afmelden:'; genummerde lijst (1–3, optioneel 4 bij laatste actieve deelnemer); oranje waarschuwingsbanner voor achtergelaten bedrag (los van de lijst); knoppen gestapeld ('Ja, meld me af' rood boven 'Annuleren' wit); drag handle + slide-up + outside-click + swipe-down. | UX-restyling conform mockup |
