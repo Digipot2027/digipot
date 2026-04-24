@@ -34,12 +34,31 @@ describe('valideerBedragRealtime', () => {
       expect(valideerBedragRealtime(undefined)).toBeNull()
     })
 
-    it('niet-numerieke invoer geeft null (gebruiker is nog aan het typen)', () => {
-      expect(valideerBedragRealtime('abc')).toBeNull()
+    it('enkel komma geeft null (gebruiker start decimaalgedeelte)', () => {
+      expect(valideerBedragRealtime(',')).toBeNull()
     })
 
-    it('komma zonder getal geeft null', () => {
-      expect(valideerBedragRealtime(',')).toBeNull()
+    it('enkel punt geeft null (gebruiker start decimaalgedeelte)', () => {
+      expect(valideerBedragRealtime('.')).toBeNull()
+    })
+  })
+
+  describe('letters en ongeldige tekens → foutmelding', () => {
+    it('puur letters geeft foutmelding', () => {
+      expect(valideerBedragRealtime('abc')).toMatch(/cijfers/)
+    })
+
+    it('één letter geeft foutmelding', () => {
+      expect(valideerBedragRealtime('a')).toMatch(/cijfers/)
+    })
+
+    it('mix van letters en cijfers geeft foutmelding', () => {
+      expect(valideerBedragRealtime('12a')).toMatch(/cijfers/)
+    })
+
+    it('spatie gevolgd door cijfer geeft foutmelding', () => {
+      // na trim() is " 1" -> "1" → dat is geldig. Maar " 1 " met interne spatie: trim geeft "1 1" → NaN
+      expect(valideerBedragRealtime('1 1')).toMatch(/cijfers/)
     })
   })
 

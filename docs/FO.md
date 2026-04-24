@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 4.1
+**Versie:** 4.2
 **Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -137,6 +137,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 4.2 | 2026-04-24 | **Traject-3: stortenscherm invoervalidatie + kleur:** letters en spaties worden gefilterd uit bedragveld (verschijnen niet); realtime foutmelding "Voer alleen cijfers in." bij niet-numerieke invoer; snelknoppen herstijld naar lichtgroen in rust, vol groen actief. | Bug: letters konden worden ingevoerd zonder feedback; UX: saai kleurschema |
 | 4.1 | 2026-04-24 | **Tests gesynchroniseerd met traject-2:** UX-01/UX-02 (conditionele helptekst) vervangen door UX-03/04/05 (vaste helptekst altijd aanwezig). E2e PW-5g (uitnodigknop focusbaar), PW-5h (action-list Tab-focus), PW-6e (action-list verticale stapeling op 320px) toegevoegd. | Dekking actueel houden na overzichtscherm redesign |
 | 4.0 | 2026-04-24 | **Traject-2: overzichtscherm redesign:** knopstructuur herschreven — "Vrienden uitnodigen" als dashed-border knop boven het actiegrid; Beheer-sectie omgezet van grid-2 naar action-list (volledige rijen met chevron-pijl) voor "Afmelden" en "Pot sluiten" (rood); helptekst "Iedereen kan het potje afsluiten." altijd zichtbaar (niet conditioneel); DeelKnop tekstlink-variant en "Link kopiëren" verwijderd. | UX-review traject 2 |
 | 3.9 | 2026-04-24 | **Lucide-icoonmigratie:** `lucide-react` toegevoegd als dependency. Alle decoratieve emoji's in UI-componenten vervangen door Lucide SVG-icons. Iconen zijn `aria-hidden="true"`; toegankelijke naam zit op de knop. Kolomnamen deelnemerstafel gewijzigd: "In de pot" → "Gestort", "Betaald" → "Uitgegeven". Welkomsttekst "Welkom, [naam]" verwijderd uit Overzichtscherm. Potbedrag nu direct onder naam als "[bedrag] in de pot". | Consistente icoonset; betere leesbaarheid; UX-review 2026-04-24 |

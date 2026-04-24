@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 7.1
+**Versie:** 7.2
 **Datum:** 2026-04-24
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -313,6 +313,7 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 7.2 | 2026-04-24 | **Traject-3: stortenscherm invoervalidatie + kleur:** `beperkDecimalen()` filtert nu ook niet-cijfer/komma/punt tekens (regex `[^0-9,.]`). `valideerBedragRealtime()`: `isNaN` geeft nu foutmelding "Voer alleen cijfers in." i.p.v. `null`; enkel `,` of `.` geeft nog steeds `null`. CSS: `.snelkeuze-knop` rust = `var(--groen-licht)` + border `#bbf7d0`, actief = `var(--groen)` + witte tekst. `beperkDecimalen.test.js`: BD-16 gecorrigeerd (minteken gefilterd), BD-19/20/21/22 nieuw. `valideerBedragRealtime.test.js`: sectie "letters en ongeldige tekens" nieuw (4 tests). `pw6-responsive.spec.js` PW-6e: y-stacking assert herschreven met expliciete `afmeldenBox.y < sluitBox.y` + 60px marge voor hint-paragraaf. | Bug + UX |
 | 7.1 | 2026-04-24 | **Tests gesynchroniseerd met traject-2:** Unit UX-01/02 verwijderd (conditionele helptekst-logica bestaat niet meer); UX-03/04/05 toegevoegd (vaste helptekst). E2e: PW-5g (`.knop-uitnodigen` focusbaar via `focus()`), PW-5h (action-list `aria-label` bereikbaar via Tab, Chromium only), PW-6e (action-list verticaal gestapeld op 320px, niet buiten viewport). `pw5-keyboard-focus.spec.js` en `pw6-responsive.spec.js` bijgewerkt. | Testdekking actueel na overzichtscherm redesign |
 | 7.0 | 2026-04-24 | **Traject-2: overzichtscherm redesign:** `PaginaOverzicht.jsx` herschreven. Nieuwe `variant="uitnodigen"` op `DeelKnop` voor dashed-border knop boven het actiegrid. Beheer-sectie: van `grid-2` naar `actie-lijst` (BEM) — twee rijen met `ChevronRight`-icon rechts; `aria-label` op beide rijen. Helptekst altijd zichtbaar (`actie-lijst__helptekst`). CSS: `.knop-uitnodigen` (dashed border, hover), `.actie-lijst` en alle BEM-subklassen toegevoegd aan `index.css`. `ChevronRight` geïmporteerd uit `lucide-react`. `DeelKnop.jsx`: `variant="uitnodigen"` afgehandeld als derde classnaam-tak. | UX-review traject 2 |
 | 6.9 | 2026-04-24 | **Lucide-icoonmigratie:** `lucide-react` toegevoegd aan `dependencies` in `package.json`. Alle decoratieve emoji's en de custom instellingen-SVG vervangen door Lucide SVG-icons in alle componenten en pagina's (`DeelKnop`, `DeelnemerDetailSheet`, `ModalAfmelden`, `ModalSluiten`, `PaginaOverzicht`, `PaginaNieuwPotje`, `PaginaEindafrekening`, `PaginaInstellingen`, `PaginaOpenPotjes`, `PaginaGeslotenPotjes`, `PaginaProfiel`, `PaginaStorten`, `PaginaNietGevonden`). Conventies: `aria-hidden="true"` op alle icons; size 16/20/22px; strokeWidth 1.5 decoratief / 2 functioneel. §2 dependency-tabel bijgewerkt. | Consistente, styleerbare icoonset; cross-platform gelijke weergave; emoji's niet styleerbaar via CSS |

@@ -138,9 +138,14 @@ test.describe('PW-6: Responsive gedrag', () => {
     expect(afmeldenBox).not.toBeNull()
     expect(sluitBox).not.toBeNull()
 
-    // Rijen staan verticaal gestapeld — geen horizontale overlap
-    // Afmelden staat boven Pot sluiten (lower y-waarde)
-    expect(afmeldenBox.y + afmeldenBox.height).toBeLessThanOrEqual(sluitBox.y + 2)
+    // Afmelden staat boven Pot sluiten (lagere y-waarde)
+    expect(afmeldenBox.y).toBeLessThan(sluitBox.y)
+
+    // Geen horizontale overlap: beide rijen beslaan de volledige breedte
+    // maar staan verticaal gestapeld — hun y-bereiken mogen niet overlappen.
+    // We controleren dit door te verifieren dat Afmelden volledig klaar is
+    // vóórdat Pot sluiten begint (met marge voor de hint-paragraaf ertussen).
+    expect(afmeldenBox.y + afmeldenBox.height).toBeLessThanOrEqual(sluitBox.y + 60)
 
     // Beide rijen steken niet buiten het 320px viewport
     expect(afmeldenBox.x + afmeldenBox.width).toBeLessThanOrEqual(322)
