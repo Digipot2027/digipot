@@ -114,6 +114,12 @@ function PaginaStorten() {
       return
     }
 
+    if (deelnemer?.actief === false) {
+      bezigRef.current = false
+      setInvoerFout('Je hebt je afgemeld en kunt niet meer storten.')
+      return
+    }
+
     if (potje?.status === 'gesloten') {
       bezigRef.current = false
       setInvoerFout('Dit potje is gesloten.')
@@ -133,6 +139,7 @@ function PaginaStorten() {
       // Inline successtate: toon bevestiging 1,2s, navigeer dan automatisch
       setGeslaagd(true)
       setTimeout(() => {
+        bezigRef.current = false
         navigate(`/potje/${id}`)
       }, 1200)
     } catch (e) {
