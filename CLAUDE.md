@@ -49,6 +49,12 @@ git pull
 - Als eigenaar kun je mergen via "Merge without waiting for requirements (bypass rules)"
 - Deploy naar Cloudflare Pages gebeurt automatisch na merge op `main`
 
+**Branch-naamgeving:** elke feature branch krijgt een unieke naam per traject. Gebruik het patroon `feat/traject-N-korte-omschrijving`, bijvoorbeeld:
+- `feat/traject-3-storten-ux-redesign`
+- `feat/traject-4-venster-regel`
+
+Nooit twee trajecten op dezelfde branch combineren. Na een merge begin je altijd een nieuwe branch.
+
 **Commit-naamgeving:** kort en beschrijvend, in het Nederlands of Engels.
 Voorbeelden: `css: fase 3 — kleine modals`, `fix: RLS race condition in supabaseClient`
 
