@@ -18,6 +18,7 @@ const isCI = !!process.env.CI
 
 export default defineConfig({
   testDir: './e2e',
+  globalTeardown: './e2e/global-teardown.js',
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
