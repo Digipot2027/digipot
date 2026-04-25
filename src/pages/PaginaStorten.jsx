@@ -25,6 +25,17 @@ function leesEnWisBuffer(potjeId) {
   return { bedrag: '', actief: false }
 }
 
+/**
+ * Bepaalt of de invoerwaarde exact 2 decimalen heeft (d.w.z. is afgekapt).
+ * Gebruikt om de statusmelding "maximaal 2 decimalen" te tonen.
+ * Werkt ook als beperkDecimalen() al heeft afgekapt vóór de onChange-handler.
+ */
+function heeftExactTweeDecimalen(waarde) {
+  const scheiding = waarde.search(/[,.]/)
+  if (scheiding === -1) return false
+  return waarde.slice(scheiding + 1).length === 2
+}
+
 function PaginaStorten() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -37,6 +48,7 @@ function PaginaStorten() {
   const [vrijeInvoer, setVrijeInvoer] = useState(bufferInit.bedrag)
   const [vrijeInvoerActief, setVrijeInvoerActief] = useState(bufferInit.actief)
   const [invoerFout, setInvoerFout] = useState('')
+  const [decimaalStatus, setDecimaalStatus] = useState('')
   const [bezig, setBezig] = useState(false)
   const [geslaagd, setGeslaagd] = useState(false)
   const [bufferHersteld, setBufferHersteld] = useState(bufferInit.actief)
@@ -70,6 +82,7 @@ function PaginaStorten() {
     setVrijeInvoer('')
     setVrijeInvoerActief(false)
     setInvoerFout('')
+    setDecimaalStatus('')
     setBufferHersteld(false)
   }
 
@@ -77,13 +90,24 @@ function PaginaStorten() {
     setVrijeInvoerActief(true)
     setGekozenBedrag(null)
     setInvoerFout('')
+    setDecimaalStatus('')
   }
 
   function handleVrijeInvoerWijziging(e) {
-    const nieuw = beperkDecimalen(e.target.value)
+    const ruw = e.target.value
+    const nieuw = beperkDecimalen(ruw)
     setVrijeInvoer(nieuw)
     setGekozenBedrag(null)
     setBufferHersteld(false)
+
+    // Toon statusmelding als de waarde exact 2 decimalen heeft — dit betekent
+    // dat beperkDecimalen() heeft afgekapt (of de gebruiker precies 2 typte).
+    // Werkt ook bij Playwright fill() waarbij ruw === nieuw na afkapping.
+    if (heeftExactTweeDecimalen(nieuw)) {
+      setDecimaalStatus('Bedragen hebben maximaal 2 decimalen.')
+    } else {
+      setDecimaalStatus('')
+    }
 
     const realtimeFout = valideerBedragRealtime(nieuw, MAX)
     setInvoerFout(realtimeFout ?? '')
@@ -257,6 +281,12 @@ function PaginaStorten() {
               aria-describedby={invoerFout && vrijeInvoerActief ? 'vrij-bedrag-fout' : undefined}
               aria-invalid={invoerFout && vrijeInvoerActief ? 'true' : undefined}
             />
+          </div>
+        )}
+
+        {decimaalStatus && vrijeInvoerActief && (
+          <div className="info-tekst mt-2" role="status">
+            {decimaalStatus}
           </div>
         )}
 
