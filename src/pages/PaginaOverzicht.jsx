@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock, ChevronRight } from 'lucide-react'
+import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock, ChevronRight, ChevronLeft } from 'lucide-react'
 import { berekenSaldi, heeftGestort, berekenAchtergelatenBedrag } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { STANDAARD_VALUTA } from '../constants'
@@ -172,7 +172,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                     {afmeldenLaden ? 'Bezig...' : ikBenActief ? 'Afmelden' : 'Afgemeld'}
                   </span>
                 </span>
-                <ChevronRight size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__chevron" />
+                <ChevronLeft size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__chevron" />
               </button>
 
               {ikBenActief && !ikBenGestort && (

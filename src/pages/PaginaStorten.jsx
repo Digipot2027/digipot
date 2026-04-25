@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ArrowUp, RotateCcw } from 'lucide-react'
+import { ChevronLeft, RotateCcw } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
@@ -191,10 +191,7 @@ function PaginaStorten() {
           >
             <ChevronLeft size={22} aria-hidden="true" strokeWidth={2} />
           </button>
-          <h1 className="titel mb-0">
-            <ArrowUp size={20} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
-            Storten
-          </h1>
+          <h1 className="titel mb-0">Storten</h1>
         </div>
         <p className="subtitel subtitel-ingesprongen">
           {potje?.naam}
