@@ -6,6 +6,9 @@
  * - PW-1d: successtate — knop toont '✓ €X,XX gestort' vóór navigatie
  * - PW-1e: realtime foutmelding bij bedrag boven €999,99
  * - State-toast bestaat niet meer op stortenscherm
+ *
+ * Bijgewerkt (2026-04-25):
+ * - PW-1f: statusmelding bij afkapping 3e decimaal
  */
 
 import { test, expect } from '@playwright/test'
@@ -115,8 +118,29 @@ test.describe('PW-1: Happy path storten', () => {
     await page.getByRole('button', { name: /Ander bedrag/ }).click()
     await page.getByLabel(/Ander bedrag/).fill('9999999999')
 
-    // Foutmelding verschijnt direct tijdens typen — zonder klikken op storten
     await expect(page.getByRole('alert')).toContainText('999,99')
     await expect(page).toHaveURL(new RegExp(`/storten$`))
+  })
+
+  test('PW-1f: 3e decimaal wordt afgekapt en statusmelding verschijnt', async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(
+      ([key, id]) => localStorage.setItem(key, id),
+      ['digipot_device_id', deviceId]
+    )
+
+    await page.goto(`/potje/${potje.id}/storten`)
+    await expect(page.getByRole('group', { name: 'Standaardbedragen' })).toBeVisible()
+
+    await page.getByRole('button', { name: /Ander bedrag/ }).click()
+    const invoer = page.getByLabel(/Ander bedrag/)
+
+    await invoer.fill('12,345')
+    await expect(invoer).toHaveValue('12,34')
+    await expect(page.getByRole('status')).toContainText('maximaal 2 decimalen')
+    await expect(page.getByRole('alert')).not.toBeVisible()
+
+    await invoer.fill('12')
+    await expect(page.getByRole('status')).not.toBeVisible()
   })
 })

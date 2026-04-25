@@ -13,6 +13,9 @@
  *   PW-8e: 404 terugknop → navigeert naar home
  *   PW-8f: Potje aanmaken — formulier disabled bij lege naam
  *   PW-8g: Potje aanmaken — succesvol aanmaken navigeert naar potje
+ *
+ * Fix (2026-04-25): PW-8g had geen teardown — potje bleef na de test in de DB staan.
+ * Potje-ID wordt uit de URL gehaald na navigatie en direct verwijderd.
  */
 
 import { test, expect } from '@playwright/test'
@@ -96,6 +99,8 @@ test.describe('PW-8: Potjeslijsten en routing', () => {
   })
 
   test('PW-8g: potje aanmaken — succesvol aanmaken navigeert naar potje', async ({ page }) => {
+    const supabase = maakSupabaseClient()
+
     await page.goto('/')
 
     await page.getByLabel(/Naam van het potje/i).fill('PW-8g Testaanmaak')
@@ -107,5 +112,10 @@ test.describe('PW-8: Potjeslijsten en routing', () => {
 
     // Deelneemscherm verschijnt (nog niet deelnemer van dit potje)
     await expect(page.getByRole('heading', { name: /Meedoen aan PW-8g Testaanmaak/i })).toBeVisible()
+
+    // Teardown: potje-ID uit URL halen en direct verwijderen
+    const url = page.url()
+    const match = url.match(/\/potje\/([0-9a-f-]{36})/)
+    if (match) await verwijderTestPotje(supabase, match[1])
   })
 })
