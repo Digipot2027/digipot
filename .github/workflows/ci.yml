@@ -28,11 +28,6 @@ jobs:
         run: npm run lint
 
       - name: Patroon-check
-        # Controleert op verboden codepatronen die eerder tot productiefouten
-        # hebben geleid (JAVASCRIPT-REACT-6, kritiek-1/2/3).
-        # Blokkerende patronen: localStorage.getItem(DEVICE_ID_KEY) buiten useDeviceId.js
-        # Waarschuwende patronen: .single() buiten INSERT-context, payload.new zonder guard
-        # Voeg nieuwe patronen toe in scripts/controleer-patronen.js.
         run: npm run lint:patronen
 
       - name: Vulnerability scan
@@ -49,6 +44,7 @@ jobs:
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
       - name: Checkout

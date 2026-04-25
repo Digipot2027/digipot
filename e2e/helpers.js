@@ -1,40 +1,53 @@
 /**
  * e2e/helpers.js — Gedeelde hulpfuncties voor Digipot Playwright-tests
+ *
+ * Fase 4 / rate-limit-fix (2026-04-25):
+ * Eén gedeelde auth-sessie via global-setup.js — geen rate limits.
+ *
+ * maakDeelnemer(supabase, potjeId, naam, deviceId, gebruikGedeeldeUser = true)
+ *   Als gebruikGedeeldeUser = true (default): koppelt de gedeelde userId.
+ *   Als gebruikGedeeldeUser = false: maakt een deelnemer zonder user_id (null).
+ *   Dit is nodig voor tests die meerdere deelnemers per potje aanmaken —
+ *   de partial unique index staat maar één deelnemer per userId per potje toe.
  */
 
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
+import { readFileSync } from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, '../.env.local') })
 
-/**
- * Maakt een Supabase-client aan met een specifieke device_id als header.
- * Vereist voor INSERT op transacties — de RLS-policy controleert x-device-id.
- *
- * @param {string} [deviceId] - Optionele device_id voor de x-device-id header.
- *   Geef de device_id van de deelnemer mee die de transactie aanmaakt.
- */
-export function maakSupabaseClient(deviceId) {
-  const url = process.env.VITE_SUPABASE_URL
-  const key = process.env.VITE_SUPABASE_ANON_KEY
-  if (!url || !key) {
-    throw new Error(
-      'VITE_SUPABASE_URL en VITE_SUPABASE_ANON_KEY zijn vereist.\n' +
-      'Controleer je .env.local bestand.'
-    )
-  }
-  return createClient(url, key, deviceId ? {
-    global: { headers: { 'x-device-id': deviceId } },
-  } : undefined)
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+const ANON_KEY     = process.env.VITE_SUPABASE_ANON_KEY
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!SUPABASE_URL || !ANON_KEY) {
+  throw new Error('VITE_SUPABASE_URL en VITE_SUPABASE_ANON_KEY zijn vereist.')
 }
 
-/**
- * Maakt een testpotje aan. Gebruik altijd een [E2E]-prefix in de naam
- * zodat testdata herkenbaar is in het Supabase-dashboard.
- */
+function laadGedeeldeSessie() {
+  try {
+    const data = readFileSync(resolve(__dirname, '.auth/sessie.json'), 'utf-8')
+    return JSON.parse(data)
+  } catch {
+    throw new Error('Gedeelde auth-sessie niet gevonden. Controleer globalSetup in playwright.config.js.')
+  }
+}
+
+export function maakSupabaseClient() {
+  return createClient(SUPABASE_URL, ANON_KEY)
+}
+
+export function maakServiceClient() {
+  if (!SERVICE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY ontbreekt in .env.local.')
+  return createClient(SUPABASE_URL, SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
 export async function maakTestPotje(supabase, naam = '[E2E] Testpotje') {
   const { data, error } = await supabase
     .from('potjes')
@@ -46,34 +59,48 @@ export async function maakTestPotje(supabase, naam = '[E2E] Testpotje') {
 }
 
 /**
- * Voegt een deelnemer toe aan een potje met een specifieke device_id.
- * Die device_id wordt daarna in localStorage van de browser gezet
- * zodat de app de deelnemer herkent.
+ * Maakt een deelnemer aan.
+ *
+ * @param {boolean} gebruikGedeeldeUser
+ *   true (default) — koppelt de gedeelde userId aan de deelnemer.
+ *                    Gebruik dit voor de "hoofd"-deelnemer in een test.
+ *   false          — maakt deelnemer zonder user_id (null).
+ *                    Gebruik dit voor extra/secundaire deelnemers in dezelfde test,
+ *                    om de unique constraint (potje_id, user_id) te omzeilen.
+ *
+ * @returns {{ deelnemer, session, deviceId }}
  */
-export async function maakDeelnemer(supabase, potjeId, naam, deviceId) {
-  const { data, error } = await supabase
+export async function maakDeelnemer(supabase, potjeId, naam, deviceId, gebruikGedeeldeUser = true) {
+  const { session, userId } = laadGedeeldeSessie()
+
+  const service = maakServiceClient()
+  const { data, error } = await service
     .from('deelnemers')
-    .insert({ potje_id: potjeId, naam, device_id: deviceId })
+    .insert({
+      potje_id: potjeId,
+      naam,
+      device_id: deviceId,
+      user_id: gebruikGedeeldeUser ? userId : null,
+    })
     .select()
     .single()
   if (error) throw new Error(`maakDeelnemer mislukt: ${error.message}`)
-  return data
+
+  return { deelnemer: data, session, deviceId }
 }
 
-/**
- * Voegt een transactie toe aan een potje namens een deelnemer.
- * Gebruikt een aparte Supabase-client met de device_id van de deelnemer
- * zodat de RLS-policy (x-device-id check) wordt gepasseerd.
- *
- * @param {string} potjeId
- * @param {string} deelnemerId
- * @param {'storting'|'betaling'} type
- * @param {number} bedrag
- * @param {string} deviceId - device_id van de deelnemer die de transactie aanmaakt
- */
+export async function setAuthInBrowser(page, session) {
+  if (!session) return
+  const storageKey = `sb-${SUPABASE_URL.split('//')[1].split('.')[0]}-auth-token`
+  await page.evaluate(
+    ([key, value]) => localStorage.setItem(key, value),
+    [storageKey, JSON.stringify(session)]
+  )
+}
+
 export async function maakTransactie(potjeId, deelnemerId, type, bedrag, deviceId) {
-  const supabase = maakSupabaseClient(deviceId)
-  const { data, error } = await supabase
+  const service = maakServiceClient()
+  const { data, error } = await service
     .from('transacties')
     .insert({ potje_id: potjeId, deelnemer_id: deelnemerId, type, bedrag })
     .select()
@@ -82,33 +109,17 @@ export async function maakTransactie(potjeId, deelnemerId, type, bedrag, deviceI
   return data
 }
 
-/**
- * Ruimt een testpotje op. Deelnemers en transacties worden via
- * CASCADE automatisch mee verwijderd.
- */
 export async function verwijderTestPotje(supabase, potjeId) {
-  await supabase.from('potjes').delete().eq('id', potjeId)
+  const service = maakServiceClient()
+  await service.from('potjes').delete().eq('id', potjeId)
 }
 
-/**
- * Wacht op een toast die een specifieke substring bevat.
- * Voorkomt dat "Verbinding hersteld." wordt teruggegeven als de
- * gewenste toast nog niet zichtbaar is.
- *
- * @param {import('@playwright/test').Page} page
- * @param {string} verwachteTekst - Substring die de toast moet bevatten
- * @param {number} timeout - maximale wachttijd in ms (default 8000)
- */
 export async function wachtOpToastMetTekst(page, verwachteTekst, timeout = 8000) {
   const toast = page.locator('[role="status"], [role="alert"]').filter({ hasText: verwachteTekst })
   await toast.waitFor({ state: 'visible', timeout })
   return toast.textContent()
 }
 
-/**
- * Wacht op een willekeurige toast (eerste die verschijnt).
- * Gebruik wachtOpToastMetTekst() als je een specifieke toast verwacht.
- */
 export async function wachtOpToast(page, timeout = 6000) {
   const toast = page.locator('[role="status"], [role="alert"]').first()
   await toast.waitFor({ state: 'visible', timeout })

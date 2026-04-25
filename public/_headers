@@ -1,3 +1,11 @@
+# Specifieke regel voor index.html: nooit cachen.
+# Vite genereert content-hashed JS/CSS-bundles (bijv. main-Abc123.js).
+# De browser vindt die bestanden via index.html. Als index.html gecached is,
+# laadt de browser na een deploy de oude HTML → oude bundle-hash → oude code.
+# no-cache dwingt de browser (en Cloudflare) altijd de server te raadplegen.
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /*
   # A13: Content Security Policy
   # Digipot communiceert alleen met Supabase (REST + Realtime WebSocket) en Sentry.

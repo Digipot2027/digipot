@@ -5,7 +5,6 @@ import { logFout } from '../utils/logFout'
 import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi, heeftGestort } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
-import { useDeviceId } from './useDeviceId'
 import { STANDAARD_VALUTA } from '../constants'
 
 /**
@@ -14,38 +13,10 @@ import { STANDAARD_VALUTA } from '../constants'
  * Pure async functies, geen JSX, geen eigen useState — direct unit-testbaar.
  * State-updates lopen via de setters die usePotje teruggaf.
  *
- * Fixes (2026-04-12):
- *   - handleAfmelden: .single() vervangen door .maybeSingle() (kritiek-2).
- *   - handleSluiten: null-guard op deelnemer toegevoegd (kritiek-3).
- *   - handleDeelnemen: deelnemer-ID client-side genereren (audit bevinding 1).
- *   - handleTransactie: null-guard op deelnemer toegevoegd (audit bevinding 2).
- *
- * Fix (2026-04-16 / SEC-3):
- *   - handleUndo: saldocheck afgerond via rond() voor vergelijking met transactie.bedrag.
- *
- * Fix (2026-04-16 / SEC-4):
- *   - valuta fallback gebruikt nu STANDAARD_VALUTA uit constants.js.
- *
- * Fix (2026-04-16 / TECH-3):
- *   - handleAfmelden: heeftGestort() uit berekenSaldi.js i.p.v. inline check.
- *     Eén bron van waarheid voor de afmeld-drempel.
- *
- * Zombie-preventie (2026-04-18):
- *   - handleAfmelden veroorzaakt onrechtstreeks het sluiten van het potje
- *     wanneer dit de laatste actieve deelnemer betreft. De sluiting vindt
- *     plaats in de DB via trigger trg_sluit_potje_bij_laatste_afmelding.
- *     De UI ontvangt de status-wijziging via het realtime abonnement in
- *     usePotje en schakelt automatisch door naar de eindafrekening.
- *     Geen codewijziging in deze hook — alleen gedragsverandering op DB-niveau.
- *
- * Lint-fix (2026-04-21 / eslint-plugin-react-hooks 7.1.1):
- *   - handleUndo vóór handleTransactie gedeclareerd om de
- *     react-hooks/immutability "accessed before declaration" fout op te lossen.
- *
- * Fase 2 (2026-04-25):
- *   - handleDeelnemen: user_id meesturen bij INSERT via supabase.auth.getUser().
- *     user_id is nullable — als getUser() mislukt of geen sessie heeft,
- *     wordt null ingevoerd (overgangsperiode device_id RLS blijft werken).
+ * Fase 4 (2026-04-25): device_id volledig verwijderd uit handleDeelnemen.
+ * Deelnemers worden aangemaakt met alleen user_id (via auth.getUser()).
+ * device_id kolom ontvangt een lege string als DB-default totdat de kolom
+ * in een volgende migratie nullable of verwijderd wordt.
  */
 
 function rond(waarde) {
@@ -67,7 +38,6 @@ export function usePotjeActies({
   setAfmeldenLaden,
 }) {
   const navigate = useNavigate()
-  const deviceId = useDeviceId()
   const valuta = potje?.valuta ?? STANDAARD_VALUTA
 
   // ── handleDeelnemen ──────────────────────────────────────────────────────────
@@ -75,16 +45,11 @@ export function usePotjeActies({
   const handleDeelnemen = useCallback(async (naam) => {
     const nieuweDeelnemerId = crypto.randomUUID()
 
-    // Fase 2: user_id ophalen uit de actieve Supabase auth-sessie.
-    // Als er geen sessie is (overgangsperiode of auth-fout), valt user_id
-    // terug op null — de device_id RLS blijft in Fase 2 nog volledig werken.
-    let userId = null
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      userId = user?.id ?? null
-    } catch {
-      // Niet fataal — null is een geldige waarde in de overgangsperiode
-    }
+    // Haal user_id op uit de actieve auth-sessie.
+    // bootstrapAnonAuth() in supabaseClient.js garandeert dat er altijd
+    // een sessie is — getUser() geeft dus altijd een user terug.
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id ?? null
 
     const { error } = await metTimeout(supabase
       .from('deelnemers')
@@ -92,7 +57,7 @@ export function usePotjeActies({
         id: nieuweDeelnemerId,
         potje_id: potjeId,
         naam,
-        device_id: deviceId,
+        device_id: crypto.randomUUID(), // tijdelijk: kolom is nog NOT NULL
         user_id: userId,
       }))
 
@@ -102,7 +67,6 @@ export function usePotjeActies({
       id: nieuweDeelnemerId,
       potje_id: potjeId,
       naam,
-      device_id: deviceId,
       user_id: userId,
       actief: true,
       aangemaakt_op: new Date().toISOString(),
@@ -110,12 +74,9 @@ export function usePotjeActies({
     })
 
     navigate(`/potje/${potjeId}/storten`)
-  }, [potjeId, deviceId, setDeelnemer, navigate])
+  }, [potjeId, setDeelnemer, navigate])
 
   // ── handleUndo ───────────────────────────────────────────────────────────────
-  // Gedeclareerd vóór handleTransactie zodat handleTransactie ernaar kan
-  // verwijzen in de toast-callback zonder "accessed before declaration" te triggeren
-  // (react-hooks/immutability, eslint-plugin-react-hooks 7.1.1).
 
   const handleUndo = useCallback(async (transactie, deelnemerOverride) => {
     const actiefDeelnemer = deelnemerOverride ?? deelnemer
@@ -127,7 +88,6 @@ export function usePotjeActies({
 
     if (transactie.type === 'storting') {
       const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
-      // SEC-3 fix: rond() beide zijden — Supabase NUMERIC kan residuen geven
       if (rond(huidigSaldo) < rond(Number(transactie.bedrag))) {
         toonToast(
           'Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag.',
@@ -207,7 +167,6 @@ export function usePotjeActies({
     if (!deelnemer) return
 
     const saldi = berekenSaldi(deelnemers, transacties)
-    // TECH-3 fix: heeftGestort() i.p.v. inline check — eén bron van waarheid
     if (!heeftGestort(saldi.deelnemersSaldi, deelnemer.id)) {
       toonToast('Je kunt je pas afmelden als je hebt gestort.', 'fout')
       return

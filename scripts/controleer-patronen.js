@@ -9,31 +9,15 @@
  *   node scripts/controleer-patronen.js        # lokaal
  *   npm run lint:patronen                      # via package.json script
  *
- * EEN PATROON TOEVOEGEN
- *   Voeg een nieuw object toe aan PATRONEN hieronder. Doe dit altijd
- *   wanneer een fix een structureel risico blootlegt dat op meerdere
- *   plekken in de codebase kan voorkomen.
- *
- * STRUCTUUR PER PATROON
- *   patroon       — letterlijke string om naar te grep'en (geen regex)
- *   reden         — uitleg + verwijzing naar de bug/fix
- *   uitzonderingen — paden (relatief t.o.v. repo-root) waar het patroon WEL mag
- *   waarschuwing  — true = meldt maar blokkeert CI niet; false = blokkeert CI
- *
- * NOOT: testbestanden (src/test/) en commentaarregels worden automatisch
- * uitgesloten — die bevatten het patroon als tekst, niet als code.
- *
  * GESCHIEDENIS
  *   2026-04-12 — initieel: drie patronen uit grondige code-audit
- *   2026-04-12 — PaginaNieuwPotje.jsx uitzondering verwijderd voor .single():
- *                .single() is daar verwijderd na hoog-4 fix (audit bevinding 3)
- *   2026-04-13 — vierde patroon toegevoegd: [...prev, payload.new] zonder deduplicatie
- *                root cause UI-dubbelpost (fetch + Realtime-event race condition)
- *   2026-04-16 — vijfde patroon toegevoegd: localStorage. (directe aanroep)
- *                root cause storage-abstractielaag: alle toegang via src/utils/storage.js
- *                eerste patroon bijgewerkt: uitzonderingen verwijderd na migratie
- *   2026-04-23 — zesde patroon toegevoegd: sessionStorage. (directe aanroep)
- *                root cause audit bevinding #3: sessionStorage niet geborgd zoals localStorage
+ *   2026-04-12 — PaginaNieuwPotje.jsx uitzondering verwijderd voor .single()
+ *   2026-04-13 — vierde patroon: [...prev, payload.new] zonder deduplicatie
+ *   2026-04-16 — vijfde patroon: localStorage. (directe aanroep)
+ *   2026-04-23 — zesde patroon: sessionStorage. (directe aanroep)
+ *   2026-04-25 — Fase 4 cleanup: localStorage.getItem(DEVICE_ID_KEY) patroon
+ *                verwijderd — useDeviceId en bootstrapDeviceId zijn verwijderd,
+ *                DEVICE_ID_KEY wordt niet meer gebruikt in applicatiecode.
  */
 
 import { execSync } from 'child_process'
@@ -44,26 +28,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 const PATRONEN = [
   {
-    // Root cause van JAVASCRIPT-REACT-6 (null device_id in DB) én kritiek-1
-    // (useMijnPotjes stille lege lijst). Direct aanroepen omzeilt de UUID-validatie
-    // en fallback-logica in useDeviceId(). Buiten de uitzonderingen altijd verboden.
-    // Na de storage-abstractielaag (2026-04-16) zijn alle directe aanroepen
-    // gemigreerd naar storage.js — dit patroon blijft als extra zekerheidslaag.
-    patroon: 'localStorage.getItem(DEVICE_ID_KEY)',
-    reden: [
-      'Gebruik useDeviceId() in plaats van localStorage.getItem(DEVICE_ID_KEY) direct.',
-      'Direct aanroepen omzeilt UUID-validatie en fallback-logica.',
-      'Root cause: JAVASCRIPT-REACT-6 (null device_id) + kritiek-1 (stille lege lijst).',
-    ].join(' '),
-    uitzonderingen: [],
-    waarschuwing: false,
-  },
-
-  {
     // .single() gooit PGRST116 wanneer een query 0 rijen retourneert.
-    // Bij INSERT is 0 rijen theoretisch onmogelijk — .single() is daar veilig,
-    // maar alleen als de returnwaarde niet nodig is voor navigatie of state.
-    // Gebruik bij twijfel .maybeSingle() + null-check.
     patroon: '.single()',
     reden: [
       'Controleer of .maybeSingle() beter past.',
@@ -122,11 +87,7 @@ const PATRONEN = [
   },
 
   {
-    // Centrale sessionStorage-abstractielaag (2026-04-23): alle toegang tot
-    // sessionStorage verloopt via src/utils/formulierBuffer.js.
-    // Direct aanroepen omzeilt de foutafhandeling en maakt mocking in tests
-    // onmogelijk. Enige uitzondering: de abstractielaag zelf.
-    // Audit bevinding #3 (2026-04-23).
+    // Centrale sessionStorage-abstractielaag (2026-04-23).
     patroon: 'sessionStorage.',
     reden: [
       'Gebruik slaagFormulierOp/laadFormulier/wisFormulier uit src/utils/formulierBuffer.js.',
@@ -185,8 +146,6 @@ for (const { patroon, reden, uitzonderingen = [], waarschuwing } of PATRONEN) {
 
   waarschuwing ? aantalWaarschuwingen++ : aantalFouten++
 }
-
-// ── Samenvatting ──────────────────────────────────────────────────────────────
 
 if (aantalFouten === 0 && aantalWaarschuwingen === 0) {
   console.log('✅ Geen verboden patronen gevonden.')

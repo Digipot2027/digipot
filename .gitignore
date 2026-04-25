@@ -1,40 +1,5 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env.local
-
-# Smoke test output logs — gegenereerd, niet in versiebeheer
-smoke/*-output.log
-
-# Verouderde migratiebestanden in root — vervangen door supabase/migrations/
-# Niet verwijderd vanwege git-history; worden genegeerd bij nieuwe commits
-# UITZONDERING: bewaar ze in git voor historische traceerbaarheid — NIET hier excluden
-# (zie supabase/migrations/README.md voor de gestructureerde versie)
-
-# Playwright test-resultaten — gegenereerd, niet in versiebeheer
-# Uitzondering: e2e-resultaat.json wordt door de pre-push hook gebruikt
 playwright-report/
 test-results/*
 !test-results/e2e-resultaat.json
 test-results/
+e2e/.auth/
