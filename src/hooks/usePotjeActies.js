@@ -41,6 +41,11 @@ import { STANDAARD_VALUTA } from '../constants'
  * Lint-fix (2026-04-21 / eslint-plugin-react-hooks 7.1.1):
  *   - handleUndo vóór handleTransactie gedeclareerd om de
  *     react-hooks/immutability "accessed before declaration" fout op te lossen.
+ *
+ * Fase 2 (2026-04-25):
+ *   - handleDeelnemen: user_id meesturen bij INSERT via supabase.auth.getUser().
+ *     user_id is nullable — als getUser() mislukt of geen sessie heeft,
+ *     wordt null ingevoerd (overgangsperiode device_id RLS blijft werken).
  */
 
 function rond(waarde) {
@@ -70,9 +75,26 @@ export function usePotjeActies({
   const handleDeelnemen = useCallback(async (naam) => {
     const nieuweDeelnemerId = crypto.randomUUID()
 
+    // Fase 2: user_id ophalen uit de actieve Supabase auth-sessie.
+    // Als er geen sessie is (overgangsperiode of auth-fout), valt user_id
+    // terug op null — de device_id RLS blijft in Fase 2 nog volledig werken.
+    let userId = null
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      userId = user?.id ?? null
+    } catch {
+      // Niet fataal — null is een geldige waarde in de overgangsperiode
+    }
+
     const { error } = await metTimeout(supabase
       .from('deelnemers')
-      .insert({ id: nieuweDeelnemerId, potje_id: potjeId, naam, device_id: deviceId }))
+      .insert({
+        id: nieuweDeelnemerId,
+        potje_id: potjeId,
+        naam,
+        device_id: deviceId,
+        user_id: userId,
+      }))
 
     if (error) throw error
 
@@ -81,6 +103,7 @@ export function usePotjeActies({
       potje_id: potjeId,
       naam,
       device_id: deviceId,
+      user_id: userId,
       actief: true,
       aangemaakt_op: new Date().toISOString(),
       afgemeld_op: null,

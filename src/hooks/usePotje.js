@@ -27,6 +27,13 @@ import { useDeviceId } from './useDeviceId'
  * SEC-L2: DELETE-abonnement op transacties geeft bij actieve RLS alleen
  * payload.old.id terug. De reducer filtert op dat id.
  *
+ * Fase 2 (2026-04-25): deelnemer-herkenning uitgebreid met user_id.
+ * Volgorde:
+ *   1. auth.uid() match via user_id — meest betrouwbaar, overleeft
+ *      device_id-wipe (is het doel van de migratie)
+ *   2. device_id match — fallback voor bestaande deelnemers zonder user_id
+ *      (overgangsperiode) en voor gevallen waar auth nog niet beschikbaar is
+ *
  * @param {string} potjeId - UUID van het potje (uit useParams)
  */
 export function usePotje(potjeId) {
@@ -63,7 +70,26 @@ export function usePotje(potjeId) {
       setDeelnemers(d)
       setTransacties(t)
 
-      const bekende = d.find(x => x.device_id === deviceId)
+      // Fase 2: deelnemer-herkenning via user_id (primair) of device_id (fallback).
+      // user_id is betrouwbaarder: overleeft een Safari localStorage-wipe
+      // zolang de Supabase auth-token bewaard blijft.
+      let bekende = null
+
+      // Stap 1: probeer user_id-match via actieve auth-sessie
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.id) {
+          bekende = d.find(x => x.user_id === user.id) ?? null
+        }
+      } catch {
+        // Auth niet beschikbaar — val door naar device_id
+      }
+
+      // Stap 2: fallback op device_id (overgangsperiode + geen auth)
+      if (!bekende) {
+        bekende = d.find(x => x.device_id === deviceId) ?? null
+      }
+
       if (bekende) setDeelnemer(bekende)
     } catch (e) {
       const vertaald = logFout(e, { component: 'usePotje', actie: 'laadData' })
