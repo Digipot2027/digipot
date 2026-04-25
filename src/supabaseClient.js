@@ -23,6 +23,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
  *
  * Validatie via UUID_V4_PATROON uit constants.js — zelfde patroon als
  * useDeviceId(). Eén bron van waarheid; geen duplicatie meer (SEC-1 fix).
+ *
+ * MIGRATIE-NOOT (Fase 1, 2026-04-25):
+ * bootstrapDeviceId() blijft aanwezig zolang de huidige RLS-policies
+ * nog op x-device-id steunen. Wordt verwijderd in Fase 4 nadat Fase 3
+ * (RLS → auth.uid()) volledig is uitgerold.
  */
 function bootstrapDeviceId() {
   const opgeslagen = getItem(DEVICE_ID_KEY)
@@ -39,6 +44,18 @@ bootstrapDeviceId()
  *
  * SEC-24 / SEC-26: RLS-policies controleren eigenaarschap via x-device-id.
  * Na bootstrapDeviceId() is de localStorage-waarde gegarandeerd aanwezig.
+ *
+ * Auth-sessie (Fase 1, 2026-04-25):
+ * bootstrapAnonAuth() wordt na createClient() asynchroon aangeroepen.
+ * De functie logt in als Supabase anonymous user als er nog geen sessie is.
+ * Dit geeft elke browser-sessie een stabiele auth.uid() (UUID), beheerd
+ * door Supabase en persistent via de ingebouwde auth-storage van de JS-client
+ * (standaard localStorage, sleutel: sb-<project>-auth-token).
+ *
+ * De anonymous-sessie overleeft gewone localStorage-wipen NIET als Safari
+ * ook de auth-token wist — maar dat is exact hetzelfde probleem als nu.
+ * De échte fix (persistentie) volgt in Fase 5 via e-mailkoppeling.
+ * Fase 1 is de technische fundering: auth.uid() beschikbaar maken voor Fase 2–4.
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
@@ -49,3 +66,41 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 })
+
+/**
+ * Zorgt dat elke sessie een Supabase anonymous auth-user heeft.
+ *
+ * Werkwijze:
+ * 1. Controleer of er al een sessie is via getSession().
+ * 2. Zo niet → signInAnonymously(). Supabase maakt een anonymous user aan
+ *    en slaat de JWT op in localStorage (sb-<project>-auth-token).
+ * 3. Bij een netwerk- of configuratiefout wordt gelogd naar console.error
+ *    maar de applicatie blijft werken — de huidige device_id RLS is ongewijzigd.
+ *
+ * Bewuste keuzes:
+ * - Async: de huidige device_id-RLS werkt synchroon; de auth-bootstrap
+ *   hoeft niet geblokkeerd te worden. Supabase voegt de JWT pas toe aan
+ *   requests zodra de sessie beschikbaar is — dat is oké voor Fase 1 omdat
+ *   de bestaande RLS nog op x-device-id werkt, niet op auth.uid().
+ * - Geen await op module-niveau: zou Vite's ESM-evaluatie blokkeren.
+ * - Geen retry-loop: Supabase-client handelt token-refresh intern af.
+ *
+ * @returns {Promise<void>}
+ */
+async function bootstrapAnonAuth() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      const { error } = await supabase.auth.signInAnonymously()
+      if (error) {
+        // Niet fataal in Fase 1 — log voor diagnose, gooi niet verder.
+        console.error('[supabaseClient] bootstrapAnonAuth mislukt:', error.message)
+      }
+    }
+  } catch (e) {
+    console.error('[supabaseClient] bootstrapAnonAuth onverwachte fout:', e)
+  }
+}
+
+// Kick off zonder await — zie JSDoc hierboven.
+bootstrapAnonAuth()
