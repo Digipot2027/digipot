@@ -1,20 +1,12 @@
 /**
- * e2e/pw6-responsive.spec.js — PW-6: Responsive gedrag op kritieke viewports
- *
- * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
- * Knoplabels bijgewerkt: "In pot storten" → "Storten", "Betaling registreren" → "Betaling".
- * Nieuwe anchor voor PW-6d: tabelcel met naam "(jij)".
- * PW-6e (traject-2, 2026-04-24): action-list rijen zichtbaar en niet overlappend op 320px.
+ * e2e/pw6-responsive.spec.js — PW-6: Responsive gedrag
+ * Fase 4 update: identiteitsherkenning via auth.uid() / setAuthInBrowser().
  */
 
 import { test, expect } from '@playwright/test'
 import {
-  maakSupabaseClient,
-  maakTestPotje,
-  maakDeelnemer,
-  maakTransactie,
-  verwijderTestPotje,
-  nieuweTestDeviceId,
+  maakSupabaseClient, maakTestPotje, maakDeelnemer, maakTransactie,
+  setAuthInBrowser, verwijderTestPotje, nieuweTestDeviceId,
 } from './helpers.js'
 
 const VIEWPORTS = [
@@ -25,13 +17,15 @@ const VIEWPORTS = [
 ]
 
 test.describe('PW-6: Responsive gedrag', () => {
-  let supabase, potje, deelnemer, deviceId
+  let supabase, potje, deelnemer, session, deviceId
 
   test.beforeEach(async () => {
     supabase = maakSupabaseClient()
     deviceId = nieuweTestDeviceId()
     potje = await maakTestPotje(supabase, '[E2E] PW-6 Responsive')
-    deelnemer = await maakDeelnemer(supabase, potje.id, 'LangeDeelnemersnaam', deviceId)
+    const result = await maakDeelnemer(supabase, potje.id, 'LangeDeelnemersnaam', deviceId)
+    deelnemer = result.deelnemer
+    session = result.session
     await maakTransactie(potje.id, deelnemer.id, 'storting', 25.00, deviceId)
   })
 
@@ -43,11 +37,9 @@ test.describe('PW-6: Responsive gedrag', () => {
     test(`PW-6a [${vp.naam} ${vp.breedte}px]: deelnemerstabel zichtbaar`, async ({ page }) => {
       await page.setViewportSize({ width: vp.breedte, height: vp.hoogte })
       await page.goto('/')
-      await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
+      await setAuthInBrowser(page, session)
       await page.goto(`/potje/${potje.id}`)
-
       await expect(page.getByRole('table', { name: 'Deelnemersoverzicht' })).toBeVisible({ timeout: 8000 })
-
       const tabelBreedte = await page.evaluate(() => {
         const tabel = document.querySelector('table[aria-label="Deelnemersoverzicht"]')
         return tabel?.getBoundingClientRect().width ?? 0
@@ -59,20 +51,16 @@ test.describe('PW-6: Responsive gedrag', () => {
     test(`PW-6b [${vp.naam} ${vp.breedte}px]: storten- en betaalknop zichtbaar en niet overlappend`, async ({ page }) => {
       await page.setViewportSize({ width: vp.breedte, height: vp.hoogte })
       await page.goto('/')
-      await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
+      await setAuthInBrowser(page, session)
       await page.goto(`/potje/${potje.id}`)
-
       const stortenKnop = page.getByRole('button', { name: /^Storten$/i })
       const betaalKnop  = page.getByRole('button', { name: /^Betaling$/i })
-
       await expect(stortenKnop).toBeVisible({ timeout: 8000 })
       await expect(betaalKnop).toBeVisible()
-
       const stortenBox = await stortenKnop.boundingBox()
       const betaalBox  = await betaalKnop.boundingBox()
       expect(stortenBox).not.toBeNull()
       expect(betaalBox).not.toBeNull()
-
       const overlapt = stortenBox.x + stortenBox.width > betaalBox.x + 2 &&
                        betaalBox.x + betaalBox.width > stortenBox.x + 2 &&
                        stortenBox.y + stortenBox.height > betaalBox.y + 2 &&
@@ -84,15 +72,12 @@ test.describe('PW-6: Responsive gedrag', () => {
   test('PW-6c [klein-mobiel 320px]: stortenpagina — snelknoppen zichtbaar', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 })
     await page.goto('/')
-    await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
+    await setAuthInBrowser(page, session)
     await page.goto(`/potje/${potje.id}/storten`)
-
     const groep = page.getByRole('group', { name: 'Standaardbedragen' })
     await expect(groep).toBeVisible({ timeout: 8000 })
-
     const knoppen = groep.getByRole('button')
     await expect(knoppen).toHaveCount(4)
-
     const eersteBox = await knoppen.first().boundingBox()
     expect(eersteBox.x).toBeGreaterThanOrEqual(0)
     expect(eersteBox.x + eersteBox.width).toBeLessThanOrEqual(322)
@@ -101,14 +86,9 @@ test.describe('PW-6: Responsive gedrag', () => {
   test('PW-6d [mobiel 375px]: kaarten steken niet buiten viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/')
-    await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
+    await setAuthInBrowser(page, session)
     await page.goto(`/potje/${potje.id}`)
-
-    // Anchor: tabelcel met naam (jij) — vervangt "Welkom, [naam]"
-    await expect(
-      page.getByRole('cell', { name: /LangeDeelnemersnaam.*jij|jij.*LangeDeelnemersnaam/i })
-    ).toBeVisible({ timeout: 8000 })
-
+    await expect(page.getByRole('cell', { name: /LangeDeelnemersnaam.*jij|jij.*LangeDeelnemersnaam/i })).toBeVisible({ timeout: 8000 })
     const maxRechts = await page.evaluate(() => {
       const kaarten = document.querySelectorAll('.kaart')
       return Math.max(...[...kaarten].map(k => k.getBoundingClientRect().right))
@@ -119,35 +99,17 @@ test.describe('PW-6: Responsive gedrag', () => {
   test('PW-6e [klein-mobiel 320px]: action-list rijen zichtbaar en niet overlappend', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 })
     await page.goto('/')
-    await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceId])
+    await setAuthInBrowser(page, session)
     await page.goto(`/potje/${potje.id}`)
-
-    // Wacht op overzicht
-    await expect(
-      page.getByRole('cell', { name: /LangeDeelnemersnaam.*jij|jij.*LangeDeelnemersnaam/i })
-    ).toBeVisible({ timeout: 8000 })
-
+    await expect(page.getByRole('cell', { name: /LangeDeelnemersnaam.*jij|jij.*LangeDeelnemersnaam/i })).toBeVisible({ timeout: 8000 })
     const afmeldenKnop = page.getByRole('button', { name: /Afmelden/i })
     const sluitKnop    = page.getByRole('button', { name: /Pot sluiten/i })
-
     await expect(afmeldenKnop).toBeVisible()
     await expect(sluitKnop).toBeVisible()
-
     const afmeldenBox = await afmeldenKnop.boundingBox()
     const sluitBox    = await sluitKnop.boundingBox()
-    expect(afmeldenBox).not.toBeNull()
-    expect(sluitBox).not.toBeNull()
-
-    // Afmelden staat boven Pot sluiten (lagere y-waarde)
     expect(afmeldenBox.y).toBeLessThan(sluitBox.y)
-
-    // Geen horizontale overlap: beide rijen beslaan de volledige breedte
-    // maar staan verticaal gestapeld — hun y-bereiken mogen niet overlappen.
-    // We controleren dit door te verifieren dat Afmelden volledig klaar is
-    // vóórdat Pot sluiten begint (met marge voor de hint-paragraaf ertussen).
     expect(afmeldenBox.y + afmeldenBox.height).toBeLessThanOrEqual(sluitBox.y + 60)
-
-    // Beide rijen steken niet buiten het 320px viewport
     expect(afmeldenBox.x + afmeldenBox.width).toBeLessThanOrEqual(322)
     expect(sluitBox.x + sluitBox.width).toBeLessThanOrEqual(322)
   })

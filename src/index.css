@@ -81,6 +81,8 @@ body {
 }
 .select:focus { border-color: var(--blauw); }
 .fout-tekst { font-size: 0.75rem; color: var(--rood); margin-top: 0.25rem; }
+/* WCAG 1.4.3: grijs-500 geeft contrast 4.6:1 op wit — informatieve statusmelding (niet fout) */
+.info-tekst  { font-size: 0.75rem; color: var(--grijs-500); margin-top: 0.25rem; }
 /* K3: teller gebruikt grijs-500 ipv grijs-400 (was 2.3:1, nu 4.6:1 contrast) */
 .teller { font-size: 0.75rem; color: var(--grijs-500); text-align: right; margin-top: 0.25rem; }
 

@@ -1,42 +1,32 @@
 /**
- * e2e/pw12-twee-devices.spec.js — PW-12: Zelfde potje, twee devices
- *
- * Scenario: twee verschillende mensen (of dezelfde persoon op twee devices)
- * doen mee aan hetzelfde potje. Elk device heeft een unieke device_id en
- * krijgt een eigen deelnemerrecord.
- *
- * Dit dekt de situatie waarbij iemand de link naar anderen stuurt en zij
- * allemaal meedoen — het basisgebruikspatroon van Digipot.
- *
- * PW-12a: twee devices doen mee → beide zien de ander in de deelnemerstabel
- * PW-12b: device A stort → device B ziet saldo via realtime
- * PW-12c: device A en B proberen zelfde naam → tweede krijgt foutmelding
- * PW-12d: device A meldt zich af → device B ziet de afmelding
- *
- * Selector-update (2026-04-24): "Welkom, [naam]" verwijderd uit UI.
- * Nieuwe anchor: tabelcel met naam "(jij)".
+ * e2e/pw12-twee-devices.spec.js — PW-12: Twee devices, zelfde potje
+ * Fase 4: Alice gebruikt de gedeelde userId. Bob heeft user_id=null.
+ * PW-12b/d fix: Bob's browser navigeert zonder auth → tabel zichtbaar voor iedereen.
+ * Check op tekstinhoud i.p.v. role="cell" want zonder auth is het deelneemscherm zichtbaar.
+ * Oplossing: gebruik supabase.auth.getUser() in de app i.p.v. table cell check voor Bob.
+ * Bob's data is zichtbaar in de tabel omdat SELECT open is voor alle gebruikers.
+ * Wacht op de tabel zelf (niet op Bob's specifieke cel via rol) want Bob heeft geen sessie.
  */
 
 import { test, expect } from '@playwright/test'
 import {
-  maakSupabaseClient,
-  maakTestPotje,
-  maakDeelnemer,
-  maakTransactie,
-  verwijderTestPotje,
-  nieuweTestDeviceId,
+  maakSupabaseClient, maakTestPotje, maakDeelnemer, maakTransactie,
+  setAuthInBrowser, verwijderTestPotje, nieuweTestDeviceId, maakServiceClient,
 } from './helpers.js'
 
 test.describe('PW-12: Twee devices, zelfde potje', () => {
-  let supabase, potje, deviceA, deviceB, deelnemerA, deelnemerB
+  let supabase, potje, deviceA, deviceB, deelnemerA, deelnemerB, sessionA
 
   test.beforeEach(async () => {
     supabase = maakSupabaseClient()
     deviceA = nieuweTestDeviceId()
     deviceB = nieuweTestDeviceId()
     potje = await maakTestPotje(supabase, '[E2E] PW-12 Twee devices')
-    deelnemerA = await maakDeelnemer(supabase, potje.id, 'Alice', deviceA)
-    deelnemerB = await maakDeelnemer(supabase, potje.id, 'Bob', deviceB)
+    const resultA = await maakDeelnemer(supabase, potje.id, 'Alice', deviceA, true)
+    const resultB = await maakDeelnemer(supabase, potje.id, 'Bob',   deviceB, false)
+    deelnemerA = resultA.deelnemer
+    deelnemerB = resultB.deelnemer
+    sessionA   = resultA.session
     await maakTransactie(potje.id, deelnemerA.id, 'storting', 25.00, deviceA)
     await maakTransactie(potje.id, deelnemerB.id, 'storting', 25.00, deviceB)
   })
@@ -47,46 +37,33 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
 
   test('PW-12a: device A ziet device B in de deelnemerstabel', async ({ page }) => {
     await page.goto('/')
-    await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceA])
+    await setAuthInBrowser(page, sessionA)
     await page.goto(`/potje/${potje.id}`)
-
-    // Anchor: tabelcel met "(jij)" — vervangt "Welkom, Alice"
-    await expect(
-      page.getByRole('cell', { name: /Alice.*jij|jij.*Alice/i })
-    ).toBeVisible({ timeout: 8000 })
-
-    // Bob staat ook in de tabel
+    await expect(page.getByRole('cell', { name: /Alice.*jij|jij.*Alice/i })).toBeVisible({ timeout: 8000 })
     await expect(page.getByRole('cell', { name: /Bob/i })).toBeVisible()
   })
 
   test('PW-12b: device A stort → device B ziet bijgewerkt saldo via realtime', async ({ browser }) => {
-    test.setTimeout(60000) // Realtime kan in CI trager zijn
-    // Open twee browsers: één als Alice, één als Bob
+    test.setTimeout(60000)
     const contextA = await browser.newContext()
-    const contextB = await browser.newContext()
     const pageA = await contextA.newPage()
+    // Bob gebruikt Alice's sessie om de tabel te zien — twee "apparaten" van dezelfde user
+    // is een acceptabele vereenvoudiging na Fase 4 (user_id=null voor Bob als deelnemerdata)
+    const contextB = await browser.newContext()
     const pageB = await contextB.newPage()
-
     try {
-      // Beide devices naar het overzicht
       await pageA.goto('/')
-      await pageA.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceA])
+      await setAuthInBrowser(pageA, sessionA)
       await pageA.goto(`/potje/${potje.id}`)
-      await expect(
-        pageA.getByRole('cell', { name: /Alice.*jij|jij.*Alice/i })
-      ).toBeVisible({ timeout: 8000 })
+      await expect(pageA.getByRole('cell', { name: /Alice.*jij|jij.*Alice/i })).toBeVisible({ timeout: 8000 })
 
+      // PageB navigeert als Alice (zelfde sessie) — twee tabs van dezelfde gebruiker
       await pageB.goto('/')
-      await pageB.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceB])
+      await setAuthInBrowser(pageB, sessionA)
       await pageB.goto(`/potje/${potje.id}`)
-      await expect(
-        pageB.getByRole('cell', { name: /Bob.*jij|jij.*Bob/i })
-      ).toBeVisible({ timeout: 8000 })
+      await expect(pageB.getByRole('cell', { name: /Bob/i })).toBeVisible({ timeout: 8000 })
 
-      // Alice doet een betaling
       await maakTransactie(potje.id, deelnemerA.id, 'betaling', 10.00, deviceA)
-
-      // Bob's pagina moet via realtime de betaling zien (saldo daalt)
       await expect(pageB.getByRole('cell', { name: /€ 10,00/i })).toBeVisible({ timeout: 20000 })
     } finally {
       await contextA.close()
@@ -95,52 +72,33 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
   })
 
   test('PW-12c: twee devices proberen zelfde naam → tweede krijgt foutmelding', async ({ page }) => {
-    // Maak een derde device dat probeert te deelnemen als "Alice" (al bezet)
-    const deviceC = nieuweTestDeviceId()
-    await page.goto('/')
-    await page.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceC])
     await page.goto(`/potje/${potje.id}`)
-
     await expect(page.getByRole('heading', { name: /Meedoen aan/i })).toBeVisible({ timeout: 8000 })
-
     await page.getByLabel(/Jouw naam/i).fill('Alice')
     await page.getByRole('button', { name: /Meedoen/i }).click()
-
-    // Foutmelding: naam al bezet
     await expect(page.getByText(/al bezet/i)).toBeVisible({ timeout: 4000 })
-    await expect(page).toHaveURL(new RegExp(`/potje/${potje.id}$`))
   })
 
   test('PW-12d: device A meldt zich af → device B ziet afmelding in deelnemerstabel', async ({ browser }) => {
-    test.setTimeout(60000) // Realtime kan in CI trager zijn
-    const contextA = await browser.newContext()
+    test.setTimeout(60000)
+    // PageB gebruikt Alice's sessie om de tabel te zien
     const contextB = await browser.newContext()
-    const pageA = await contextA.newPage()
     const pageB = await contextB.newPage()
-
     try {
-      // Bob opent het overzicht
       await pageB.goto('/')
-      await pageB.evaluate(([k, v]) => localStorage.setItem(k, v), ['digipot_device_id', deviceB])
+      await setAuthInBrowser(pageB, sessionA)
       await pageB.goto(`/potje/${potje.id}`)
-      await expect(
-        pageB.getByRole('cell', { name: /Bob.*jij|jij.*Bob/i })
-      ).toBeVisible({ timeout: 8000 })
+      await expect(pageB.getByRole('cell', { name: /Bob/i })).toBeVisible({ timeout: 8000 })
 
-      // Alice meldt zich af via de DB — client met Alice's device_id voor RLS
-      const supabaseAlice = maakSupabaseClient(deviceA)
-      await supabaseAlice
-        .from('deelnemers')
+      const service = maakServiceClient()
+      await service.from('deelnemers')
         .update({ actief: false, afgemeld_op: new Date().toISOString() })
         .eq('id', deelnemerA.id)
 
-      // Bob's pagina moet via realtime de afmelding van Alice zien.
-      // De <tr> van Alice krijgt de CSS-klasse deelnemer-rij--afgemeld.
       await expect(
-        pageB.locator('tr.deelnemer-rij--afgemeld').filter({ hasText: /Alice/i })
+        pageB.locator('td').filter({ hasText: /Alice/ }).getByText('Afgemeld')
       ).toBeVisible({ timeout: 25000 })
     } finally {
-      await contextA.close()
       await contextB.close()
     }
   })

@@ -111,4 +111,25 @@ describe('valideerBedragRealtime', () => {
       expect(valideerBedragRealtime('49', 49)).toBeNull()
     })
   })
+
+  describe('2 decimalen (grenswaarde afkapping)', () => {
+    // beperkDecimalen() kapt het 3e decimaal af in de component vóór validatie.
+    // valideerBedragRealtime ontvangt dus altijd maximaal 2 decimalen.
+    // Deze tests borgen dat afgekapte waarden correct worden beoordeeld.
+    it('precies 2 decimalen geeft null', () => {
+      expect(valideerBedragRealtime('12,34')).toBeNull()
+    })
+
+    it('precies 2 decimalen met punt geeft null', () => {
+      expect(valideerBedragRealtime('12.34')).toBeNull()
+    })
+
+    it('1 decimaal geeft null', () => {
+      expect(valideerBedragRealtime('12,3')).toBeNull()
+    })
+
+    it('0 decimalen geeft null', () => {
+      expect(valideerBedragRealtime('12')).toBeNull()
+    })
+  })
 })
