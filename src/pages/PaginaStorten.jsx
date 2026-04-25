@@ -67,6 +67,16 @@ function PaginaStorten() {
     }
   }, [vrijeInvoerActief])
 
+  // PW-11d fix: redirect naar overzicht zodra het potje gesloten blijkt na laden.
+  // Zonder deze redirect zijn de snelknoppen zichtbaar bij een gesloten potje,
+  // en geeft de RLS-fout na submit een melding die de test niet herkent.
+  // Realtime-sluiting (terwijl al op de pagina) wordt afgehandeld in handleStorten.
+  useEffect(() => {
+    if (!laden && potje?.status === 'gesloten') {
+      navigate(`/potje/${id}`, { replace: true })
+    }
+  }, [laden, potje, id, navigate])
+
   const vrijeInvoerNum = parseBedrag(vrijeInvoer)
   const effectiefBedrag = gekozenBedrag !== null
     ? gekozenBedrag
@@ -128,6 +138,14 @@ function PaginaStorten() {
     if (bezigRef.current) return
     bezigRef.current = true
 
+    // Gesloten-check vóór alle andere checks — ook voor realtime-sluiting
+    // terwijl de gebruiker al op de pagina staat (PW-11b/PW-11d).
+    if (potje?.status === 'gesloten') {
+      bezigRef.current = false
+      setInvoerFout('Dit potje is gesloten.')
+      return
+    }
+
     const deelnemerId = deelnemer?.id
     if (!deelnemerId) {
       bezigRef.current = false
@@ -138,12 +156,6 @@ function PaginaStorten() {
     if (deelnemer?.actief === false) {
       bezigRef.current = false
       setInvoerFout('Je hebt je afgemeld en kunt niet meer storten.')
-      return
-    }
-
-    if (potje?.status === 'gesloten') {
-      bezigRef.current = false
-      setInvoerFout('Dit potje is gesloten.')
       return
     }
 
