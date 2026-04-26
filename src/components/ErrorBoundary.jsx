@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import * as Sentry from '@sentry/react'
+import { logMelding } from '../utils/logMelding'
 
 /**
  * ErrorBoundary — vangt onverwachte React-crashes op applicatieniveau op.
@@ -43,6 +44,7 @@ class ErrorBoundary extends Component {
         react: { componentStack: info.componentStack },
       },
     })
+    logMelding('fout_technisch_crash', { component: 'ErrorBoundary' })
   }
 
   handleVerversen() {

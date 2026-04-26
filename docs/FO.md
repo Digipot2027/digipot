@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 4.2
-**Datum:** 2026-04-24
+**Versie:** 4.6
+**Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -69,6 +69,8 @@ De beschikbaarheid en gezondheid van de applicatie worden bewaakt via drie lagen
 
 **Sentry** logt alle onverwachte fouten in productie. Een alert wordt verstuurd bij elke nieuw type fout. Wekelijks verschijnt een digest met een overzicht van de meest voorkomende fouten.
 
+**PostHog** (eu.i.posthog.com — EU-hosting) logt alle gebruiksgebeurtenissen: succesacties (potje aangemaakt, storting geslaagd, afgemeld, etc.) en bekende gebruiksfouten (saldo te laag, naam bezet, etc.). IP-masking is actief; er worden geen persoonsprofielen aangemaakt. Rapportages zijn beschikbaar via het PostHog-dashboard. Alleen actief in productie.
+
 **GitHub Actions health check** draait dagelijks om 08:00 UTC en verifieert of Supabase schrijft en leest, de app bereikbaar is op Cloudflare Pages, en de lifecycle Edge Function reageert. Bij een mislukte check volgt automatisch een e-mailmelding via GitHub.
 
 ### Geautomatiseerde kwaliteitswaarborg
@@ -109,7 +111,7 @@ Alle icons zijn voorzien van `aria-hidden="true"` — de toegankelijke naam zit 
 
 Zie versie 1.8 (grotendeels ongewijzigd).
 
-### Bedragvelden — maximaal 2 decimalen (2026-04-23)
+### Bedragvelden — maximaal 2 decimalen (2026-04-23, uitgebreid 2026-04-25)
 
 Alle invoervelden voor geldbedragen accepteren maximaal 2 cijfers achter de komma (of punt). Dit geldt voor:
 - **ModalTransactie** — storting en betaling
@@ -117,7 +119,8 @@ Alle invoervelden voor geldbedragen accepteren maximaal 2 cijfers achter de komm
 
 De beperking werkt op twee lagen:
 1. **Preventief (UI-laag):** de `onChange`-handler roept `beperkDecimalen()` aan, die de invoerstring direct afkapt tot 2 decimalen. De gebruiker ziet de extra cijfers dus niet verschijnen.
-2. **Verdediging in de diepte (validatielaag):** `valideerTransactieBedrag()` controleert ook op meer dan 2 decimalen en geeft de melding *"Voer maximaal 2 cijfers achter de komma in."* terug als die check mislukt. Dit vangt edge-cases op zoals programmatisch ingestelde waarden.
+2. **Statusmelding bij afkapping (2026-04-25):** `PaginaStorten` vergelijkt de ruwe invoer met de afgekapte waarde. Zodra een derde decimaal wordt afgekapt, toont de component een informatieve statusmelding: *"Bedragen hebben maximaal 2 decimalen."* De melding verschijnt met `role="status"` (niet `alert`) direct onder het invoerveld en verdwijnt zodra de gebruiker minder dan 2 decimalen heeft of de komma/punt verwijdert.
+3. **Verdediging in de diepte (validatielaag):** `valideerTransactieBedrag()` controleert ook op meer dan 2 decimalen en geeft de melding *"Voer maximaal 2 cijfers achter de komma in."* terug als die check mislukt. Dit vangt edge-cases op zoals programmatisch ingestelde waarden.
 
 Snelknoppen op het stortenscherm zijn vaste gehele getallen en zijn niet geraakt door deze wijziging.
 
@@ -137,6 +140,10 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 4.6 | 2026-04-26 | **PostHog dekking uitgebreid:** `logMelding()` toegevoegd op 13 nieuwe plaatsen in 7 componenten/hooks. Gedekte events: validatiefouten (`fout_validatie_deelnemen`, `fout_validatie_geen_bedrag`, `fout_validatie_bedrag_te_hoog`), gebruikersblokkeringen (`fout_gebruiker_saldo_te_laag`, `fout_gebruiker_niet_actief`, `fout_gebruiker_deelnemer_ontbreekt`, `fout_gebruiker_potje_gesloten`, `fout_gebruiker_geen_deelnemer`, `fout_gebruiker_undo_niet_eigen`, `fout_gebruiker_undo_saldo_te_laag`, `fout_gebruiker_afmelden_niet_gestort`), succesevents (`succes_verbinding_hersteld`, `succes_link_gekopieerd`) en technische crash (`fout_technisch_crash`). Import `logMelding` toegevoegd aan `ModalDeelnemen`, `ModalTransactie`, `PaginaPotje`, `DeelKnop` en `ErrorBoundary`. | Volledige PostHog eventdekking op alle gebruikerspaden |
+| 4.5 | 2026-04-25 | **PostHog analytics toegevoegd:** §14 Monitoring uitgebreid met PostHog (eu.i.posthog.com, EU-hosting). Logt succesacties en bekende gebruiksfouten voor frequentie-rapportages. IP-masking actief; geen persoonsprofielen. | Meldingfrequentie meetbaar maken |
+| 4.4 | 2026-04-25 | **Statusmelding bij afkapping 3e decimaal (PaginaStorten):** na `beperkDecimalen()` vergelijkt de component de ruwe invoer met de afgekapte waarde. Bij afkapping toont een `role="status"`-element *"Bedragen hebben maximaal 2 decimalen."* De melding verdwijnt zodra minder dan 2 decimalen aanwezig zijn. Foutmelding (`role="alert"`) en statusmelding zijn semantisch gescheiden. | UX: stille afkapping schond Nielsen heuristiek #1 — gebruiker kreeg geen feedback |
+| 4.3 | 2026-04-24 | **Cache-fix `index.html`:** `public/_headers` uitgebreid met `Cache-Control: no-cache, no-store, must-revalidate` specifiek voor `/index.html`. Browsers en Cloudflare Pages laadden na een deploy de gecachede HTML-shell met de oude JS-bundle-hash — waardoor de gebruiker een verouderde versie te zien kreeg, ook na refresh. Vite-assets zijn content-hashed en kunnen oneindig worden gecached; `index.html` zelf nooit. | Bug: stale deploy na Traject-2 |
 | 4.2 | 2026-04-24 | **Traject-3: stortenscherm invoervalidatie + kleur:** letters en spaties worden gefilterd uit bedragveld (verschijnen niet); realtime foutmelding "Voer alleen cijfers in." bij niet-numerieke invoer; snelknoppen herstijld naar lichtgroen in rust, vol groen actief. | Bug: letters konden worden ingevoerd zonder feedback; UX: saai kleurschema |
 | 4.1 | 2026-04-24 | **Tests gesynchroniseerd met traject-2:** UX-01/UX-02 (conditionele helptekst) vervangen door UX-03/04/05 (vaste helptekst altijd aanwezig). E2e PW-5g (uitnodigknop focusbaar), PW-5h (action-list Tab-focus), PW-6e (action-list verticale stapeling op 320px) toegevoegd. | Dekking actueel houden na overzichtscherm redesign |
 | 4.0 | 2026-04-24 | **Traject-2: overzichtscherm redesign:** knopstructuur herschreven — "Vrienden uitnodigen" als dashed-border knop boven het actiegrid; Beheer-sectie omgezet van grid-2 naar action-list (volledige rijen met chevron-pijl) voor "Afmelden" en "Pot sluiten" (rood); helptekst "Iedereen kan het potje afsluiten." altijd zichtbaar (niet conditioneel); DeelKnop tekstlink-variant en "Link kopiëren" verwijderd. | UX-review traject 2 |

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { UserPlus, Link, CheckCircle, AlertTriangle } from 'lucide-react'
 import { deelLink } from '../utils/deelLink'
+import { logMelding } from '../utils/logMelding'
 
 /**
  * DeelKnop — één klik/tap om de huidige pagina te delen.
@@ -23,11 +24,13 @@ function DeelKnop({ potjeNaam, variant = 'secundair', className = '' }) {
       potjeNaam,
       (type) => {
         if (type === 'kopie') {
+          logMelding('succes_link_gekopieerd', { component: 'DeelKnop' })
           setStatus('gekopieerd')
           setTimeout(() => setStatus('idle'), 2500)
         }
       },
       () => {
+        logMelding('fout_link_kopieer_mislukt', { component: 'DeelKnop' })
         setStatus('fout')
         setTimeout(() => setStatus('idle'), 3000)
       }

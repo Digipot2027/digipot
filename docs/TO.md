@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 7.2
-**Datum:** 2026-04-24
+**Versie:** 7.6
+**Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -53,6 +53,7 @@ pg_cron (in Supabase DB)
 | Bundler | Vite | 8 |
 | Backend | Supabase (PostgreSQL + Realtime) | — |
 | Foutlogging | Sentry (`@sentry/react`) | — |
+| Analytics | PostHog (`posthog-js`) | — |
 | Icoonbibliotheek | Lucide React (`lucide-react`) | — |
 | Testen (unit) | Vitest + @testing-library/react | — |
 | Testen (e2e) | Playwright | ^1.52 |
@@ -77,6 +78,8 @@ pg_cron (in Supabase DB)
 | `VITE_SUPABASE_URL` | Supabase project-URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonieme sleutel (publiek) |
 | `VITE_SENTRY_DSN` | Sentry DSN (optioneel, alleen productie) |
+| `VITE_POSTHOG_KEY` | PostHog project API key (alleen productie) |
+| `VITE_POSTHOG_HOST` | PostHog host (`https://eu.i.posthog.com`) |
 
 ---
 
@@ -163,6 +166,56 @@ Zie versie 2.6 (ongewijzigd).
 
 ---
 
+## 17a. PostHog — Volledige eventlijst
+
+Alle events die via `logMelding()` naar PostHog worden gestuurd. Events zijn alleen actief in productie (`import.meta.env.PROD`).
+
+### Succesevents
+
+| Event | Component/hook | Beschrijving |
+|---|---|---|
+| `succes_potje_aangemaakt` | `PaginaNieuwPotje` | Potje succesvol aangemaakt |
+| `succes_deelgenomen` | `usePotjeActies` | Deelnemer heeft zich aangemeld |
+| `succes_storting_geslaagd` | `PaginaStorten` | Storting via stortenscherm geslaagd |
+| `succes_storting_modal_geslaagd` | `usePotjeActies` | Storting via modal geslaagd |
+| `succes_betaling_geslaagd` | `usePotjeActies` | Betaling via modal geslaagd |
+| `succes_transactie_ongedaan` | `usePotjeActies` | Undo van transactie geslaagd |
+| `succes_potje_gesloten` | `usePotjeActies` | Potje handmatig gesloten |
+| `succes_afgemeld` | `usePotjeActies` | Deelnemer afgemeld |
+| `succes_profiel_opgeslagen` | `PaginaProfiel` | Profielnaam opgeslagen |
+| `succes_verbinding_hersteld` | `PaginaPotje` | Internetverbinding hersteld na onderbreking |
+| `succes_link_gekopieerd` | `DeelKnop` | Deellink gekopieerd naar klembord |
+
+### Gebruiksfouten (bekende blokkades)
+
+| Event | Component/hook | Beschrijving | Properties |
+|---|---|---|---|
+| `fout_validatie_deelnemen` | `ModalDeelnemen` | Validatiefout bij naamkeuze deelnemer | `actie`: foutmelding |
+| `fout_validatie_geen_bedrag` | `PaginaStorten` | Geen bedrag gekozen bij storting | — |
+| `fout_validatie_bedrag_te_hoog` | `PaginaStorten` | Bedrag boven maximum (>€999,99) | — |
+| `fout_gebruiker_saldo_te_laag` | `ModalTransactie` | Betaling geweigerd: onvoldoende saldo | `actie`: type ('betaling') |
+| `fout_gebruiker_niet_actief` | `ModalTransactie`, `PaginaStorten` | Actie geweigerd: deelnemer is afgemeld | `actie`: type |
+| `fout_gebruiker_deelnemer_ontbreekt` | `ModalTransactie` | Actie geweigerd: geen deelnemersprofiel gevonden | `actie`: type |
+| `fout_gebruiker_potje_gesloten` | `PaginaStorten` | Storting geweigerd: potje is gesloten | — |
+| `fout_gebruiker_geen_deelnemer` | `PaginaStorten` | Storting geweigerd: gebruiker is geen deelnemer | — |
+| `fout_gebruiker_undo_niet_eigen` | `usePotjeActies` | Undo geweigerd: niet eigen transactie | — |
+| `fout_gebruiker_undo_saldo_te_laag` | `usePotjeActies` | Undo geweigerd: al betalingen gedaan uit dit bedrag | — |
+| `fout_gebruiker_afmelden_niet_gestort` | `usePotjeActies` | Afmelden geweigerd: nog niet gestort | — |
+| `fout_link_kopieer_mislukt` | `DeelKnop` | Clipboard API gefaald | — |
+
+### Technische fouten
+
+| Event | Component/hook | Beschrijving |
+|---|---|---|
+| `fout_technisch` | `logFout` util | Onverwachte DB/netwerkfout — naast Sentry |
+| `fout_technisch_crash` | `ErrorBoundary` | React-crash op applicatieniveau — naast Sentry |
+
+### Event-properties (altijd aanwezig)
+
+Alle events bevatten minimaal `{ component: '<naam>' }`. Aanvullende properties zijn per event gespecificeerd in de tabel hierboven. Er worden geen persoonsgegevens meegestuurd.
+
+---
+
 ## 18. Testen
 
 ### Framework
@@ -176,7 +229,7 @@ Business logic en pure functies via unit tests — geen Supabase-mock, geen comp
 E2e-tests draaien tegen echte Supabase met `[E2E]`-prefix en cleanup via `afterEach`.
 Testprioriteit op basis van risico, niet op regelcoverage.
 
-### Unit/regressie — 834 tests
+### Unit/regressie — 870 tests
 
 | Categorie | Wat gedekt |
 |---|---|
@@ -193,7 +246,7 @@ Testprioriteit op basis van risico, niet op regelcoverage.
 
 | Bestand | Scenario's | Wat gedekt |
 |---|---|---|
-| `pw1-happy-path.spec.js` | PW-1a/b/c | Storten snelknop, vrij bedrag, disabled |
+| `pw1-happy-path.spec.js` | PW-1a/b/c/d/e/f | Storten snelknop, vrij bedrag, disabled, successtate, max-fout, decimaal-afkapping statusmelding |
 | `pw2-geen-device-id.spec.js` | PW-2a/b/c | Geen device_id, geen RLS-crash, bootstrapDeviceId |
 | `pw3-betaling-modal.spec.js` | PW-3a/b/c | Modal betaling, saldo-check, annuleren |
 | `pw4-deelnemen.spec.js` | PW-4a..e | Deelnemen-flow, validatie, profielnaam, localStorage |
@@ -313,6 +366,8 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 7.4 | 2026-04-25 | **Statusmelding bij afkapping 3e decimaal:** `PaginaStorten.jsx` — `decimaalStatus`-state toegevoegd. `handleVrijeInvoerWijziging` vergelijkt decimaallengte van rauwe invoer vs. afgekapte waarde via regex `[,.]`; bij afkapping (ruw > 2, afgekapt = 2) wordt `decimaalStatus` gezet op `'Bedragen hebben maximaal 2 decimalen.'`. Melding rendeert als `<div role="status">` met klasse `.info-tekst`. State wordt gereset in `handleSnelkeuze` en `handleVrijeInvoerToggle`. `index.css`: `.info-tekst` toegevoegd (zelfde grootte als `.fout-tekst`, kleur `var(--grijs-500)`, WCAG 1.4.3 contrast 4.6:1). `valideerBedragRealtime.test.js`: 4 nieuwe tests in describe-blok '2 decimalen (grenswaarde afkapping)' die borgen dat de validatiefunctie na afkapping altijd `null` teruggeeft. | UX: stille afkapping schond Nielsen heuristiek #1 |
+| 7.3 | 2026-04-24 | **Cache-fix `index.html`:** `public/_headers` uitgebreid met specifieke regel `/index.html` met `Cache-Control: no-cache, no-store, must-revalidate`. Zonder deze regel cacht Cloudflare Pages de HTML-shell, waardoor browsers na een deploy de oude bundle-hash laden — ook bij een gewone refresh. Vite genereert content-hashed JS/CSS-assets die nooit verouderen; alleen `index.html` zelf moet altijd vers zijn. | Bug: stale deploy zichtbaar op desktop na Traject-2 deploy |
 | 7.2 | 2026-04-24 | **Traject-3: stortenscherm invoervalidatie + kleur:** `beperkDecimalen()` filtert nu ook niet-cijfer/komma/punt tekens (regex `[^0-9,.]`). `valideerBedragRealtime()`: `isNaN` geeft nu foutmelding "Voer alleen cijfers in." i.p.v. `null`; enkel `,` of `.` geeft nog steeds `null`. CSS: `.snelkeuze-knop` rust = `var(--groen-licht)` + border `#bbf7d0`, actief = `var(--groen)` + witte tekst. `beperkDecimalen.test.js`: BD-16 gecorrigeerd (minteken gefilterd), BD-19/20/21/22 nieuw. `valideerBedragRealtime.test.js`: sectie "letters en ongeldige tekens" nieuw (4 tests). `pw6-responsive.spec.js` PW-6e: y-stacking assert herschreven met expliciete `afmeldenBox.y < sluitBox.y` + 60px marge voor hint-paragraaf. | Bug + UX |
 | 7.1 | 2026-04-24 | **Tests gesynchroniseerd met traject-2:** Unit UX-01/02 verwijderd (conditionele helptekst-logica bestaat niet meer); UX-03/04/05 toegevoegd (vaste helptekst). E2e: PW-5g (`.knop-uitnodigen` focusbaar via `focus()`), PW-5h (action-list `aria-label` bereikbaar via Tab, Chromium only), PW-6e (action-list verticaal gestapeld op 320px, niet buiten viewport). `pw5-keyboard-focus.spec.js` en `pw6-responsive.spec.js` bijgewerkt. | Testdekking actueel na overzichtscherm redesign |
 | 7.0 | 2026-04-24 | **Traject-2: overzichtscherm redesign:** `PaginaOverzicht.jsx` herschreven. Nieuwe `variant="uitnodigen"` op `DeelKnop` voor dashed-border knop boven het actiegrid. Beheer-sectie: van `grid-2` naar `actie-lijst` (BEM) — twee rijen met `ChevronRight`-icon rechts; `aria-label` op beide rijen. Helptekst altijd zichtbaar (`actie-lijst__helptekst`). CSS: `.knop-uitnodigen` (dashed border, hover), `.actie-lijst` en alle BEM-subklassen toegevoegd aan `index.css`. `ChevronRight` geïmporteerd uit `lucide-react`. `DeelKnop.jsx`: `variant="uitnodigen"` afgehandeld als derde classnaam-tak. | UX-review traject 2 |
@@ -349,3 +404,5 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel** | Buffer bij downtime |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Schuld afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm** | Screenshot-review |
+| 7.6 | 2026-04-26 | **PostHog eventdekking uitgebreid:** `logMelding()` toegevoegd op 13 plaatsen in 7 bestanden. `ModalDeelnemen`: import + `fout_validatie_deelnemen` na validatiefout. `ModalTransactie`: import + `fout_gebruiker_saldo_te_laag` / `fout_gebruiker_niet_actief` / `fout_gebruiker_deelnemer_ontbreekt` per catch-tak. `PaginaStorten`: `fout_validatie_geen_bedrag`, `fout_validatie_bedrag_te_hoog`, `fout_gebruiker_potje_gesloten`, `fout_gebruiker_geen_deelnemer`, `fout_gebruiker_niet_actief` per guard-return. `usePotjeActies`: `fout_gebruiker_undo_niet_eigen`, `fout_gebruiker_undo_saldo_te_laag`, `fout_gebruiker_afmelden_niet_gestort` vóór `toonToast`. `PaginaPotje`: import + `succes_verbinding_hersteld` naast `toonToast`. `DeelKnop`: import + `succes_link_gekopieerd` / `fout_link_kopieer_mislukt`. `ErrorBoundary`: import als module-import (class component, geen hook) + `fout_technisch_crash` na `Sentry.captureException`. §17a (eventlijst) toegevoegd als living reference. | Volledige PostHog dekking op alle gebruikerspaden |
+| 7.5 | 2026-04-25 | **PostHog analytics geïntegreerd:** `posthog-js` toegevoegd aan `dependencies`. `src/utils/logMelding.js` aangemaakt als centrale util voor gebruiksevents. `main.jsx` uitgebreid met `posthog.init()` (EU-host, IP-masking, autocapture uit, alleen productie). `logFout.js` uitgebreid met `bepaalFoutCode()`: bekende gebruiksfouten sturen `fout_gebruiker_<code>` event; technische fouten sturen `fout_technisch` event naast Sentry. `PaginaNieuwPotje`, `PaginaStorten`, `PaginaProfiel` en `usePotjeActies` loggen succesevents. §2 dependency-tabel en omgevingsvariabelen bijgewerkt. | Meldingfrequentie meetbaar; foutpatronen inzichtelijk via PostHog |

@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { logMelding } from '../utils/logMelding'
 import { metTimeout } from '../utils/requestTimeout'
 import { berekenSaldi, heeftGestort } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
@@ -63,6 +64,7 @@ export function usePotjeActies({
 
     if (error) throw error
 
+    logMelding('succes_deelgenomen', { component: 'usePotjeActies' })
     setDeelnemer({
       id: nieuweDeelnemerId,
       potje_id: potjeId,
@@ -82,6 +84,7 @@ export function usePotjeActies({
     const actiefDeelnemer = deelnemerOverride ?? deelnemer
 
     if (!transactie || transactie.deelnemer_id !== actiefDeelnemer?.id) {
+      logMelding('fout_gebruiker_undo_niet_eigen', { component: 'usePotjeActies' })
       toonToast('Je kunt alleen je eigen transacties ongedaan maken.', 'fout')
       return
     }
@@ -89,6 +92,7 @@ export function usePotjeActies({
     if (transactie.type === 'storting') {
       const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
       if (rond(huidigSaldo) < rond(Number(transactie.bedrag))) {
+        logMelding('fout_gebruiker_undo_saldo_te_laag', { component: 'usePotjeActies' })
         toonToast(
           'Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag.',
           'fout'
@@ -106,6 +110,7 @@ export function usePotjeActies({
       toonToast(logFout(error, { component: 'usePotjeActies', actie: 'undo' }), 'fout')
     } else {
       setTransacties(prev => prev.filter(t => t.id !== transactie.id))
+      logMelding('succes_transactie_ongedaan', { component: 'usePotjeActies' })
       toonToast('Transactie ongedaan gemaakt.', 'ok')
     }
   }, [transacties, deelnemers, deelnemer, toonToast, setTransacties])
@@ -131,6 +136,7 @@ export function usePotjeActies({
     const deelnemerSnapshot = deelnemer
 
     setModaal(null)
+    logMelding(type === 'storting' ? 'succes_storting_modal_geslaagd' : 'succes_betaling_geslaagd', { component: 'usePotjeActies' })
     toonToast(
       type === 'storting'
         ? `Storting van ${formatBedrag(bedrag, valuta)} geregistreerd.`
@@ -158,6 +164,7 @@ export function usePotjeActies({
       .eq('id', potjeId)
       .eq('status', 'open'))
     if (error) throw error
+    logMelding('succes_potje_gesloten', { component: 'usePotjeActies' })
     setModaal(null)
   }, [potjeId, deelnemer, setModaal])
 
@@ -168,6 +175,7 @@ export function usePotjeActies({
 
     const saldi = berekenSaldi(deelnemers, transacties)
     if (!heeftGestort(saldi.deelnemersSaldi, deelnemer.id)) {
+      logMelding('fout_gebruiker_afmelden_niet_gestort', { component: 'usePotjeActies' })
       toonToast('Je kunt je pas afmelden als je hebt gestort.', 'fout')
       return
     }
@@ -189,6 +197,7 @@ export function usePotjeActies({
 
       setDeelnemer(data)
       setDeelnemers(prev => prev.map(d => d.id === data.id ? data : d))
+      logMelding('succes_afgemeld', { component: 'usePotjeActies' })
       toonToast('Je bent afgemeld. Je telt niet meer mee bij nieuwe betalingen.', 'info')
     } catch (e) {
       toonToast(logFout(e, { component: 'usePotjeActies', actie: 'afmelden' }), 'fout')

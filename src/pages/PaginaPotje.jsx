@@ -5,6 +5,7 @@ import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
 import { PROFIEL_NAAM_KEY, STANDAARD_VALUTA } from '../constants'
 import { getItem } from '../utils/storage'
+import { logMelding } from '../utils/logMelding'
 import ModalDeelnemen from '../components/ModalDeelnemen.jsx'
 import ModalTransactie from '../components/ModalTransactie.jsx'
 import ModalSluiten from '../components/ModalSluiten.jsx'
@@ -53,7 +54,10 @@ function PaginaPotje() {
   const vorigeOnline = useRef(online)
   useEffect(() => {
     if (!vorigeOnline.current && online) {
-      setTimeout(() => toonToast('Verbinding hersteld.', 'ok'), 0)
+      setTimeout(() => {
+        logMelding('succes_verbinding_hersteld', { component: 'PaginaPotje' })
+        toonToast('Verbinding hersteld.', 'ok')
+      }, 0)
     }
     vorigeOnline.current = online
   }, [online, toonToast])
