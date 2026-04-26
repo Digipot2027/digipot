@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock, ChevronRight, ChevronLeft } from 'lucide-react'
+import { SlidersHorizontal, ArrowUp, CreditCard, LogOut, Lock, ChevronRight } from 'lucide-react'
 import { berekenSaldi, heeftGestort, berekenAchtergelatenBedrag } from '../utils/berekenSaldi'
 import { formatBedrag } from '../utils/formatBedrag'
 import { STANDAARD_VALUTA } from '../constants'
@@ -95,7 +95,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               <colgroup>
                 <col style={{ width: 'auto' }} />
                 <col style={{ width: 72 }} />
-                <col style={{ width: 72 }} />
+                <col style={{ width: 80 }} />
               </colgroup>
               <thead>
                 <tr>
@@ -172,7 +172,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
                     {afmeldenLaden ? 'Bezig...' : ikBenActief ? 'Afmelden' : 'Afgemeld'}
                   </span>
                 </span>
-                <ChevronLeft size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__chevron" />
+                <ChevronRight size={16} aria-hidden="true" strokeWidth={2} className="actie-lijst__chevron" />
               </button>
 
               {ikBenActief && !ikBenGestort && (
@@ -188,7 +188,7 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
               <button
                 className="actie-lijst__rij actie-lijst__rij--gevaar"
                 onClick={onSluiten}
-                disabled={!heeftTransacties}
+                disabled={!heeftTransacties || !ikBenActief}
                 aria-label="Pot sluiten"
               >
                 <span className="actie-lijst__rij-links">
