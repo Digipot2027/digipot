@@ -17,6 +17,8 @@ import userEvent from '@testing-library/user-event'
 import ModalTransactie from '../components/ModalTransactie'
 
 vi.mock('../hooks/useFocusTrap', () => ({ useFocusTrap: () => {} }))
+// logMelding importeert posthog-js dat niet beschikbaar is in jsdom
+vi.mock('../utils/logMelding', () => ({ logMelding: vi.fn() }))
 
 describe('ModalTransactie — A17 dubbele-submit-guard', () => {
   let onBevestig

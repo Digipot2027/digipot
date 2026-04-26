@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { logFout } from '../utils/logFout'
+import { logMelding } from '../utils/logMelding'
 import { valideerTransactieBedrag, beperkDecimalen, valideerBedragRealtime } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { slaagFormulierOp, wisFormulier } from '../utils/formulierBuffer'
@@ -104,10 +105,13 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
       if (error.message?.includes('SALDO_TE_LAAG')) {
         const saldo = error.message.split(':')[1]
         setFout(`Het potje heeft niet genoeg saldo. Maximaal beschikbaar: ${formatBedrag(saldo, valuta)}.`)
+        logMelding('fout_gebruiker_saldo_te_laag', { component: 'ModalTransactie', actie: type })
       } else if (error.message?.includes('NIET_ACTIEF')) {
         setFout('Je hebt je afgemeld en kunt geen transacties meer invoeren.')
+        logMelding('fout_gebruiker_niet_actief', { component: 'ModalTransactie', actie: type })
       } else if (error.message?.includes('DEELNEMER_ONTBREEKT')) {
         setFout('Er is iets misgegaan. Ververs de pagina en probeer opnieuw.')
+        logMelding('fout_gebruiker_deelnemer_ontbreekt', { component: 'ModalTransactie', actie: type })
       } else {
         // B5: bij timeout of netwerkfout het bedrag bewaren voor herstel
         if (potjeId && (

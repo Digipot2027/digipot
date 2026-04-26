@@ -4,6 +4,7 @@ import { ChevronLeft, RotateCcw } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { usePotje } from '../hooks/usePotje'
 import { logFout } from '../utils/logFout'
+import { logMelding } from '../utils/logMelding'
 import { metTimeout } from '../utils/requestTimeout'
 import { formatBedrag, parseBedrag } from '../utils/formatBedrag'
 import { slaagFormulierOp, laadFormulier, wisFormulier } from '../utils/formulierBuffer'
@@ -129,8 +130,10 @@ function PaginaStorten() {
     if (!bedragGeldig) {
       if (effectiefBedrag !== null && effectiefBedrag > MAX) {
         setInvoerFout('Het maximale bedrag per storting is €999,99.')
+        logMelding('fout_validatie_bedrag_te_hoog', { component: 'PaginaStorten' })
       } else {
         setInvoerFout('Kies een bedrag of voer een bedrag in.')
+        logMelding('fout_validatie_geen_bedrag', { component: 'PaginaStorten' })
       }
       return
     }
@@ -143,6 +146,7 @@ function PaginaStorten() {
     if (potje?.status === 'gesloten') {
       bezigRef.current = false
       setInvoerFout('Dit potje is gesloten.')
+      logMelding('fout_gebruiker_potje_gesloten', { component: 'PaginaStorten' })
       return
     }
 
@@ -150,12 +154,14 @@ function PaginaStorten() {
     if (!deelnemerId) {
       bezigRef.current = false
       setInvoerFout('Je bent geen deelnemer van dit potje.')
+      logMelding('fout_gebruiker_geen_deelnemer', { component: 'PaginaStorten' })
       return
     }
 
     if (deelnemer?.actief === false) {
       bezigRef.current = false
       setInvoerFout('Je hebt je afgemeld en kunt niet meer storten.')
+      logMelding('fout_gebruiker_niet_actief', { component: 'PaginaStorten' })
       return
     }
 
@@ -169,6 +175,7 @@ function PaginaStorten() {
 
       wisFormulier(`digipot:storten:${id}`)
 
+      logMelding('succes_storting_geslaagd', { component: 'PaginaStorten' })
       setGeslaagd(true)
       setTimeout(() => {
         bezigRef.current = false

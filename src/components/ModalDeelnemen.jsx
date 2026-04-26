@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { logFout } from '../utils/logFout'
+import { logMelding } from '../utils/logMelding'
 import { valideerDeelnemerNaam } from '../utils/valideer'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { MAX_NAAM, MAX_DEELNEMERS } from '../constants'
@@ -52,6 +53,7 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
     })
     if (validatieFout) {
       setFout(validatieFout)
+      logMelding('fout_validatie_deelnemen', { component: 'ModalDeelnemen', actie: validatieFout })
       return
     }
 

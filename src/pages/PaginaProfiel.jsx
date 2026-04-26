@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, User, Trash2 } from 'lucide-react'
 import { PROFIEL_NAAM_KEY, TEKSTGROOTTE_KEY, MAX_NAAM } from '../constants'
 import { getItem, setItem, removeItem } from '../utils/storage'
+import { logMelding } from '../utils/logMelding'
 
 const TEKSTGROOTTES = [
   { waarde: 'normaal', label: 'Normaal' },
@@ -34,6 +35,7 @@ function PaginaProfiel() {
     setItem(TEKSTGROOTTE_KEY, waarde)
     document.documentElement.setAttribute('data-tekstgrootte', waarde)
     radioRefs.current[index]?.focus()
+    logMelding('succes_tekstgrootte_gewijzigd', { component: 'PaginaProfiel', actie: waarde })
   }
 
   function handleOpslaan(e) {
@@ -56,6 +58,7 @@ function PaginaProfiel() {
     setOpgeslagenNaamState(naamTrimmed)
     setNaam(naamTrimmed)
     setOpgeslagen(true)
+    logMelding('succes_profielnaam_opgeslagen', { component: 'PaginaProfiel' })
     setTimeout(() => setOpgeslagen(false), 2500)
   }
 
@@ -65,6 +68,7 @@ function PaginaProfiel() {
     setNaam('')
     setOpgeslagen(false)
     setFout('')
+    logMelding('succes_profielnaam_verwijderd', { component: 'PaginaProfiel' })
   }
 
   const heeftWijziging = naam.trim() !== opgeslagenNaamState

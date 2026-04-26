@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { logFout } from '../utils/logFout'
+import { logMelding } from '../utils/logMelding'
 import { metTimeout } from '../utils/requestTimeout'
 import { valideerPotjeNaam } from '../utils/valideer'
 import { MAX_NAAM, STANDAARD_VALUTA } from '../constants'
@@ -38,6 +39,8 @@ function PaginaNieuwPotje() {
         .insert({ id: nieuweId, naam: naam.trim(), valuta }))
 
       if (error) throw error
+
+      logMelding('succes_potje_aangemaakt', { component: 'PaginaNieuwPotje' })
       navigate(`/potje/${nieuweId}`)
     } catch (error) {
       setFout(logFout(error, { component: 'PaginaNieuwPotje', actie: 'aanmaken' }))
