@@ -70,7 +70,6 @@ function PaginaPotje() {
       deelnemer,
       setDeelnemer,
       setDeelnemers,
-      setTransacties,
       toonToast,
       setModaal,
       setAfmeldenLaden,

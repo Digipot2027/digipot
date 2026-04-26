@@ -27,7 +27,6 @@ export function usePotjeActies({
   deelnemer,
   setDeelnemer,
   setDeelnemers,
-  setTransacties,
   toonToast,
   setModaal,
   setAfmeldenLaden,
@@ -40,9 +39,6 @@ export function usePotjeActies({
   const handleDeelnemen = useCallback(async (naam) => {
     const nieuweDeelnemerId = crypto.randomUUID()
 
-    // Haal user_id op uit de actieve auth-sessie.
-    // bootstrapAnonAuth() in supabaseClient.js garandeert dat er altijd
-    // een sessie is — getUser() geeft dus altijd een user terug.
     const { data: { user } } = await supabase.auth.getUser()
     const userId = user?.id ?? null
 
@@ -52,8 +48,6 @@ export function usePotjeActies({
         id: nieuweDeelnemerId,
         potje_id: potjeId,
         naam,
-        // device_id kolom is nullable na migratie device_id_nullable (2026-04-26).
-        // RLS gebruikt uitsluitend auth.uid() via is_mijn_deelnemer() — device_id ongebruikt.
         user_id: userId,
       }))
 
@@ -97,15 +91,12 @@ export function usePotjeActies({
         : `Betaling van ${formatBedrag(bedrag, valuta)} geregistreerd.`,
       'ok'
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [potjeId, deelnemer, deelnemers, transacties, valuta, setModaal, toonToast])
 
   // ── handleSluiten ────────────────────────────────────────────────────────────
 
   const handleSluiten = useCallback(async () => {
-    if (!deelnemer?.id) {
-      throw new Error('DEELNEMER_ONTBREEKT')
-    }
+    if (!deelnemer?.id) throw new Error('DEELNEMER_ONTBREEKT')
 
     const { error } = await metTimeout(supabase
       .from('potjes')
