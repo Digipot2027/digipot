@@ -19,6 +19,8 @@ import ModalDeelnemen from '../components/ModalDeelnemen'
 
 // Minimale mock voor useFocusTrap — geen DOM-afhankelijkheden nodig
 vi.mock('../hooks/useFocusTrap', () => ({ useFocusTrap: () => {} }))
+// logMelding importeert posthog-js dat niet beschikbaar is in jsdom
+vi.mock('../utils/logMelding', () => ({ logMelding: vi.fn() }))
 
 describe('ModalDeelnemen — A17 dubbele-submit-guard', () => {
   let onDeelnemen
