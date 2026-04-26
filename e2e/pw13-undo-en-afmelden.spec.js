@@ -40,7 +40,7 @@ test.describe('PW-13: Undo en afmelden', () => {
     await page.getByRole('button', { name: /^Betaling$/i }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByLabel(/Betaald bedrag/i).fill('10')
-    await page.getByRole('button', { name: 'Bevestigen' }).click()
+    await page.getByRole('button', { name: /Bevestig|Bevestigen/i }).click()
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 })
     const undoKnop = page.getByRole('button', { name: /Ongedaan/i })
     await expect(undoKnop).toBeVisible({ timeout: 6000 })
