@@ -1,7 +1,7 @@
 # Technische schuld — Digipot
 
-**Versie:** 1.3
-**Datum:** 2026-04-21
+**Versie:** 1.6
+**Datum:** 2026-04-26
 **Status:** Actueel
 **Beheerder:** Projectteam Digipot
 
@@ -294,6 +294,7 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | **Ernst** | Laag |
 | **Status** | ✅ Afgelost (TO v6.0, 2026-04-21) |
 | **Omschrijving** | Migratie `20260421000100_transacties_rate_limit.sql` breidt `transacties_insert` RLS uit met COUNT-subquery: max 10 transacties per device_id per minuut. |
+| **Noot (2026-04-26)** | Na Fase 4 is de rate-limit-clausule herschreven naar `auth.uid()`. De migratiebestand-naam is misleidend; consolidatie staat als E3 op de agenda. |
 
 ---
 
@@ -327,20 +328,7 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 
 ---
 
-## D — Audit 2026-04-26
-
-### D21 — `device_id` tijdelijk gevuld met willekeurig UUID na Fase 4
-
-| | |
-|---|---|
-| **Ernst** | Medium |
-| **Status** | ✅ Afgelost (2026-04-26) |
-| **Omschrijving** | `usePotjeActies.handleDeelnemen` vulde `device_id` bij INSERT met `crypto.randomUUID()` als tijdelijke workaround omdat de kolom `NOT NULL` was. Dit UUID was nooit gekoppeld aan het echte apparaat. |
-| **Oplossing** | Migratie `20260426000000_device_id_nullable.sql`: `ALTER TABLE deelnemers ALTER COLUMN device_id DROP NOT NULL`. INSERT in `usePotjeActies.js` bevat geen `device_id` meer. `is_mijn_deelnemer()` gebruikt uitsluitend `auth.uid()` — device_id was al functioneel ongebruikt. |
-
----
-
-## C — Nieuw gesignaleerde items (2026-04-21)
+## C — Items uit audit 2026-04-21
 
 ### C1 — Resterende inline stijlen na CSS-migratie
 
@@ -372,18 +360,159 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 
 ---
 
-## Overzicht
+## D — Items uit audit 2026-04-26 (eerste tranche)
 
-**Alle schulditems zijn afgelost of bewust geaccepteerd.**
+### D21 — `device_id` tijdelijk gevuld met willekeurig UUID na Fase 4
+
+| | |
+|---|---|
+| **Ernst** | Medium |
+| **Status** | ✅ Afgelost (2026-04-26) |
+| **Omschrijving** | `usePotjeActies.handleDeelnemen` vulde `device_id` bij INSERT met `crypto.randomUUID()` als tijdelijke workaround omdat de kolom `NOT NULL` was. Dit UUID was nooit gekoppeld aan het echte apparaat. |
+| **Oplossing** | Migratie `20260426000000_device_id_nullable.sql`: `ALTER TABLE deelnemers ALTER COLUMN device_id DROP NOT NULL`. INSERT in `usePotjeActies.js` bevat geen `device_id` meer. `is_mijn_deelnemer()` gebruikt uitsluitend `auth.uid()` — device_id was al functioneel ongebruikt. |
+
+---
+
+## E — Items uit security-audit 2026-04-26 (tweede tranche)
+
+### E1 — `service_role` secret in `.env.local` zonder `.gitignore`-bescherming
+
+| | |
+|---|---|
+| **Ernst** | **Kritiek** |
+| **Status** | ✅ Afgelost (2026-04-26, SEC-A1) |
+| **Omschrijving** | `.env.local` bevatte `SUPABASE_SERVICE_ROLE_KEY=sb_secret_...`. De `service_role`-sleutel omzeilt alle RLS-policies. `.gitignore` (92 bytes) bevatte geen `.env*`-pattern, dus één onbedachte `git add .` zou het secret naar publieke geschiedenis op `https://github.com/Digipot2027/digipot` pushen. |
+| **Misbruikscenario** | Aanvaller kloont repo, leest secret uit history, en heeft volledige read/write op alle tabellen, kan `auth.users` uitlezen en de hele database droppen. |
+| **Oplossing** | `.gitignore` aangevuld met `.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`. Beheerder roteert het secret in Supabase Dashboard (handmatig — geen MCP-actie mogelijk). |
+| **Beheerderstaak (handmatig)** | 1) `git ls-files .env.local` en `git log --all -- .env.local` — leeg = veilig. 2) Secret roteren in Supabase Dashboard → Project Settings → API → Reset service_role key. 3) Nieuwe waarde in `.env.local` plaatsen. |
+| **Migratie** | n.v.t. — alleen `.gitignore`. |
+
+---
+
+### E2 — IDOR: `deelnemers_insert` zonder eigenaar-check (impersonation + weesdeelnemer)
+
+| | |
+|---|---|
+| **Ernst** | **Kritiek** |
+| **Status** | ✅ Afgelost (2026-04-26, SEC-A2) |
+| **Omschrijving** | De live `deelnemers_insert` policy controleerde alleen dat het potje open is. Een geauthenticeerde anon-gebruiker kon een deelnemer invoegen met `user_id = NULL` (kapt eigenaarschap af) of `user_id = <UUID van een andere gebruiker>` (impersonation). In combinatie met `transacties_insert` (die alleen `is_mijn_deelnemer` op de deelnemer-rij vereist) kon een aanvaller namens een gespoofde identiteit transacties plaatsen op willekeurige open potjes. |
+| **Misbruikscenario** | Vrienden A, B, C delen een potje voor een diner. URL lekt via een gedeelde groepschat. Aanvaller D wordt anoniem ingelogd (`auth.uid()` = X), POST `deelnemers` met `naam: "Diana"`, `potje_id`, `user_id: X`. Slaagt. Plaatst betalingen die het potsaldo opmaken. |
+| **Oplossing** | Policy aangevuld met `auth.uid() IS NOT NULL AND deelnemers.user_id = auth.uid()`. Frontend (`usePotjeActies.handleDeelnemen`) zet `user_id` al uit `supabase.auth.getUser()` — geen frontend-wijziging nodig. |
+| **Migratie** | `supabase/migrations/20260426000100_sec_a2_deelnemers_insert_eigenaar_check.sql` (live toegepast). |
+| **Tests** | `src/test/secA2.deelnemerInsertEigenaar.regressie.test.js` (6 cases) + `e2e/pw14-sec-a2-impersonation.spec.js` (4 cases, 5 browsers = 20 e2e-cases). |
+
+---
+
+### E3 — Migratiebestanden uit sync met live DB-policies
+
+| | |
+|---|---|
+| **Ernst** | Hoog |
+| **Status** | 🔴 Open (SEC-A3) |
+| **Omschrijving** | De drie laatste RLS-migraties in `/supabase/migrations` (`20260414`, `20260421100`, `20260426`) gebruiken nog `current_setting('request.headers')::json ->> 'x-device-id'`. De live policies gebruiken sinds Fase 4 `is_mijn_deelnemer(user_id, device_id)` met `auth.uid()`. Bij DB-rebuild (`supabase db reset` of dev-branch) krijgt men de oude staat. |
+| **Risico** | Disaster recovery faalt; dev-branches draaien tegen verouderde policies; toekomstige maintainers misleid. |
+| **Oplossing** | Twee consoliderende migraties toevoegen die de huidige live state reproduceren, en de drie verouderde migraties markeren als obsolete (header-comment + DROP-only-bodies). |
+
+---
+
+### E4 — `push_subscriptions` tabel zonder feature-implementatie
+
+| | |
+|---|---|
+| **Ernst** | Hoog |
+| **Status** | 🔴 Open (SEC-A4) |
+| **Omschrijving** | DB-tabel `push_subscriptions` bestaat met RLS-policies maar codebase bevat geen enkele referentie. Aanvalsoppervlak zonder business-doel; FO/TO bevatten geen beschrijving. |
+| **Oplossing** | Beslis: feature op roadmap → documenteer in FO/TO. Niet op roadmap → `DROP TABLE push_subscriptions`. |
+
+---
+
+### E5 — Onnodig brede privileges op alle tabellen
+
+| | |
+|---|---|
+| **Ernst** | Hoog |
+| **Status** | 🔴 Open (SEC-A5) |
+| **Omschrijving** | Anon en authenticated hebben `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `REFERENCES`, `TRIGGER`, `TRUNCATE` op `transacties_log`. `DELETE` op `deelnemers` en `potjes`. RLS blokkeert vandaag, maar defense-in-depth ontbreekt. |
+| **Oplossing** | `REVOKE`-cleanup: alleen `SELECT/INSERT/UPDATE` toekennen waar policies daadwerkelijk gebruiken. `DELETE` op `transacties` blijft (undo-flow). `TRUNCATE`/`REFERENCES`/`TRIGGER` op alle tabellen voor anon en authenticated intrekken. |
+
+---
+
+### E6 — Geen rate-limit op `potjes_insert`
+
+| | |
+|---|---|
+| **Ernst** | Medium |
+| **Status** | 🔴 Open (SEC-A6) |
+| **Omschrijving** | Iedereen kan ongelimiteerd potjes aanmaken. Spam/DoS-risico — 100k potjes in een minuut belast lifecycle-cron en raakt free-tier rij-limieten. |
+| **Oplossing** | Rate-limit toevoegen aan `potjes_insert` policy: max 10 potjes per `auth.uid()` per uur. |
+
+---
+
+### E7 — Open SELECT op `potjes/deelnemers/transacties` (privacy-by-design)
+
+| | |
+|---|---|
+| **Ernst** | Medium |
+| **Status** | 🟡 Geaccepteerd (privacy-by-design) |
+| **Omschrijving** | `SELECT TO anon USING (true)` op alle drie tabellen. Iedereen met UUID ziet alle data. Bewuste keuze voor het sharemodel (link → potje openen). |
+| **Mitigatie** | Documenteer in FO §[Privacy] en TO §[Securitymaatregelen]. Vandaag al gemitigeerd door random UUIDv4 (122 bits entropie) en CSP-headers die referer-leak beperken. |
+| **Voorwaarde voor heroverwegen** | Bij introductie van gevoelige velden (bedragen >€5000, IBAN, SEPA) of bij wettelijk vereiste vertrouwelijkheid. |
+
+---
+
+### E8 — `document.title` accepteert Unicode bidi-control characters
+
+| | |
+|---|---|
+| **Ernst** | Medium |
+| **Status** | 🔴 Open (SEC-A8) |
+| **Omschrijving** | Potje- en deelnemernamen kunnen `\u202E` (RTL override), `\u200B` (ZWSP) en andere bidi-control characters bevatten. Geen XSS, wel social engineering via misleidende tabtitels. |
+| **Oplossing** | Strip `[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]` in `valideerPotjeNaam`/`valideerDeelnemerNaam`. Aanvullend DB-CHECK-constraint via `regexp_replace`. |
+
+---
+
+### E9 — Geen rate-limit op `deelnemers_update`
+
+| | |
+|---|---|
+| **Ernst** | Laag |
+| **Status** | 🔴 Open (SEC-A10) |
+| **Omschrijving** | Onbeperkt afmelden → realtime-broadcast spam naar abonnees op het kanaal. |
+| **Oplossing** | Rate-limit op `deelnemers_update`: max 30 updates per minuut per `auth.uid()`. |
+
+---
+
+### E10 — `Referrer-Policy: strict-origin-when-cross-origin` lekt origin
+
+| | |
+|---|---|
+| **Ernst** | Laag |
+| **Status** | 🔴 Open (SEC-A13) |
+| **Omschrijving** | Bij Tikkie-fallback wordt `Referer: https://digipot.app` meegestuurd. Niet ernstig (origin is publiek), wel netter als `no-referrer`. |
+| **Oplossing** | `_headers` aanpassen: `Referrer-Policy: no-referrer`. |
+
+---
+
+## Overzicht
 
 | Item | Ernst | Status |
 |---|---|---|
 | B1 — Geen TypeScript | Medium | 🟡 Geaccepteerd |
 | B3 — PII in Sentry | Laag | 🟡 Geaccepteerd |
-| D21 — device_id willekeurig UUID | Medium | ✅ Afgelost |
+| E1 — service_role secret in .env.local | Kritiek | ✅ Afgelost |
+| E2 — IDOR deelnemers_insert | Kritiek | ✅ Afgelost |
+| E3 — Migratiebestanden uit sync | Hoog | 🔴 Open |
+| E4 — push_subscriptions tabel | Hoog | 🔴 Open |
+| E5 — Onnodig brede privileges | Hoog | 🔴 Open |
+| E6 — Geen rate-limit potjes_insert | Medium | 🔴 Open |
+| E7 — Open SELECT op alle tabellen | Medium | 🟡 Geaccepteerd |
+| E8 — Unicode bidi in namen | Medium | 🔴 Open |
+| E9 — Geen rate-limit deelnemers_update | Laag | 🔴 Open |
+| E10 — Referrer-Policy | Laag | 🔴 Open |
 | Alle A-items (A1–A20) | — | ✅ Afgelost |
-| Alle B-items (B2–B7) | — | ✅ Afgelost |
+| Alle B-items (B2, B4–B7) | — | ✅ Afgelost |
 | Alle C-items (C1–C3) | — | ✅ Afgelost |
+| D21 | Medium | ✅ Afgelost |
 
 ---
 
@@ -397,3 +526,4 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | 1.3 | 2026-04-21 | C2 en C3 afgelost — schuldenlijst volledig leeg |
 | 1.4 | 2026-04-26 | D21 toegevoegd: `device_id` tijdelijk willekeurig UUID na Fase 4 (audit 2026-04-26) |
 | 1.5 | 2026-04-26 | D21 afgelost: migratie `device_id_nullable`, INSERT zonder `device_id`, UX-1/UX-5/CODE-2/CODE-4/WCAG-6 opgelost |
+| 1.6 | 2026-04-26 | E-sectie toegevoegd uit security-audit 2026-04-26: E1 en E2 afgelost (Critical), E3–E10 als open/geaccepteerd opgenomen |

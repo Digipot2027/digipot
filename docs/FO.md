@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 5.2
+**Versie:** 5.3
 **Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -181,3 +181,4 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 | 3.0 | 2026-04-21 | **§7 afmeld-modal uitgebreid:** extra waarschuwingsbullet getoond wanneer de deelnemer bij afmelding een bedrag van ≥ €2 achterlaat in het potje. Tekst: *"Je laat ~€XX,XX achter in het potje — dit geld ben je kwijt."* Berekening: evenredig aandeel op basis van `(eigen gestort / potTotaal) × potSaldo`. Drempel €2 voorkomt melding bij verwaarloosbare bedragen. Berekening in `berekenAchtergelatenBedrag()` in `berekenSaldi.js`. | Deelnemer was onbewust geld kwijt bij afmelding zonder waarschuwing |
 | 3.1 | 2026-04-21 | **§7 Overzichtscherm — "Nodig vrienden uit" verplaatst naar Beheer-sectie:** knop stond voorheen in de header-kaart (altijd zichtbaar), maar is een eenmalige actie per potje. Verplaatst naar de Beheer-sectie onderaan, onder de afmeld- en afsluitknoppen. Header-kaart toont nu alleen naam, welkomsttekst, saldo en gemiddelde. | Header te druk; uitnodigen is een beheersactie, geen primaire actie |
 | 3.2 | 2026-04-21 | **§14 audit trail (B2):** verwijderde transacties worden voortaan vastgelegd in `transacties_log` via DB-trigger `trg_log_verwijderde_transactie`. Undo en lifecycle-CASCADE zijn niet langer definitief verloren. **§14 downtime-herstel (B5):** bij REQUEST_TIMEOUT of netwerkfout op het stortenscherm of de betalingsmodal wordt het ingevoerde bedrag bewaard in sessionStorage via `formulierBuffer.js`; bij terugkeer op hetzelfde tabblad verschijnt een herstelbanner met het bewaarde bedrag. | Technische schuld B2 en B5 opgelost |
+| 5.3 | 2026-04-26 | **§14 eigenaar-check op deelname (SEC-A2, Critical):** de RLS-policy `deelnemers_insert` is aangescherpt zodat een nieuwe deelnemer altijd aan de aanmakende anonieme sessie (`auth.uid()`) is gekoppeld. Functioneel gevolg: een deelname zonder geldige sessie (zeer zeldzame edge-case wanneer `bootstrapAnonAuth()` faalt door rate-limit of netwerkprobleem) wordt geweigerd met de bestaande melding *"Je sessie is niet herkend. Ververs de pagina en probeer opnieuw."* In de happy path is geen waarneembaar verschil: `bootstrapAnonAuth()` zorgt automatisch voor een sessie vóór het deelneemscherm verschijnt. Voorkomt dat een aanvaller een deelnemer kan aanmaken namens een andere gebruiker (impersonation) of zonder eigenaar (weesdeelnemer). | Security-audit 2026-04-26, Critical IDOR |
