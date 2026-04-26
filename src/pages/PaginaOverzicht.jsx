@@ -94,8 +94,8 @@ function PaginaOverzicht({ potje, deelnemers, transacties, deelnemer: ikzelf, on
             >
               <colgroup>
                 <col style={{ width: 'auto' }} />
-                <col style={{ width: 72 }} />
                 <col style={{ width: 80 }} />
+                <col style={{ width: 90 }} />
               </colgroup>
               <thead>
                 <tr>
