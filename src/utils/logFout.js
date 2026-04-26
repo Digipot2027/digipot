@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react'
 import { vertaalFout } from './vertaalFout'
+import { logMelding } from './logMelding'
 
 /**
  * Centrale foutafhandeling voor Digipot.
@@ -7,6 +8,7 @@ import { vertaalFout } from './vertaalFout'
  * Gebruik: const bericht = logFout(error, { component: 'ModalDeelnemen', actie: 'deelnemen' })
  *
  * - Logt de fout naar Sentry (alleen in productie, via Sentry.init enabled: PROD)
+ * - Logt alle fouten naar PostHog voor frequentie-rapportages
  * - Geeft een vertaalde Nederlandse gebruikerstekst terug
  * - Voegt context toe zonder persoonlijke data (geen namen, bedragen)
  *
@@ -18,6 +20,7 @@ import { vertaalFout } from './vertaalFout'
  *   als een toekomstige foutmelding gebruikersinput bevat, lekt die naar Sentry.
  *   Voor dit privéproject met voornamen als enige gebruikersinvoer is het risico
  *   momenteel verwaarloosbaar. Bewust geaccepteerd; geen sanitisatie geïmplementeerd.
+ *   PostHog ontvangt alleen de foutcode (string), geen error.message.
  *
  * Regels:
  * - Altijd aanroepen voordat een fout getoond wordt aan de gebruiker
@@ -25,6 +28,32 @@ import { vertaalFout } from './vertaalFout'
  * - context.component = naam van de component (verplicht)
  * - context.actie = wat de gebruiker probeerde te doen (verplicht)
  */
+
+/**
+ * Bepaalt een korte foutcode voor PostHog-rapportages op basis van het foutbericht.
+ * Geeft altijd een string terug — nooit een foutbericht met mogelijke PII.
+ */
+function bepaalFoutCode(bericht) {
+  if (bericht.includes('SALDO_TE_LAAG'))   return 'SALDO_TE_LAAG'
+  if (bericht.includes('NIET_ACTIEF'))     return 'NIET_ACTIEF'
+  if (bericht.includes('REQUEST_TIMEOUT')) return 'REQUEST_TIMEOUT'
+  if (bericht.includes('duplicate key') && bericht.includes('deelnemers_potje_id_naam'))
+                                           return 'DUPLICATE_NAAM'
+  if (bericht.includes('duplicate key') && bericht.includes('deelnemers_potje_id_device'))
+                                           return 'DUPLICATE_DEVICE'
+  if (bericht.includes('duplicate key'))   return 'DUPLICATE_KEY'
+  if (bericht.includes('PGRST116'))        return 'PGRST116'
+  if (bericht.includes('JSON object requested, multiple (or no) rows returned'))
+                                           return 'PGRST116'
+  if (bericht.includes('Cannot coerce the result to a single JSON object'))
+                                           return 'PGRST116'
+  if (bericht.includes('row-level security')) return 'RLS'
+  if (bericht.includes('fetch') || bericht.includes('NetworkError')) return 'NETWERK'
+  if (bericht.includes('JWT'))             return 'JWT'
+  if (bericht.includes('42501'))           return '42501'
+  return 'ONBEKEND'
+}
+
 export function logFout(error, context = {}) {
   if (!error) return 'Er is iets misgegaan. Probeer het opnieuw.'
 
@@ -40,6 +69,7 @@ export function logFout(error, context = {}) {
       )
 
   const bericht = errorInstantie.message || ''
+  const foutCode = bepaalFoutCode(bericht)
 
   // Bekende gebruikersfouten worden niet naar Sentry gestuurd —
   // dit zijn verwachte validatiefouten of verwachte gebruikerssituaties, geen bugs.
@@ -71,6 +101,17 @@ export function logFout(error, context = {}) {
         supabaseCode: error.code,
         // Geen namen, bedragen of andere PII
       },
+    })
+    // Technische fouten ook naar PostHog voor frequentie-inzicht
+    logMelding('fout_technisch', {
+      component: context.component,
+      actie: foutCode,
+    })
+  } else {
+    // Bekende gebruiksfouten naar PostHog — voor rapportages op frequentie
+    logMelding(`fout_gebruiker_${foutCode.toLowerCase()}`, {
+      component: context.component,
+      actie: context.actie,
     })
   }
 
