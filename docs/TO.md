@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 8.0
+**Versie:** 8.1
 **Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -406,6 +406,7 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel** | Buffer bij downtime |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Schuld afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm** | Screenshot-review |
+| 8.1 | 2026-04-26 | **Testopruiming:** (1) `modalDeelnemen.dubbelSubmit.regressie.test.js` en `modalTransactie.dubbelSubmit.regressie.test.js` verwijderd — lege placeholder-bestanden zonder tests. (2) `useMijnPotjes.eq.regressie.test.js` en `useMijnPotjes.ilike.regressie.test.js` samengevoegd tot `useMijnPotjes.naamMatching.test.js` — beide testten overlappende naam-matching logica (SEC-H2 + N4). (3) `multicurrency.constants.formatBedrag.regressie.test.js` hernoemd naar `formatBedrag.valuta.test.js` — naam dekte de lading niet meer na verwijdering van VALUTA_OPTIES. | Testanalyse: overbodige en misleidende testbestanden opgeruimd |
 | 8.0 | 2026-04-26 | **Audit laag + D21 afgelost:** D21 kolom nullable; `ModalDeelnemen` Lucide-icons; verbindingsbanner `WifiOff`; `✓`/`!` aria-hidden; `role="list"` potjeslijsten; root-migratiebestanden verwijderd. | Audit lage bevindingen 2026-04-26 |
 | 7.9 | 2026-04-26 | **Audit hoge + medium bevindingen opgelost:** CSP PostHog; CI actions v4; `.detail-sluit-knop` WCAG fixes; §17a eventlijst aangevuld; §3 utils-blok aangevuld; D21 gedocumenteerd. | Audit 2026-04-26 |
 | 7.8 | 2026-04-26 | **Bugfix kolombreedte 'Uitgegeven':** `col` breedte verhoogd van 72 naar 80px in `PaginaOverzicht.jsx`. **Pot sluiten beperkt tot actieve deelnemers:** `disabled={!heeftTransacties || !ikBenActief}` — afgemelde deelnemers kunnen het potje niet meer sluiten. | Kolomkop 'N' werd afgekapt; sluitlogica beperkt tot actieve deelnemers |
