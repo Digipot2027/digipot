@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 8.3
+**Versie:** 8.4
 **Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -406,6 +406,7 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel** | Buffer bij downtime |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Schuld afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm** | Screenshot-review |
+| 8.4 | 2026-04-26 | **Undo verwijderd:** `handleUndo` verwijderd uit `usePotjeActies`. Toast bij betaling toont geen undo-knop meer. `toonToast` vereenvoudigd (geen actie-parameter). `TOAST_DUUR_UNDO` verwijderd. `PW-13` e2e herschreven. | UX: undo was verwarrend en zelden gebruikt |
 | 8.3 | 2026-04-26 | **UX ModalTransactie:** knop groen (`knop-primair`) i.p.v. rood — rood suggereert gevaar. Bedrag op de knop: 'Storten €X,XX' / 'Bevestig €X,XX'. Bedrag-preview verwijderd. | UX-review |
 | 8.2 | 2026-04-26 | **CSP Sentry EU-regio fix:** `https://*.ingest.de.sentry.io` toegevoegd aan `connect-src` — Sentry EU-projecten sturen naar `.ingest.de.sentry.io` i.p.v. `.ingest.sentry.io`; browser blokkeerde alle Sentry-requests. **CI PostHog build-vars:** `VITE_POSTHOG_KEY` en `VITE_POSTHOG_HOST` toegevoegd aan de build-stap in `ci.yml` — Vite-env vars zijn alleen beschikbaar als ze tijdens de build worden meegegeven. | Sentry geblokkeerd door CSP; PostHog token leeg in productie |
 | 8.1 | 2026-04-26 | **Testopruiming:** (1) `modalDeelnemen.dubbelSubmit.regressie.test.js` en `modalTransactie.dubbelSubmit.regressie.test.js` verwijderd — lege placeholder-bestanden zonder tests. (2) `useMijnPotjes.eq.regressie.test.js` en `useMijnPotjes.ilike.regressie.test.js` samengevoegd tot `useMijnPotjes.naamMatching.test.js` — beide testten overlappende naam-matching logica (SEC-H2 + N4). (3) `multicurrency.constants.formatBedrag.regressie.test.js` hernoemd naar `formatBedrag.valuta.test.js` — naam dekte de lading niet meer na verwijdering van VALUTA_OPTIES. | Testanalyse: overbodige en misleidende testbestanden opgeruimd |

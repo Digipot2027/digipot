@@ -15,15 +15,9 @@ import { STANDAARD_VALUTA } from '../constants'
  * State-updates lopen via de setters die usePotje teruggaf.
  *
  * Fase 4 (2026-04-25): device_id volledig verwijderd uit handleDeelnemen.
- * Deelnemers worden aangemaakt met alleen user_id (via auth.getUser()).
- * D21 afgelost (2026-04-26): device_id kolom is nullable gemaakt via migratie
- * device_id_nullable. INSERT bevat geen device_id meer.
+ * D21 afgelost (2026-04-26): device_id kolom nullable, INSERT zonder device_id.
+ * UX (2026-04-26): undo-functionaliteit verwijderd.
  */
-
-function rond(waarde) {
-  const afgerond = Math.round(waarde * 100) / 100
-  return afgerond === 0 ? 0 : afgerond
-}
 
 export function usePotjeActies({
   potjeId,
@@ -79,43 +73,6 @@ export function usePotjeActies({
     navigate(`/potje/${potjeId}/storten`)
   }, [potjeId, setDeelnemer, navigate])
 
-  // ── handleUndo ───────────────────────────────────────────────────────────────
-
-  const handleUndo = useCallback(async (transactie, deelnemerOverride) => {
-    const actiefDeelnemer = deelnemerOverride ?? deelnemer
-
-    if (!transactie || transactie.deelnemer_id !== actiefDeelnemer?.id) {
-      logMelding('fout_gebruiker_undo_niet_eigen', { component: 'usePotjeActies' })
-      toonToast('Je kunt alleen je eigen transacties ongedaan maken.', 'fout')
-      return
-    }
-
-    if (transactie.type === 'storting') {
-      const huidigSaldo = berekenSaldi(deelnemers, transacties).potSaldo
-      if (rond(huidigSaldo) < rond(Number(transactie.bedrag))) {
-        logMelding('fout_gebruiker_undo_saldo_te_laag', { component: 'usePotjeActies' })
-        toonToast(
-          'Ongedaan maken niet mogelijk: er zijn al betalingen gedaan uit dit bedrag.',
-          'fout'
-        )
-        return
-      }
-    }
-
-    const { error } = await metTimeout(supabase
-      .from('transacties')
-      .delete()
-      .eq('id', transactie.id)
-      .eq('deelnemer_id', actiefDeelnemer.id))
-    if (error) {
-      toonToast(logFout(error, { component: 'usePotjeActies', actie: 'undo' }), 'fout')
-    } else {
-      setTransacties(prev => prev.filter(t => t.id !== transactie.id))
-      logMelding('succes_transactie_ongedaan', { component: 'usePotjeActies' })
-      toonToast('Transactie ongedaan gemaakt.', 'ok')
-    }
-  }, [transacties, deelnemers, deelnemer, toonToast, setTransacties])
-
   // ── handleTransactie ─────────────────────────────────────────────────────────
 
   const handleTransactie = useCallback(async (type, bedrag) => {
@@ -127,14 +84,10 @@ export function usePotjeActies({
       throw new Error(`SALDO_TE_LAAG:${saldi.potSaldo}`)
     }
 
-    const { data, error } = await metTimeout(supabase
+    const { error } = await metTimeout(supabase
       .from('transacties')
-      .insert({ potje_id: potjeId, deelnemer_id: deelnemer.id, type, bedrag })
-      .select()
-      .single())
+      .insert({ potje_id: potjeId, deelnemer_id: deelnemer.id, type, bedrag }))
     if (error) throw error
-
-    const deelnemerSnapshot = deelnemer
 
     setModaal(null)
     logMelding(type === 'storting' ? 'succes_storting_modal_geslaagd' : 'succes_betaling_geslaagd', { component: 'usePotjeActies' })
@@ -142,8 +95,7 @@ export function usePotjeActies({
       type === 'storting'
         ? `Storting van ${formatBedrag(bedrag, valuta)} geregistreerd.`
         : `Betaling van ${formatBedrag(bedrag, valuta)} geregistreerd.`,
-      'ok',
-      { label: 'Ongedaan', handler: () => handleUndo(data, deelnemerSnapshot) }
+      'ok'
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [potjeId, deelnemer, deelnemers, transacties, valuta, setModaal, toonToast])
@@ -210,7 +162,6 @@ export function usePotjeActies({
   return {
     handleDeelnemen,
     handleTransactie,
-    handleUndo,
     handleSluiten,
     handleAfmelden,
   }

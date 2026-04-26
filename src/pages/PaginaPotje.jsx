@@ -13,10 +13,9 @@ import ModalSluiten from '../components/ModalSluiten.jsx'
 import PaginaEindafrekening from './PaginaEindafrekening.jsx'
 import PaginaOverzicht from './PaginaOverzicht.jsx'
 
-// Toast-duur in ms — synchroon met de CSS-animatieduur via --toast-duur
-const TOAST_DUUR_UNDO  = 10000
-const TOAST_DUUR_INFO  = 5000
-const TOAST_DUUR_KORT  = 3000
+// Toast-duur in ms
+const TOAST_DUUR_INFO = 5000
+const TOAST_DUUR_KORT = 3000
 
 function PaginaPotje() {
   const { id } = useParams()
@@ -42,15 +41,12 @@ function PaginaPotje() {
 
   // ── Toast ─────────────────────────────────────────────────────────────────────
 
-  const toonToast = useCallback((bericht, type = 'info', actie = null) => {
+  const toonToast = useCallback((bericht, type = 'info') => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-    const duur = actie ? TOAST_DUUR_UNDO : type === 'info' ? TOAST_DUUR_INFO : TOAST_DUUR_KORT
-    setToast({ bericht, type, actie, duur })
+    const duur = type === 'info' ? TOAST_DUUR_INFO : TOAST_DUUR_KORT
+    setToast({ bericht, type, duur })
     toastTimerRef.current = setTimeout(() => setToast(null), duur)
   }, [])
-
-  // State-toast verwijderd (2026-04-24): stortenscherm gebruikt inline successtate.
-  // Overige navigaties (bijv. vanuit andere schermen) gebruiken geen state-toast meer.
 
   const vorigeOnline = useRef(online)
   useEffect(() => {
@@ -193,21 +189,14 @@ function PaginaPotje() {
 
       {toast && (
         <div
-          className={`toast ${toast.type}${toast.actie ? ' toast--heeft-undo' : ''}`}
-          style={toast.actie ? { '--toast-duur': `${toast.duur}ms` } : undefined}
+          className={`toast ${toast.type}`}
           role="status"
           aria-live="polite"
           aria-atomic="true"
         >
           <div className="toast-inhoud">
             <span>{toast.bericht}</span>
-            {toast.actie && (
-              <button className="toast-knop" onClick={toast.actie.handler}>
-                {toast.actie.label}
-              </button>
-            )}
           </div>
-          <div className="toast-voortgang" aria-hidden="true" />
         </div>
       )}
     </>
