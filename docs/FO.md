@@ -1,6 +1,6 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 4.6
+**Versie:** 4.9
 **Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -140,6 +140,7 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 
 | Versie | Datum | Wijziging | Reden |
 |---|---|---|---|
+| 4.9 | 2026-04-26 | **Audit 2026-04-26 — security en toegankelijkheid:** CSP uitgebreid met PostHog-host (`https://eu.i.posthog.com`) in `connect-src` — analytics werkte niet in productie. CI-actions gecorrigeerd naar v4. `detail-sluit-knop` kleur gecorrigeerd naar `--grijs-500` (WCAG 1.4.3) en focus-ring toegevoegd (WCAG 2.4.7). Architectuurschuld D21 (`device_id` tijdelijk willekeurig UUID) gedocumenteerd in SCHULD.md. | Audit 2026-04-26 |
 | 4.8 | 2026-04-26 | **Bugfix kolombreedte 'Uitgegeven':** `col width` verhoogd van 72 naar 80px — de 'N' viel af bij 11px uppercase tekst. **Pot sluiten beperkt tot actieve deelnemers:** `disabled` op Pot sluiten-knop uitgebreid met `!ikBenActief` — afgemelde deelnemers kunnen het potje niet meer sluiten. | Visuele afkapping kolomkop; logische beperking sluitrechten |
 | 4.7 | 2026-04-26 | **Bugfix: ChevronLeft → ChevronRight op Afmelden-rij:** de chevron op de Afmelden-actierij wees links (←) in plaats van rechts (→). Import `ChevronLeft` verwijderd uit `PaginaOverzicht.jsx`. | Visuele typefout — inconsistent met Pot sluiten-rij |
 | 4.6 | 2026-04-26 | **PostHog dekking uitgebreid:** `logMelding()` toegevoegd op 13 nieuwe plaatsen in 7 componenten/hooks. Gedekte events: validatiefouten (`fout_validatie_deelnemen`, `fout_validatie_geen_bedrag`, `fout_validatie_bedrag_te_hoog`), gebruikersblokkeringen (`fout_gebruiker_saldo_te_laag`, `fout_gebruiker_niet_actief`, `fout_gebruiker_deelnemer_ontbreekt`, `fout_gebruiker_potje_gesloten`, `fout_gebruiker_geen_deelnemer`, `fout_gebruiker_undo_niet_eigen`, `fout_gebruiker_undo_saldo_te_laag`, `fout_gebruiker_afmelden_niet_gestort`), succesevents (`succes_verbinding_hersteld`, `succes_link_gekopieerd`) en technische crash (`fout_technisch_crash`). Import `logMelding` toegevoegd aan `ModalDeelnemen`, `ModalTransactie`, `PaginaPotje`, `DeelKnop` en `ErrorBoundary`. | Volledige PostHog eventdekking op alle gebruikerspaden |

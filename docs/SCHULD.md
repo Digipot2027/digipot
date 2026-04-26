@@ -327,6 +327,21 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 
 ---
 
+## D — Audit 2026-04-26
+
+### D21 — `device_id` tijdelijk gevuld met willekeurig UUID na Fase 4
+
+| | |
+|---|---|
+| **Ernst** | Medium |
+| **Status** | 🔴 Open |
+| **Omschrijving** | `usePotjeActies.handleDeelnemen` vult `device_id` bij INSERT met `crypto.randomUUID()` als tijdelijke workaround omdat de kolom `NOT NULL` is. Dit UUID is nooit gekoppeld aan het echte apparaat. RLS-policies die nog op `device_id` steunen (migratie `20260414000000_rls_device_id.sql`) zijn daardoor effectief niet-functioneel voor rijen aangemaakt na Fase 4 (2026-04-25). |
+| **Risico** | RLS-policies op `device_id` werken niet voor nieuwe deelnemers. Moeilijk te debuggen. |
+| **Oplossing** | Verwijder de `device_id`-kolom via een nieuwe migratie, of maak hem nullable. Verwijder RLS-policies die er nog op steunen. |
+| **Gedetecteerd** | Audit 2026-04-26 |
+
+---
+
 ## C — Nieuw gesignaleerde items (2026-04-21)
 
 ### C1 — Resterende inline stijlen na CSS-migratie
@@ -367,6 +382,7 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 |---|---|---|
 | B1 — Geen TypeScript | Medium | 🟡 Geaccepteerd |
 | B3 — PII in Sentry | Laag | 🟡 Geaccepteerd |
+| D21 — device_id willekeurig UUID | Medium | 🔴 Open |
 | Alle A-items (A1–A20) | — | ✅ Afgelost |
 | Alle B-items (B2–B7) | — | ✅ Afgelost |
 | Alle C-items (C1–C3) | — | ✅ Afgelost |
@@ -381,3 +397,4 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | 1.1 | 2026-04-21 | B2 en B5 afgelost |
 | 1.2 | 2026-04-21 | B4 en C1 afgelost |
 | 1.3 | 2026-04-21 | C2 en C3 afgelost — schuldenlijst volledig leeg |
+| 1.4 | 2026-04-26 | D21 toegevoegd: `device_id` tijdelijk willekeurig UUID na Fase 4 (audit 2026-04-26) |

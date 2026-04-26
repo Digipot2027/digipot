@@ -839,13 +839,20 @@ tr[role="button"]:focus-visible,
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: var(--grijs-400);
+  /* WCAG 1.4.3: grijs-500 (#6b7280) geeft contrast 4.6:1 op wit — was grijs-400 = 2.3:1 */
+  color: var(--grijs-500);
   min-width: 44px;
   min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: -10px;
+}
+/* WCAG 2.4.7: zichtbare focus-ring voor de sluitknop van de detail-sheet */
+.detail-sluit-knop:focus-visible {
+  outline: 3px solid var(--blauw);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 .detail-totalen {
   display: grid;
