@@ -1,5 +1,43 @@
+# Build & test artefacten
 playwright-report/
 test-results/*
 !test-results/e2e-resultaat.json
 test-results/
 e2e/.auth/
+
+# Build output
+dist/
+.vite/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SEC-A1 (2026-04-26): omgevingsvariabelen NOOIT committen.
+# .env.local kan VITE_SUPABASE_URL, VITE_SENTRY_DSN, en — kritiek —
+# SUPABASE_SERVICE_ROLE_KEY bevatten. Het service_role-secret omzeilt alle
+# RLS-policies en geeft volledige read/write op alle tabellen incl. auth.users.
+# Eén git add zonder deze regel = totale databasecompromittering.
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Wrangler
+.wrangler/
