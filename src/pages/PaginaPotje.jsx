@@ -28,7 +28,6 @@ function PaginaPotje() {
     deelnemer,
     setDeelnemer,
     setDeelnemers,
-    setTransacties,
     laden,
     fout,
     online,
