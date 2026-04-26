@@ -33,8 +33,14 @@ import { STANDAARD_VALUTA, MAX_BEDRAG } from '../constants'
  * - Klik buiten het sheet (op overlay) sluit de modal
  * - Bevestigen-knop gestapeld boven Annuleren (beide full-width)
  * - Label: 'Betaald bedrag' / 'Bedrag'; placeholder: '0,00'
- * - Bevestigen: grijs+disabled bij leeg/ongeldig, rood bij geldig bedrag
+ * - Bevestigen: grijs+disabled bij leeg/ongeldig, groen+bedrag bij geldig bedrag
  * - Beschikbaar saldo direct onder de titel (alleen bij betaling)
+ * - Bedrag-preview verwijderd (redundant); bedrag zichtbaar op de knop zelf
+ *
+ * UX-fix (2026-04-26):
+ * - Knop groen (knop-primair) i.p.v. rood — rood suggereert gevaar, niet bevestiging
+ * - Bedrag op de knop: 'Storten €X,XX' / 'Bevestig €X,XX' — consistent met stortenscherm
+ * - Bedrag-preview (= €X,XX in groen) verwijderd — redundant
  */
 function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = null, ikBenActief = true, onBevestig, onAnnuleer }) {
   const [bedrag, setBedrag] = useState('')
@@ -192,9 +198,7 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
               aria-describedby={fout ? 'bedrag-invoer-fout' : undefined}
               aria-invalid={fout ? 'true' : undefined}
             />
-            {bedragGeldig && !fout && (
-              <div className="teller tekst-groen">= {formatBedrag(bedragNum, valuta)}</div>
-            )}
+            {/* Preview verwijderd: redundant — gebruiker ziet bedrag al in het invoerveld */}
             {/* WCAG 1.3.1 / 4.1.3: id koppelt foutmelding aan invoerveld via aria-describedby */}
             {fout && <div id="bedrag-invoer-fout" className="fout-tekst" role="alert">{fout}</div>}
           </div>
@@ -202,12 +206,14 @@ function ModalTransactie({ type, potSaldo, valuta = STANDAARD_VALUTA, potjeId = 
           <div className="modal-knoppen--gestapeld">
             <button
               type="submit"
-              className={`knop ${bedragGeldig && !laden ? 'knop-gevaar' : 'knop-bevestig-inactief'}`}
+              className={`knop ${bedragGeldig && !laden ? 'knop-primair' : 'knop-bevestig-inactief'}`}
               disabled={laden || !bedragGeldig || !ikBenActief}
             >
               {laden
                 ? (isStorting ? 'Storting registreren…' : 'Betaling registreren…')
-                : 'Bevestigen'}
+                : bedragGeldig
+                  ? (isStorting ? `Storten ${formatBedrag(bedragNum, valuta)}` : `Bevestig ${formatBedrag(bedragNum, valuta)}`)
+                  : 'Bevestigen'}
             </button>
             <button
               type="button"
