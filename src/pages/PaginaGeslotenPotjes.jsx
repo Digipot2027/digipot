@@ -79,6 +79,7 @@ function PaginaGeslotenPotjes() {
 
       {potjes.length > 0 && (
         <ul
+          role="list"
           className="kaart p-0 overflow-hidden"
           style={{ listStyle: 'none' }}
           aria-label="Gesloten potjes"

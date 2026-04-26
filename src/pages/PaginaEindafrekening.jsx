@@ -158,7 +158,8 @@ function PaginaEindafrekening({ potje, deelnemers, transacties }) {
               </button>
 
               <div className={`ea-deelnemer__status${d.verrekening >= 0 ? ' ea-deelnemer__status--positief' : ' ea-deelnemer__status--negatief'}`}>
-                {d.verrekening >= 0 ? '✓ Ontvangt geld terug' : '! Moet bijbetalen'}
+                <span aria-hidden="true">{d.verrekening >= 0 ? '✓' : '!'}</span>
+                {d.verrekening >= 0 ? ' Ontvangt geld terug' : ' Moet bijbetalen'}
               </div>
 
               <div id={detailId}>

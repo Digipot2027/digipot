@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { Beer, TrendingUp, BarChart2 } from 'lucide-react'
 import { logFout } from '../utils/logFout'
 import { logMelding } from '../utils/logMelding'
 import { valideerDeelnemerNaam } from '../utils/valideer'
@@ -81,13 +82,23 @@ function ModalDeelnemen({ potjeNaam, deelnemers, onDeelnemen, onAnnuleer, profie
     >
       <div ref={panelRef} className="modal-panel">
         <h2 id="modal-deelnemen-titel" className="modal-titel">
-          🍺 Meedoen aan {potjeNaam}
+          <Beer size={18} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+          Meedoen aan {potjeNaam}
         </h2>
 
         <ul className="flex flex-col gap-1 mb-4 text-sm tekst-grijs-6">
-          <li>💰 Leg geld in de pot</li>
-          <li>🍺 Registreer wat de groep uitgeeft</li>
-          <li>📊 Aan het eind zie je wie wat terugkrijgt</li>
+          <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={14} aria-hidden="true" strokeWidth={2} style={{ flexShrink: 0 }} />
+            Leg geld in de pot
+          </li>
+          <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Beer size={14} aria-hidden="true" strokeWidth={2} style={{ flexShrink: 0 }} />
+            Registreer wat de groep uitgeeft
+          </li>
+          <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BarChart2 size={14} aria-hidden="true" strokeWidth={2} style={{ flexShrink: 0 }} />
+            Aan het eind zie je wie wat terugkrijgt
+          </li>
         </ul>
 
         <form onSubmit={handleSubmit}>

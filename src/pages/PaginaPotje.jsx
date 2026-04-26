@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { WifiOff } from 'lucide-react'
 import { usePotje } from '../hooks/usePotje'
 import { usePotjeActies } from '../hooks/usePotjeActies'
 import { berekenSaldi } from '../utils/berekenSaldi'
@@ -152,7 +153,8 @@ function PaginaPotje() {
     <>
       {!online && (
         <div className="verbinding-banner">
-          ⚠️ Verbinding verbroken. Wijzigingen worden niet opgeslagen.
+          <WifiOff size={14} aria-hidden="true" strokeWidth={2} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+          Verbinding verbroken. Wijzigingen worden niet opgeslagen.
         </div>
       )}
       <div className={!online ? 'online-offset' : undefined}>

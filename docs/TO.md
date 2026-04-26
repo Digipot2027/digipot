@@ -1,6 +1,6 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 7.9
+**Versie:** 8.0
 **Datum:** 2026-04-26
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
@@ -406,7 +406,8 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 5.9 | 2026-04-21 | **B5 afgelost — formulierherstel** | Buffer bij downtime |
 | 6.0 | 2026-04-21 | **B4 + C1 afgelost** | Schuld afgelost |
 | 6.1 | 2026-04-21 | **UX overzichtscherm** | Screenshot-review |
-| 7.9 | 2026-04-26 | **Audit 2026-04-26 — hoge en medium bevindingen opgelost:** (1) CSP uitgebreid: `https://eu.i.posthog.com` toegevoegd aan `connect-src` in `public/_headers` — PostHog-verzoeken werden in productie geblokkeerd door de browser. (2) CI-actions gecorrigeerd naar v4. (3) CSS: `.detail-sluit-knop` kleur gecorrigeerd naar `--grijs-500` (WCAG 1.4.3); `:focus-visible`-regel toegevoegd (WCAG 2.4.7). (4) §17a eventlijst aangevuld met `succes_tekstgrootte_gewijzigd` en `succes_profielnaam_verwijderd`. (5) §3 utils-blok aangevuld. (6) Architectuurschuld D21 gedocumenteerd in SCHULD.md. | Audit 2026-04-26 |
+| 8.0 | 2026-04-26 | **Audit laag + D21 afgelost:** D21 kolom nullable; `ModalDeelnemen` Lucide-icons; verbindingsbanner `WifiOff`; `✓`/`!` aria-hidden; `role="list"` potjeslijsten; root-migratiebestanden verwijderd. | Audit lage bevindingen 2026-04-26 |
+| 7.9 | 2026-04-26 | **Audit hoge + medium bevindingen opgelost:** CSP PostHog; CI actions v4; `.detail-sluit-knop` WCAG fixes; §17a eventlijst aangevuld; §3 utils-blok aangevuld; D21 gedocumenteerd. | Audit 2026-04-26 |
 | 7.8 | 2026-04-26 | **Bugfix kolombreedte 'Uitgegeven':** `col` breedte verhoogd van 72 naar 80px in `PaginaOverzicht.jsx`. **Pot sluiten beperkt tot actieve deelnemers:** `disabled={!heeftTransacties || !ikBenActief}` — afgemelde deelnemers kunnen het potje niet meer sluiten. | Kolomkop 'N' werd afgekapt; sluitlogica beperkt tot actieve deelnemers |
 | 7.7 | 2026-04-26 | **Bugfix: ChevronLeft → ChevronRight op Afmelden-rij:** `PaginaOverzicht.jsx` — `ChevronLeft` vervangen door `ChevronRight` op de Afmelden-actierij; `ChevronLeft` verwijderd uit import. | Visuele typefout: pijl wees links (←) i.p.v. rechts (→) |
 | 7.6 | 2026-04-26 | **PostHog eventdekking uitgebreid:** `logMelding()` toegevoegd op 13 plaatsen in 7 bestanden. `ModalDeelnemen`: import + `fout_validatie_deelnemen` na validatiefout. `ModalTransactie`: import + `fout_gebruiker_saldo_te_laag` / `fout_gebruiker_niet_actief` / `fout_gebruiker_deelnemer_ontbreekt` per catch-tak. `PaginaStorten`: `fout_validatie_geen_bedrag`, `fout_validatie_bedrag_te_hoog`, `fout_gebruiker_potje_gesloten`, `fout_gebruiker_geen_deelnemer`, `fout_gebruiker_niet_actief` per guard-return. `usePotjeActies`: `fout_gebruiker_undo_niet_eigen`, `fout_gebruiker_undo_saldo_te_laag`, `fout_gebruiker_afmelden_niet_gestort` vóór `toonToast`. `PaginaPotje`: import + `succes_verbinding_hersteld` naast `toonToast`. `DeelKnop`: import + `succes_link_gekopieerd` / `fout_link_kopieer_mislukt`. `ErrorBoundary`: import als module-import (class component, geen hook) + `fout_technisch_crash` na `Sentry.captureException`. §17a (eventlijst) toegevoegd als living reference. | Volledige PostHog dekking op alle gebruikerspaden |

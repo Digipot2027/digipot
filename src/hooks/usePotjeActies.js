@@ -16,8 +16,8 @@ import { STANDAARD_VALUTA } from '../constants'
  *
  * Fase 4 (2026-04-25): device_id volledig verwijderd uit handleDeelnemen.
  * Deelnemers worden aangemaakt met alleen user_id (via auth.getUser()).
- * device_id kolom ontvangt een lege string als DB-default totdat de kolom
- * in een volgende migratie nullable of verwijderd wordt.
+ * D21 afgelost (2026-04-26): device_id kolom is nullable gemaakt via migratie
+ * device_id_nullable. INSERT bevat geen device_id meer.
  */
 
 function rond(waarde) {
@@ -58,7 +58,8 @@ export function usePotjeActies({
         id: nieuweDeelnemerId,
         potje_id: potjeId,
         naam,
-        device_id: crypto.randomUUID(), // tijdelijk: kolom is nog NOT NULL
+        // device_id kolom is nullable na migratie device_id_nullable (2026-04-26).
+        // RLS gebruikt uitsluitend auth.uid() via is_mijn_deelnemer() — device_id ongebruikt.
         user_id: userId,
       }))
 
