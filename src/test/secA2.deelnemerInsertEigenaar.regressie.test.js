@@ -26,7 +26,12 @@
  * SA2-04  payload bevat geen device_id (Fase 4: device_id is verwijderd)
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 const UUID_V4_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -124,11 +129,9 @@ describe('SEC-A2 — handleDeelnemen payload-borging', () => {
 // Een refactor die supabase.auth.getUser() weglaat zou deze test breken.
 
 describe('SEC-A2 — broncode-borging usePotjeActies', () => {
-  it('SA2-05: handleDeelnemen-broncode bevat auth.getUser() en user_id', async () => {
-    const fs = await import('node:fs')
-    const path = await import('node:path')
-    const bron = fs.readFileSync(
-      path.resolve(__dirname, '../hooks/usePotjeActies.js'),
+  it('SA2-05: handleDeelnemen-broncode bevat auth.getUser() en user_id', () => {
+    const bron = readFileSync(
+      resolve(__dirname, '../hooks/usePotjeActies.js'),
       'utf8'
     )
     expect(bron).toMatch(/supabase\.auth\.getUser\(\)/)

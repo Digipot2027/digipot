@@ -1,21 +1,36 @@
 /**
  * e2e/pw4-deelnemen.spec.js — PW-4: Deelnemen-flow
  *
- * Fase 4 update: PW-4e controleert dat de app navigeert na meedoen.
- * Auth-token check verwijderd — bootstrapAnonAuth kan rate-limited zijn in e2e.
+ * SEC-A2 fix (2026-04-27): setAuthInBrowser() toegevoegd zodat
+ * supabase.auth.getUser() in handleDeelnemen een geldige userId retourneert
+ * op alle browsers. Zonder sessie-injectie retourneerde auth.getUser() null
+ * op webkit/firefox/android-chrome door timing-verschillen in bootstrapAnonAuth,
+ * waarna de nieuwe deelnemers_insert RLS-policy de INSERT blokkeerde (42501).
  */
 
 import { test, expect } from '@playwright/test'
 import {
   maakSupabaseClient, maakTestPotje, verwijderTestPotje,
+  setAuthInBrowser,
 } from './helpers.js'
+import { readFileSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+function laadGedeeldeSessie() {
+  const data = readFileSync(resolve(__dirname, '.auth/sessie.json'), 'utf-8')
+  return JSON.parse(data)
+}
 
 test.describe('PW-4: Deelnemen-flow', () => {
-  let supabase, potje
+  let supabase, potje, session
 
   test.beforeEach(async () => {
     supabase = maakSupabaseClient()
     potje = await maakTestPotje(supabase, '[E2E] PW-4 Deelnemen flow')
+    session = laadGedeeldeSessie().session
   })
 
   test.afterEach(async () => {
@@ -23,6 +38,8 @@ test.describe('PW-4: Deelnemen-flow', () => {
   })
 
   test('PW-4a: nieuwe gebruiker → deelneemscherm → naam invullen → meedoen → stortenpagina', async ({ page }) => {
+    await page.goto('/')
+    await setAuthInBrowser(page, session)
     await page.goto(`/potje/${potje.id}`)
     await expect(page.getByRole('heading', { name: /Meedoen aan/i })).toBeVisible({ timeout: 8000 })
     await page.getByLabel(/Jouw naam/i).fill('Testdeelnemer')
@@ -65,9 +82,8 @@ test.describe('PW-4: Deelnemen-flow', () => {
   })
 
   test('PW-4e: na meedoen → navigatie naar stortenpagina geslaagd', async ({ page }) => {
-    // Fase 4: controleert dat de deelneem-flow correct navigeert.
-    // Auth-token check is verwijderd — bootstrapAnonAuth kan rate-limited zijn
-    // in e2e context. De navigatie naar /storten bewijst dat meedoen geslaagd is.
+    await page.goto('/')
+    await setAuthInBrowser(page, session)
     await page.goto(`/potje/${potje.id}`)
     await expect(page.getByRole('heading', { name: /Meedoen aan/i })).toBeVisible({ timeout: 8000 })
     await page.getByLabel(/Jouw naam/i).fill('NieuweDeelnemer')
