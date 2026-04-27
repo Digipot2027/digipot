@@ -1,6 +1,30 @@
 -- 20260407000000_rls_volledig.sql
+--
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  OBSOLETE — VERVANGEN DOOR 20260427000100_rls_fase4_consolidatie.sql    ║
+-- ║                                                                          ║
+-- ║  Dit bestand bevat de initiële RLS-policies zonder eigenaarschapscheck. ║
+-- ║  De policies zijn volledig overschreven door latere migraties en         ║
+-- ║  uiteindelijk geconsolideerd in de Fase 4-migratie (2026-04-27).        ║
+-- ║                                                                          ║
+-- ║  NIET uitvoeren op een fresh DB — gebruik 20260427000100 als referentie. ║
+-- ║  Dit bestand is bewaard voor historische traceerbaarheid.               ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+--
+-- Originele beschrijving:
 -- Stap 18: Row Level Security — volledige policy-set op alle tabellen
 -- Oorspronkelijk: supabase-migratie-stap18-rls.sql
+-- Uitgevoerd in productie: 2026-04-07
+--
+-- Waarom obsolete:
+-- - policies gebruikten USING (true) / WITH CHECK (true) — geen eigenaarschap
+-- - deelnemers_insert had geen user_id-check (SEC-A2, 2026-04-26)
+-- - transacties_insert had geen identiteitsverificatie
+-- - verouderd door 20260412000100, 20260414000000, 20260421000100, 20260426000100
+--   en uiteindelijk geconsolideerd in 20260427000100
+--
+-- Originele SQL (inactief — niet uitvoeren):
+/*
 
 ALTER TABLE potjes      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deelnemers  ENABLE ROW LEVEL SECURITY;
@@ -52,3 +76,5 @@ CREATE POLICY "transacties_delete"
         AND d.potje_id = transacties.potje_id
     )
   );
+
+*/

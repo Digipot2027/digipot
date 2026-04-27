@@ -1,7 +1,7 @@
 # Technische schuld — Digipot
 
-**Versie:** 1.6
-**Datum:** 2026-04-26
+**Versie:** 1.7
+**Datum:** 2026-04-27
 **Status:** Actueel
 **Beheerder:** Projectteam Digipot
 
@@ -408,10 +408,9 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | | |
 |---|---|
 | **Ernst** | Hoog |
-| **Status** | 🔴 Open (SEC-A3) |
-| **Omschrijving** | De drie laatste RLS-migraties in `/supabase/migrations` (`20260414`, `20260421100`, `20260426`) gebruiken nog `current_setting('request.headers')::json ->> 'x-device-id'`. De live policies gebruiken sinds Fase 4 `is_mijn_deelnemer(user_id, device_id)` met `auth.uid()`. Bij DB-rebuild (`supabase db reset` of dev-branch) krijgt men de oude staat. |
-| **Risico** | Disaster recovery faalt; dev-branches draaien tegen verouderde policies; toekomstige maintainers misleid. |
-| **Oplossing** | Twee consoliderende migraties toevoegen die de huidige live state reproduceren, en de drie verouderde migraties markeren als obsolete (header-comment + DROP-only-bodies). |
+| **Status** | ✅ Afgelost (2026-04-27, SEC-A3) |
+| **Omschrijving** | De drie laatste RLS-migraties in `/supabase/migrations` gebruikten nog de `x-device-id`-header. De live DB-policies gebruiken sinds Fase 4 `is_mijn_deelnemer()` met `auth.uid()`. Bij DB-rebuild zouden de oude policies worden toegepast — alle UPDATE/INSERT-operaties zouden falen met 42501. |
+| **Oplossing** | Twee consoliderende migraties toegevoegd: `20260427000000_is_mijn_deelnemer_function.sql` (helper-functie, ontbrak volledig in repo) en `20260427000100_rls_fase4_consolidatie.sql` (volledige policy-set, exact live state). Vier obsolete migraties gemarkeerd met OBSOLETE-header, originele SQL uitgecommentarieerd. `supabase/migrations/README.md` herschreven met actief/obsolete-overzicht en rebuild-instructie. Geen DB-wijziging — live staat was al correct. |
 
 ---
 
@@ -501,7 +500,7 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | B3 — PII in Sentry | Laag | 🟡 Geaccepteerd |
 | E1 — service_role secret in .env.local | Kritiek | ✅ Afgelost |
 | E2 — IDOR deelnemers_insert | Kritiek | ✅ Afgelost |
-| E3 — Migratiebestanden uit sync | Hoog | 🔴 Open |
+| E3 — Migratiebestanden uit sync | Hoog | ✅ Afgelost |
 | E4 — push_subscriptions tabel | Hoog | 🔴 Open |
 | E5 — Onnodig brede privileges | Hoog | 🔴 Open |
 | E6 — Geen rate-limit potjes_insert | Medium | 🔴 Open |
@@ -527,3 +526,4 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | 1.4 | 2026-04-26 | D21 toegevoegd: `device_id` tijdelijk willekeurig UUID na Fase 4 (audit 2026-04-26) |
 | 1.5 | 2026-04-26 | D21 afgelost: migratie `device_id_nullable`, INSERT zonder `device_id`, UX-1/UX-5/CODE-2/CODE-4/WCAG-6 opgelost |
 | 1.6 | 2026-04-26 | E-sectie toegevoegd uit security-audit 2026-04-26: E1 en E2 afgelost (Critical), E3–E10 als open/geaccepteerd opgenomen |
+| 1.7 | 2026-04-27 | E3 afgelost: `20260427000000` helper-functie + `20260427000100` volledige RLS-consolidatie + vier obsolete migraties gemarkeerd + README herschreven |

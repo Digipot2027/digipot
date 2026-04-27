@@ -1,46 +1,49 @@
 -- 20260421000100_transacties_rate_limit.sql
+--
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║  OBSOLETE — VERVANGEN DOOR 20260427000100_rls_fase4_consolidatie.sql    ║
+-- ║                                                                          ║
+-- ║  Dit bestand voegde een rate-limit toe op transacties_insert via        ║
+-- ║  device-id (x-device-id header). In Fase 4 (2026-04-25) is de          ║
+-- ║  rate-limit herschreven naar auth.uid(). De x-device-id header wordt   ║
+-- ║  door de frontend niet meer verstuurd.                                  ║
+-- ║                                                                          ║
+-- ║  Uitvoeren van dit bestand op een fresh DB zou de rate-limit-clausule   ║
+-- ║  resetten naar de verouderde device-id logica, waarna alle transactie-  ║
+-- ║  inserts zouden falen (COUNT altijd 0 want device_id altijd NULL).      ║
+-- ║                                                                          ║
+-- ║  NIET uitvoeren op een fresh DB — gebruik 20260427000100 als referentie. ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+--
+-- Originele beschrijving:
 -- B4: Frontend rate limiting op device-niveau via RLS WITH CHECK
+-- Uitgevoerd in productie: 2026-04-21
 --
--- Probleem: een kwaadwillende of kapotte client kan in theorie honderden
--- stortingen of betalingen per seconde aanmaken. De bezigRef-guard (A17)
--- blokkeert dubbele UI-submits maar niet geautomatiseerde requests.
+-- Waarom obsolete:
+-- - Rate-limit gebruikte current_setting('request.headers')::json ->> 'x-device-id'
+-- - Fase 4 (2026-04-25) verving dit door auth.uid() in alle policies
+-- - De live policy (geverifieerd 2026-04-27) gebruikt d.user_id = auth.uid()
+-- - Geconsolideerd in 20260427000100
 --
--- Oplossing: uitbreiding van de bestaande transacties_insert RLS-policy
--- met een frequentiecheck op DB-niveau:
---   max 10 transacties per device_id per minuut
---
--- Keuze voor RLS boven Cloudflare Rate Limiting:
---   - Cloudflare MCP heeft onvoldoende schrijftoegang voor Workers/rules
---   - RLS-check is atomair en server-side — niet te omzeilen via de client
---   - Supabase free-tier heeft geen pgbouncer connection pooling die
---     een COUNT-subquery significant vertraagt bij dit volume
---
--- Drempel: 10/minuut per device_id
---   - Ruim boven normaal gebruik (1-5 transacties per sessie)
---   - Laag genoeg om geautomatiseerd misbruik te blokkeren
---   - Bij overschrijding krijgt de gebruiker een RLS 42501-fout die
---     vertaalFout.js vertaalt naar "Je sessie is niet herkend. Ververs de pagina."
---     (bestaande 42501-matcher — geen nieuwe UI-tekst nodig)
+-- Originele SQL (inactief — niet uitvoeren):
+/*
 
 DROP POLICY IF EXISTS transacties_insert ON public.transacties;
 
 CREATE POLICY transacties_insert ON public.transacties
   FOR INSERT TO anon
   WITH CHECK (
-    -- Deelnemer bestaat, is actief en hoort bij dit potje
     EXISTS (
       SELECT 1 FROM deelnemers d
       WHERE d.id = transacties.deelnemer_id
         AND d.potje_id = transacties.potje_id
         AND d.actief = true
     )
-    -- Potje is open
     AND EXISTS (
       SELECT 1 FROM potjes p
       WHERE p.id = transacties.potje_id
         AND p.status = 'open'
     )
-    -- Device-ID komt overeen met de deelnemer (identiteitsverificatie)
     AND EXISTS (
       SELECT 1 FROM deelnemers d
       WHERE d.id = transacties.deelnemer_id
@@ -48,7 +51,6 @@ CREATE POLICY transacties_insert ON public.transacties
           SELECT (current_setting('request.headers', true)::json ->> 'x-device-id')
         )
     )
-    -- B4: Rate limit — max 10 transacties per device_id per minuut
     AND (
       SELECT COUNT(*)
       FROM transacties t
@@ -59,3 +61,5 @@ CREATE POLICY transacties_insert ON public.transacties
         AND t.aangemaakt_op > now() - interval '1 minute'
     ) < 10
   );
+
+*/
