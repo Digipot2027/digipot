@@ -1,7 +1,7 @@
 # Technische schuld — Digipot
 
-**Versie:** 1.7
-**Datum:** 2026-04-27
+**Versie:** 1.8
+**Datum:** 2026-05-13
 **Status:** Actueel
 **Beheerder:** Projectteam Digipot
 
@@ -419,9 +419,10 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | | |
 |---|---|
 | **Ernst** | Hoog |
-| **Status** | 🔴 Open (SEC-A4) |
-| **Omschrijving** | DB-tabel `push_subscriptions` bestaat met RLS-policies maar codebase bevat geen enkele referentie. Aanvalsoppervlak zonder business-doel; FO/TO bevatten geen beschrijving. |
-| **Oplossing** | Beslis: feature op roadmap → documenteer in FO/TO. Niet op roadmap → `DROP TABLE push_subscriptions`. |
+| **Status** | ✅ Afgelost (2026-05-13, TO v8.7) |
+| **Omschrijving** | DB-tabel `push_subscriptions` bestond met vier RLS-policies maar de codebase bevatte geen enkele referentie. Aanvalsoppervlak zonder business-doel; feature stond niet op de roadmap. |
+| **Oplossing** | `DROP TABLE IF EXISTS public.push_subscriptions CASCADE` in migratie `20260530000100_drop_push_subscriptions.sql`. CASCADE verwijdert de vier RLS-policies automatisch. Geen codewijziging nodig — geen referenties aanwezig. |
+| **Migratie** | `supabase/migrations/20260530000100_drop_push_subscriptions.sql` |
 
 ---
 
@@ -430,9 +431,10 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | | |
 |---|---|
 | **Ernst** | Hoog |
-| **Status** | 🔴 Open (SEC-A5) |
-| **Omschrijving** | Anon en authenticated hebben `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `REFERENCES`, `TRIGGER`, `TRUNCATE` op `transacties_log`. `DELETE` op `deelnemers` en `potjes`. RLS blokkeert vandaag, maar defense-in-depth ontbreekt. |
-| **Oplossing** | `REVOKE`-cleanup: alleen `SELECT/INSERT/UPDATE` toekennen waar policies daadwerkelijk gebruiken. `DELETE` op `transacties` blijft (undo-flow). `TRUNCATE`/`REFERENCES`/`TRIGGER` op alle tabellen voor anon en authenticated intrekken. |
+| **Status** | ✅ Afgelost (2026-05-13, TO v8.7) |
+| **Omschrijving** | `anon` en `authenticated` hadden `TRUNCATE`, `REFERENCES`, `TRIGGER` en andere onnodige privileges op alle tabellen. RLS blokkeert vandaag misbruik, maar defense-in-depth ontbrak. |
+| **Oplossing** | Migratie `20260530000000_data_api_grants.sql`: `REVOKE ALL` op alle tabellen voor `anon` en `authenticated`, gevolgd door exacte `GRANT`s per tabel op basis van de RLS-policy-set. Principle of least privilege: `potjes` SELECT/INSERT/UPDATE, `deelnemers` SELECT/INSERT/UPDATE, `transacties` SELECT/INSERT/DELETE, `transacties_log` geen directe toegang. |
+| **Migratie** | `supabase/migrations/20260530000000_data_api_grants.sql` |
 
 ---
 
@@ -492,6 +494,21 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 
 ---
 
+## F — Supabase Data API GRANT-verplichting (2026-05-30)
+
+### F1 — Geen expliciete GRANTs in migratiepad
+
+| | |
+|---|---|
+| **Ernst** | Hoog |
+| **Status** | ✅ Afgelost (2026-05-13, TO v8.7) |
+| **Omschrijving** | Supabase vereist vanaf 30 mei 2026 expliciete GRANTs op public-tabellen voor nieuwe projecten; vanaf 30 oktober 2026 voor alle bestaande projecten. Het Digipot-migratiepad bevatte geen `GRANT`-statements. Bij een fresh rebuild na die datum zouden alle Data API-calls falen met fout 42501. |
+| **Oplossing** | Migratie `20260530000000_data_api_grants.sql` toegevoegd. Combineert de GRANTs met E5-opschoning (REVOKE ALL + exacte GRANT per tabel/rol). Migratie is idempotent en veilig opnieuw uitvoerbaar. |
+| **Migratie** | `supabase/migrations/20260530000000_data_api_grants.sql` |
+| **Productie-actie** | `apply_migration` uitvoeren vóór 30 oktober 2026 op het productieproject (`aqeuehfjgnpytfibncwy`). |
+
+---
+
 ## Overzicht
 
 | Item | Ernst | Status |
@@ -501,13 +518,14 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | E1 — service_role secret in .env.local | Kritiek | ✅ Afgelost |
 | E2 — IDOR deelnemers_insert | Kritiek | ✅ Afgelost |
 | E3 — Migratiebestanden uit sync | Hoog | ✅ Afgelost |
-| E4 — push_subscriptions tabel | Hoog | 🔴 Open |
-| E5 — Onnodig brede privileges | Hoog | 🔴 Open |
+| E4 — push_subscriptions tabel | Hoog | ✅ Afgelost |
+| E5 — Onnodig brede privileges | Hoog | ✅ Afgelost |
 | E6 — Geen rate-limit potjes_insert | Medium | 🔴 Open |
 | E7 — Open SELECT op alle tabellen | Medium | 🟡 Geaccepteerd |
 | E8 — Unicode bidi in namen | Medium | 🔴 Open |
 | E9 — Geen rate-limit deelnemers_update | Laag | 🔴 Open |
 | E10 — Referrer-Policy | Laag | 🔴 Open |
+| F1 — Geen expliciete GRANTs in migratiepad | Hoog | ✅ Afgelost |
 | Alle A-items (A1–A20) | — | ✅ Afgelost |
 | Alle B-items (B2, B4–B7) | — | ✅ Afgelost |
 | Alle C-items (C1–C3) | — | ✅ Afgelost |
@@ -527,3 +545,4 @@ Elke wijziging aan schuld-items wordt hier bijgehouden én in de TO-wijzigingslo
 | 1.5 | 2026-04-26 | D21 afgelost: migratie `device_id_nullable`, INSERT zonder `device_id`, UX-1/UX-5/CODE-2/CODE-4/WCAG-6 opgelost |
 | 1.6 | 2026-04-26 | E-sectie toegevoegd uit security-audit 2026-04-26: E1 en E2 afgelost (Critical), E3–E10 als open/geaccepteerd opgenomen |
 | 1.7 | 2026-04-27 | E3 afgelost: `20260427000000` helper-functie + `20260427000100` volledige RLS-consolidatie + vier obsolete migraties gemarkeerd + README herschreven |
+| 1.8 | 2026-05-13 | E4 afgelost: DROP TABLE push_subscriptions (migratie `20260530000100`). E5 afgelost: REVOKE ALL + exacte GRANTs per tabel (migratie `20260530000000`). F1 toegevoegd en afgelost: Supabase Data API GRANT-verplichting opgelost met dezelfde migratie. |

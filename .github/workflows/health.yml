@@ -53,8 +53,11 @@ jobs:
           echo "✅ App bereikbaar"
 
       - name: Supabase schrijf + lees (mini smoke test)
-        # Maakt een testpotje aan en verwijdert het direct
-        # Verifieert: INSERT en DELETE werken, RLS blokkeert niet onverwacht
+        # Maakt een herkenbaar testpotje aan (__healthcheck__) en leest het terug.
+        # Geen DELETE: potjes worden nooit verwijderd via de Data API (geen
+        # DELETE-grant voor anon/authenticated — by design, zie data_api_grants.sql).
+        # Opruimen van __healthcheck__-rijen gebeurt via pg_cron
+        # (zie migratie 20260514000000_healthcheck_cleanup).
         run: |
           node --input-type=module << 'EOF'
           const url = process.env.SUPABASE_URL
@@ -66,11 +69,11 @@ jobs:
             'Prefer': 'return=representation',
           }
 
-          // INSERT
+          // INSERT — naam __healthcheck__ maakt rijen herkenbaar voor pg_cron cleanup
           const ins = await fetch(`${url}/rest/v1/potjes`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ naam: '[HEALTH] dagelijkse check', status: 'open', valuta: 'EUR' }),
+            body: JSON.stringify({ naam: '__healthcheck__', status: 'open', valuta: 'EUR' }),
           })
           if (!ins.ok) {
             console.error('❌ INSERT mislukt:', ins.status, await ins.text())
@@ -79,16 +82,20 @@ jobs:
           const [potje] = await ins.json()
           console.log(`✅ INSERT geslaagd: ${potje.id}`)
 
-          // DELETE (opruimen)
-          const del = await fetch(`${url}/rest/v1/potjes?id=eq.${potje.id}`, {
-            method: 'DELETE',
+          // SELECT — verifieer dat het aangemaakte potje teruggelezen kan worden
+          const sel = await fetch(`${url}/rest/v1/potjes?id=eq.${potje.id}&select=id,naam,status`, {
             headers,
           })
-          if (!del.ok) {
-            console.error('❌ DELETE mislukt:', del.status, await del.text())
+          if (!sel.ok) {
+            console.error('❌ SELECT mislukt:', sel.status, await sel.text())
             process.exit(1)
           }
-          console.log('✅ DELETE geslaagd — testdata opgeruimd')
+          const rows = await sel.json()
+          if (!rows.length || rows[0].id !== potje.id) {
+            console.error('❌ SELECT teruggegeven rij klopt niet:', JSON.stringify(rows))
+            process.exit(1)
+          }
+          console.log(`✅ SELECT geslaagd: ${JSON.stringify(rows[0])}`)
           console.log('✅ Supabase schrijf + lees werkt correct')
           EOF
         env:

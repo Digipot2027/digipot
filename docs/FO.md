@@ -1,7 +1,7 @@
 # Functioneel Ontwerp — Digipot
 
-**Versie:** 5.4
-**Datum:** 2026-04-27
+**Versie:** 5.5
+**Datum:** 2026-05-14
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -71,7 +71,7 @@ De beschikbaarheid en gezondheid van de applicatie worden bewaakt via drie lagen
 
 **PostHog** (eu.i.posthog.com — EU-hosting) logt alle gebruiksgebeurtenissen: succesacties (potje aangemaakt, storting geslaagd, afgemeld, etc.) en bekende gebruiksfouten (saldo te laag, naam bezet, etc.). IP-masking is actief; er worden geen persoonsprofielen aangemaakt. Rapportages zijn beschikbaar via het PostHog-dashboard. Alleen actief in productie.
 
-**GitHub Actions health check** draait dagelijks om 08:00 UTC en verifieert of Supabase schrijft en leest, de app bereikbaar is op Cloudflare Pages, en de lifecycle Edge Function reageert. Bij een mislukte check volgt automatisch een e-mailmelding via GitHub.
+**GitHub Actions health check** draait dagelijks om 08:00 UTC en verifieert of Supabase schrijft en leest (INSERT + SELECT — geen DELETE, by design), de app bereikbaar is op Cloudflare Pages, en de lifecycle Edge Function reageert. Testpotjes krijgen naam `__healthcheck__` en worden dagelijks om 03:30 UTC opgeruimd via een pg_cron job. Bij een mislukte check volgt automatisch een e-mailmelding via GitHub.
 
 ### Geautomatiseerde kwaliteitswaarborg
 
@@ -182,4 +182,5 @@ De DB-kolom `potjes.valuta` en de constante `STANDAARD_VALUTA` blijven aanwezig 
 | 3.1 | 2026-04-21 | **§7 Overzichtscherm — "Nodig vrienden uit" verplaatst naar Beheer-sectie:** knop stond voorheen in de header-kaart (altijd zichtbaar), maar is een eenmalige actie per potje. Verplaatst naar de Beheer-sectie onderaan, onder de afmeld- en afsluitknoppen. Header-kaart toont nu alleen naam, welkomsttekst, saldo en gemiddelde. | Header te druk; uitnodigen is een beheersactie, geen primaire actie |
 | 3.2 | 2026-04-21 | **§14 audit trail (B2):** verwijderde transacties worden voortaan vastgelegd in `transacties_log` via DB-trigger `trg_log_verwijderde_transactie`. Undo en lifecycle-CASCADE zijn niet langer definitief verloren. **§14 downtime-herstel (B5):** bij REQUEST_TIMEOUT of netwerkfout op het stortenscherm of de betalingsmodal wordt het ingevoerde bedrag bewaard in sessionStorage via `formulierBuffer.js`; bij terugkeer op hetzelfde tabblad verschijnt een herstelbanner met het bewaarde bedrag. | Technische schuld B2 en B5 opgelost |
 | 5.3 | 2026-04-26 | **§14 eigenaar-check op deelname (SEC-A2, Critical):** de RLS-policy `deelnemers_insert` is aangescherpt zodat een nieuwe deelnemer altijd aan de aanmakende anonieme sessie (`auth.uid()`) is gekoppeld. Functioneel gevolg: een deelname zonder geldige sessie (zeer zeldzame edge-case wanneer `bootstrapAnonAuth()` faalt door rate-limit of netwerkprobleem) wordt geweigerd met de bestaande melding *"Je sessie is niet herkend. Ververs de pagina en probeer opnieuw."* In de happy path is geen waarneembaar verschil: `bootstrapAnonAuth()` zorgt automatisch voor een sessie vóór het deelneemscherm verschijnt. Voorkomt dat een aanvaller een deelnemer kan aanmaken namens een andere gebruiker (impersonation) of zonder eigenaar (weesdeelnemer). | Security-audit 2026-04-26, Critical IDOR |
+| 5.5 | 2026-05-14 | **Health check smoke test — DELETE vervangen door SELECT:** de smoke test in `health.yml` deed een DELETE na een INSERT om op te ruimen. Potjes hebben geen DELETE-grant voor `anon`/`authenticated` — by design. Na de Data API GRANT-migratie faalde de workflow daardoor met 42501. Oplossing: DELETE verwijderd; SELECT teruggelezen als lees-verificatie. Testpotjes krijgen naam `__healthcheck__` en worden dagelijks om 03:30 UTC opgeruimd via `internal.verwijder_healthcheck_potjes()` (pg_cron). §14 monitoring bijgewerkt. | Health check #30 faalde na Data API GRANT-migratie |
 | 5.4 | 2026-04-27 | **§14 migratie-infrastructuur gesynchroniseerd (SEC-A3):** geen functionele wijziging voor eindgebruikers. De migratiebestanden in de repository zijn nu gesynchroniseerd met de live database-state. Twee consoliderende migraties toegevoegd (`is_mijn_deelnemer` functie + volledige Fase 4 RLS-policy-set). Vier verouderde migraties gemarkeerd als obsolete. `supabase/migrations/README.md` herschreven. Relevant voor ontwikkelaars die een fresh DB-rebuild doen (dev-branch, disaster recovery). | Security-audit 2026-04-27, SEC-A3 |

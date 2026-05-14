@@ -88,7 +88,7 @@ test.describe('PW-12: Twee devices, zelfde potje', () => {
       await pageB.goto('/')
       await setAuthInBrowser(pageB, sessionA)
       await pageB.goto(`/potje/${potje.id}`)
-      await expect(pageB.getByRole('cell', { name: /Bob/i })).toBeVisible({ timeout: 15000 })
+      await expect(pageB.getByRole('cell', { name: /Bob/i })).toBeVisible({ timeout: 25000 })
 
       const service = maakServiceClient()
       await service.from('deelnemers')

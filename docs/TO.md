@@ -1,7 +1,7 @@
 # Technisch Ontwerp — Digipot
 
-**Versie:** 8.6
-**Datum:** 2026-04-27
+**Versie:** 8.8
+**Datum:** 2026-05-14
 **Status:** Actueel
 **Auteur:** Projectteam Digipot
 
@@ -35,11 +35,12 @@ Browser (React SPA)
     └── Sentry             (foutlogging, alleen productie)
 
 pg_cron (in Supabase DB)
-    │  (3 geplande jobs + 2 legacy directe DB-jobs)
-    └── net.http_post → Supabase Edge Functions (met x-cron-secret, SEC-CRON)
-            ├── lifecycle-sluiten   → lifecycle_sluit_verlopen_potjes()
-            ├── lifecycle-verwijderen → lifecycle_verwijder_oude_potjes()
-            └── lifecycle-keepalive → GET /potjes?limit=1 (ping)
+    │  (4 geplande jobs + 2 legacy directe DB-jobs)
+    ├── net.http_post → Supabase Edge Functions (met x-cron-secret, SEC-CRON)
+    │       ├── lifecycle-sluiten   → lifecycle_sluit_verlopen_potjes()
+    │       ├── lifecycle-verwijderen → lifecycle_verwijder_oude_potjes()
+    │       └── lifecycle-keepalive → GET /potjes?limit=1 (ping)
+    └── internal.verwijder_healthcheck_potjes()  (03:30 UTC dagelijks)
 ```
 
 ---
@@ -92,6 +93,7 @@ digipot/
 │   │   └── periodieke_audit.md
 │   ├── workflows/
 │   │   └── ci.yml
+│   ├── health.yml
 │   └── dependabot.yml
 ├── e2e/                                     ← Playwright e2e tests
 │   ├── helpers.js
@@ -331,8 +333,10 @@ Deploy naar Cloudflare Pages vereist dat zowel unit tests als e2e slagen.
 **Health check:** `.github/workflows/health.yml` draait dagelijks om 08:00 UTC en verifieert:
 - App bereikbaar op Cloudflare Pages
 - Supabase REST bereikbaar + anon key geldig
-- INSERT + DELETE werken (mini smoke test)
+- INSERT + SELECT werken (mini smoke test — geen DELETE, by design)
 - Lifecycle Edge Function bereikbaar
+
+De smoke test maakt een potje aan met naam `__healthcheck__` en leest het terug via SELECT. Opruimen van testpotjes gebeurt via een pg_cron job (`digipot-healthcheck-cleanup`, dagelijks 03:30 UTC) die `internal.verwijder_healthcheck_potjes()` aanroept. Deze SECURITY DEFINER functie verwijdert `__healthcheck__`-rijen ouder dan 2 uur zonder dat DELETE-rechten voor `anon`/`authenticated` nodig zijn.
 
 **Pre-push hook (lokaal):** Blokkeert een push naar `main` als e2e-tests niet succesvol en recent (< 24 uur) zijn gedraaid.
 
@@ -351,26 +355,34 @@ Zie versie 2.6 (ongewijzigd).
 
 ## 24. Technische schuld
 
-De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, items C1–C3 uit audit 2026-04-21, D21 uit audit 2026-04-26 eerste tranche, E1–E10 uit security-audit 2026-04-26 tweede tranche) wordt bijgehouden in `docs/SCHULD.md` v1.6. Dat bestand is de enige bron van waarheid voor openstaande en afgeloste technische schuld.
+De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, items C1–C3 uit audit 2026-04-21, D21 uit audit 2026-04-26 eerste tranche, E1–E10 uit security-audit 2026-04-26 tweede tranche, F1 uit Supabase Data API-melding 2026-05-13) wordt bijgehouden in `docs/SCHULD.md` v1.8.
 
-**Openstaand (per 2026-04-26 na security-audit):**
+### internal schema
+
+Het `internal` schema bevat hulpfuncties die niet via de Data API (PostgREST) aanroepbaar mogen zijn. PostgREST exposeert standaard alleen het `public` schema. Functies in `internal` zijn uitsluitend bereikbaar voor `postgres` (via pg_cron of directe DB-toegang).
+
+| Functie | Beschrijving |
+|---|---|
+| `internal.verwijder_healthcheck_potjes()` | Verwijdert `__healthcheck__`-potjes ouder dan 2 uur. SECURITY DEFINER. Aangeroepen door pg_cron (`digipot-healthcheck-cleanup`, 03:30 UTC dagelijks). |
+
+Dat bestand is de enige bron van waarheid voor openstaande en afgeloste technische schuld.
+
+**Openstaand (per 2026-05-13):**
 
 | Item | Ernst | Omschrijving |
 |---|---|---|
-| E3 | Hoog | Migratiebestanden uit sync — ✅ Afgelost |
-| E4 | Hoog | `push_subscriptions` tabel zonder feature-implementatie — 🔴 Open |
-| E5 | Hoog | Onnodig brede privileges op alle tabellen (TRUNCATE, REFERENCES op anon) — 🔴 Open |
 | E6 | Medium | Geen rate-limit op `potjes_insert` |
 | E8 | Medium | Unicode bidi-control characters niet gefilterd in namen |
 | E9 | Laag | Geen rate-limit op `deelnemers_update` |
 | E10 | Laag | `Referrer-Policy: strict-origin-when-cross-origin` lekt origin |
 
-**Afgelost in deze TO-versie (8.5):**
+**Afgelost in TO-versie 8.7:**
 
 | Item | Ernst | Oplossing |
 |---|---|---|
-| E1 | Kritiek | `.gitignore` aangevuld met `.env*`. Beheerder roteert service_role secret handmatig. |
-| E2 | Kritiek | RLS-policy `deelnemers_insert` aangevuld met `auth.uid() IS NOT NULL AND user_id = auth.uid()`. Migratie `20260426000100`. Tests: `secA2.deelnemerInsertEigenaar.regressie.test.js` (6 cases) + `pw14-sec-a2-impersonation.spec.js` (4 cases × 5 browsers).
+| E4 | Hoog | `DROP TABLE push_subscriptions CASCADE`. Migratie `20260530000100`. |
+| E5 | Hoog | `REVOKE ALL` + exacte GRANTs per tabel/rol. Migratie `20260530000000`. |
+| F1 | Hoog | Expliciete Data API GRANTs toegevoegd aan migratiepad. Migratie `20260530000000`. Productie-actie vereist vóór 30 oktober 2026. |
 
 **Geaccepteerd:**
 
@@ -433,6 +445,8 @@ De volledige schuldenlijst (harde schuld A1–A20, strategische schuld B1–B7, 
 | 7.8 | 2026-04-26 | **Bugfix kolombreedte 'Uitgegeven':** `col` breedte verhoogd van 72 naar 80px in `PaginaOverzicht.jsx`. **Pot sluiten beperkt tot actieve deelnemers:** `disabled={!heeftTransacties || !ikBenActief}` — afgemelde deelnemers kunnen het potje niet meer sluiten. | Kolomkop 'N' werd afgekapt; sluitlogica beperkt tot actieve deelnemers |
 | 7.7 | 2026-04-26 | **Bugfix: ChevronLeft → ChevronRight op Afmelden-rij:** `PaginaOverzicht.jsx` — `ChevronLeft` vervangen door `ChevronRight` op de Afmelden-actierij; `ChevronLeft` verwijderd uit import. | Visuele typefout: pijl wees links (←) i.p.v. rechts (→) |
 | 7.6 | 2026-04-26 | **PostHog eventdekking uitgebreid:** `logMelding()` toegevoegd op 13 plaatsen in 7 bestanden. `ModalDeelnemen`: import + `fout_validatie_deelnemen` na validatiefout. `ModalTransactie`: import + `fout_gebruiker_saldo_te_laag` / `fout_gebruiker_niet_actief` / `fout_gebruiker_deelnemer_ontbreekt` per catch-tak. `PaginaStorten`: `fout_validatie_geen_bedrag`, `fout_validatie_bedrag_te_hoog`, `fout_gebruiker_potje_gesloten`, `fout_gebruiker_geen_deelnemer`, `fout_gebruiker_niet_actief` per guard-return. `usePotjeActies`: `fout_gebruiker_undo_niet_eigen`, `fout_gebruiker_undo_saldo_te_laag`, `fout_gebruiker_afmelden_niet_gestort` vóór `toonToast`. `PaginaPotje`: import + `succes_verbinding_hersteld` naast `toonToast`. `DeelKnop`: import + `succes_link_gekopieerd` / `fout_link_kopieer_mislukt`. `ErrorBoundary`: import als module-import (class component, geen hook) + `fout_technisch_crash` na `Sentry.captureException`. §17a (eventlijst) toegevoegd als living reference. | Volledige PostHog dekking op alle gebruikerspaden |
+| 8.8 | 2026-05-14 | **Health check smoke test — DELETE vervangen door SELECT:** `health.yml` smoke test deed een DELETE op `potjes` na een INSERT. Na de Data API GRANT-migratie (20260530000000) heeft `anon`/`authenticated` geen DELETE-grant op `potjes` — terecht, by design. De workflow faalde daardoor met 42501. Oplossing: DELETE verwijderd uit de smoke test; SELECT terug in de plaats als lees-verificatie. Testpotjes krijgen naam `__healthcheck__`. Nieuwe migratie `20260514000000_healthcheck_cleanup.sql`: `internal` schema aangemaakt; SECURITY DEFINER functie `internal.verwijder_healthcheck_potjes()` ruimt testpotjes ouder dan 2 uur op; pg_cron job `digipot-healthcheck-cleanup` draait dagelijks om 03:30 UTC. §19, §24 en systeemoverzicht bijgewerkt. | Health check faalde na Data API GRANT-migratie (42501 op DELETE) |
+| 8.7 | 2026-05-13 | **E4 + E5 + F1 afgelost:** (1) `20260530000000_data_api_grants.sql`: `REVOKE ALL` op `potjes`, `deelnemers`, `transacties`, `transacties_log`, `push_subscriptions` voor `anon` en `authenticated`; daarna exacte GRANTs per tabel op basis van RLS-policy-set (principle of least privilege: `potjes` SELECT/INSERT/UPDATE, `deelnemers` SELECT/INSERT/UPDATE, `transacties` SELECT/INSERT/DELETE, `transacties_log` geen directe toegang). Lost E5 op en maakt migratiepad toekomstbestendig voor de Supabase Data API GRANT-verplichting per 30 oktober 2026 (F1). (2) `20260530000100_drop_push_subscriptions.sql`: `DROP TABLE IF EXISTS public.push_subscriptions CASCADE` — verwijdert tabel én de vier RLS-policies automatisch. Lost E4 op. Geen codewijziging — geen referenties aanwezig. SCHULD.md v1.8. **Productie-actie vereist:** beide migraties uitvoeren via `apply_migration` op project `aqeuehfjgnpytfibncwy` vóór 30 oktober 2026. | Supabase Data API GRANT-verplichting (F1) + E4/E5 afgelost |
 | 8.6 | 2026-04-27 | **SEC-A3 afgelost:** twee consoliderende migraties toegevoegd: `20260427000000_is_mijn_deelnemer_function.sql` (helper-functie ontbrak volledig in repo) en `20260427000100_rls_fase4_consolidatie.sql` (volledige Fase 4 RLS-policy-set, exact live state per 2026-04-27). Vier obsolete migraties gemarkeerd met OBSOLETE-header, originele SQL uitgecommentarieerd. `supabase/migrations/README.md` volledig herschreven met actief/obsolete-kolom, rebuild-instructie en veiligheidsnotitie. Geen DB-wijziging — live staat was al correct. SCHULD.md v1.7. | SEC-A3: disaster recovery en dev-branches hersteld |
 | 8.5 | 2026-04-26 | **SEC-A1 + SEC-A2 (Critical) afgelost:** (1) `.gitignore` aangevuld met `.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production` om accidentele commit van `SUPABASE_SERVICE_ROLE_KEY` te voorkomen. Beheerder roteert het secret handmatig in Supabase Dashboard (geen MCP). (2) RLS-policy `deelnemers_insert` aangepast: extra clausules `auth.uid() IS NOT NULL` en `user_id = auth.uid()` toegevoegd. Hierdoor kan een geauthenticeerde anon-gebruiker geen weesdeelnemer (`user_id=NULL`) of impersonation-deelnemer (`user_id=<vreemd>`) meer aanmaken. Migratie `20260426000100_sec_a2_deelnemers_insert_eigenaar_check.sql` live + in repo. Tests: `src/test/secA2.deelnemerInsertEigenaar.regressie.test.js` (6 unit-cases) en `e2e/pw14-sec-a2-impersonation.spec.js` (4 e2e-cases × 5 browsers = 20 testlooppaden). `usePotjeActies.handleDeelnemen` was al correct (zet `user_id` uit `auth.getUser()`); geen frontend-wijziging nodig. SCHULD.md v1.6 met nieuwe E-sectie. Aanvullende open items E3–E10 gerapporteerd. | Security-audit 2026-04-26 — Critical IDOR + secret-leakage |
 | 7.5 | 2026-04-25 | **PostHog analytics geïntegreerd:** `posthog-js` toegevoegd aan `dependencies`. `src/utils/logMelding.js` aangemaakt als centrale util voor gebruiksevents. `main.jsx` uitgebreid met `posthog.init()` (EU-host, IP-masking, autocapture uit, alleen productie). `logFout.js` uitgebreid met `bepaalFoutCode()`: bekende gebruiksfouten sturen `fout_gebruiker_<code>` event; technische fouten sturen `fout_technisch` event naast Sentry. `PaginaNieuwPotje`, `PaginaStorten`, `PaginaProfiel` en `usePotjeActies` loggen succesevents. §2 dependency-tabel en omgevingsvariabelen bijgewerkt. | Meldingfrequentie meetbaar; foutpatronen inzichtelijk via PostHog |
