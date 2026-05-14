@@ -7,6 +7,11 @@ import { formatBedrag } from '../utils/formatBedrag'
 /**
  * Lucide-migratie (2026-04-24): ← vervangen door ChevronLeft.
  * Emoji's in lege staat en lijstheader zijn decoratief — behouden als tekst.
+ *
+ * Header altijd zichtbaar (2026-05-14): de <h1> stond eerder in de non-laden
+ * branch, waardoor PW-7e flaky was: Playwright zag de heading pas nadat de
+ * Supabase-query terugkwam. Nu wordt de header altijd gerenderd (WCAG: geen
+ * heading-jump bij laden); de skeletons verschijnen conditioneel eronder.
  */
 function PaginaOpenPotjes() {
   const navigate = useNavigate()
@@ -24,24 +29,10 @@ function PaginaOpenPotjes() {
     })
   }
 
-  if (laden) return (
-    <div className="pagina">
-      <div className="kaart">
-        <div className="skeleton skeleton-titel" />
-      </div>
-      {[1, 2, 3].map(i => (
-        <div key={i} className="kaart">
-          <div className="skeleton skeleton-kaart" />
-          <div className="skeleton skeleton-kaart-sub" />
-        </div>
-      ))}
-    </div>
-  )
-
   return (
     <div className="pagina">
 
-      {/* Header */}
+      {/* Header — altijd zichtbaar, ook tijdens laden (WCAG: geen heading-jump) */}
       <div className="kaart">
         <div className="kaart-header" style={{ marginBottom: 0 }}>
           <button
@@ -56,7 +47,20 @@ function PaginaOpenPotjes() {
         </div>
       </div>
 
-      {fout && (
+      {/* Skeletons tijdens laden */}
+      {laden && (
+        <>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="kaart">
+              <div className="skeleton skeleton-kaart" />
+              <div className="skeleton skeleton-kaart-sub" />
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Inhoud na laden */}
+      {!laden && fout && (
         <div ref={foutRef} role="alert" tabIndex={-1} className="kaart fout-kaart">
           <p className="text-sm tekst-rood mb-3">{fout}</p>
           <button className="knop knop-secundair mt-2" onClick={herlaad}>
@@ -65,7 +69,7 @@ function PaginaOpenPotjes() {
         </div>
       )}
 
-      {!fout && potjes.length === 0 && (
+      {!laden && !fout && potjes.length === 0 && (
         <div className="kaart lege-staat">
           <div className="lege-staat__emoji">🍺</div>
           <p className="text-base font-semibold mb-2">Geen open potjes</p>
@@ -78,7 +82,7 @@ function PaginaOpenPotjes() {
         </div>
       )}
 
-      {potjes.length > 0 && (
+      {!laden && potjes.length > 0 && (
         <ul
           role="list"
           className="kaart p-0 overflow-hidden"

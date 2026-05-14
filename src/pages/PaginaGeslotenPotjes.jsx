@@ -6,6 +6,11 @@ import { formatBedrag } from '../utils/formatBedrag'
 
 /**
  * Lucide-migratie (2026-04-24): ← vervangen door ChevronLeft.
+ *
+ * Header altijd zichtbaar (2026-05-14): de <h1> stond eerder in de non-laden
+ * branch. Zelfde fix als PaginaOpenPotjes — heading altijd renderen zodat
+ * e2e-tests niet afhankelijk zijn van Supabase-query-timing (WCAG: geen
+ * heading-jump bij laden).
  */
 function PaginaGeslotenPotjes() {
   const navigate = useNavigate()
@@ -23,24 +28,10 @@ function PaginaGeslotenPotjes() {
     })
   }
 
-  if (laden) return (
-    <div className="pagina">
-      <div className="kaart">
-        <div className="skeleton skeleton-titel" />
-      </div>
-      {[1, 2, 3].map(i => (
-        <div key={i} className="kaart">
-          <div className="skeleton skeleton-kaart" />
-          <div className="skeleton skeleton-kaart-sub" />
-        </div>
-      ))}
-    </div>
-  )
-
   return (
     <div className="pagina">
 
-      {/* Header */}
+      {/* Header — altijd zichtbaar, ook tijdens laden (WCAG: geen heading-jump) */}
       <div className="kaart">
         <div className="kaart-header" style={{ marginBottom: 0 }}>
           <button
@@ -55,7 +46,20 @@ function PaginaGeslotenPotjes() {
         </div>
       </div>
 
-      {fout && (
+      {/* Skeletons tijdens laden */}
+      {laden && (
+        <>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="kaart">
+              <div className="skeleton skeleton-kaart" />
+              <div className="skeleton skeleton-kaart-sub" />
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Inhoud na laden */}
+      {!laden && fout && (
         <div ref={foutRef} role="alert" tabIndex={-1} className="kaart fout-kaart">
           <p className="text-sm tekst-rood mb-3">{fout}</p>
           <button className="knop knop-secundair mt-2" onClick={herlaad}>
@@ -64,7 +68,7 @@ function PaginaGeslotenPotjes() {
         </div>
       )}
 
-      {!fout && potjes.length === 0 && (
+      {!laden && !fout && potjes.length === 0 && (
         <div className="kaart lege-staat">
           <div className="lege-staat__emoji">🔒</div>
           <p className="text-base font-semibold mb-2">Geen gesloten potjes</p>
@@ -77,7 +81,7 @@ function PaginaGeslotenPotjes() {
         </div>
       )}
 
-      {potjes.length > 0 && (
+      {!laden && potjes.length > 0 && (
         <ul
           role="list"
           className="kaart p-0 overflow-hidden"
